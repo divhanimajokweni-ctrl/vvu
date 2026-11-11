@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>VVU — Venture Vision Ubuntu · Unified Console</title>
+<meta property="og:title" content="VVU — Venture Vision Ubuntu · Unified Console">
+<meta property="og:description" content="Provable Digital Twins. One world. One StateVector bus. One WORM chain.">
+<meta property="og:image" content="/img/og.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/img/x-banner.jpg">
+<link rel="apple-touch-icon" href="/img/og.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,400&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1429,6 +1436,24 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
     </div>
   </section>
 
+  <!-- the proof strip — real screenshots of the estate in production -->
+  <section style="padding:0 40px 60px; max-width:1400px; margin:0 auto;">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px;">
+      <div style="position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border);">
+        <img src="/img/industrial-twin-banner.jpg" alt="VVU Industrial Twin — Gqeberha Line" style="width:100%; display:block; aspect-ratio:16/10; object-fit:cover;">
+        <div style="position:absolute; bottom:0; left:0; right:0; padding:12px 16px; background:linear-gradient(transparent, rgba(0,0,0,.85)); font-family:var(--mono); font-size:10px; color:var(--accent); letter-spacing:.1em; text-transform:uppercase;">Industrial Twin · Gqeberha Line</div>
+      </div>
+      <div style="position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border);">
+        <img src="/img/scene-live.jpg" alt="VVU Scene Live — 12 Assets" style="width:100%; display:block; aspect-ratio:16/10; object-fit:cover;">
+        <div style="position:absolute; bottom:0; left:0; right:0; padding:12px 16px; background:linear-gradient(transparent, rgba(0,0,0,.85)); font-family:var(--mono); font-size:10px; color:var(--accent-3); letter-spacing:.1em; text-transform:uppercase;">Scene Live · 12 Assets · PBR · IBL</div>
+      </div>
+      <div style="position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border);">
+        <img src="/img/free-city-twin.jpg" alt="VVU Free City Twin — Gqeberha" style="width:100%; display:block; aspect-ratio:16/10; object-fit:cover;">
+        <div style="position:absolute; bottom:0; left:0; right:0; padding:12px 16px; background:linear-gradient(transparent, rgba(0,0,0,.85)); font-family:var(--mono); font-size:10px; color:var(--accent); letter-spacing:.1em; text-transform:uppercase;">Free City Twin · Gqeberha</div>
+      </div>
+    </div>
+  </section>
+
   <div class="marquee-strip" aria-hidden="true">
     <div class="marquee-track">
       <span>YOLOv8</span><span>SEV-SNP</span><span>POPIA</span><span>SHA-256</span>
@@ -2650,6 +2675,30 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     if(s && ['dark','light','cyber'].includes(s)) savedTheme = s;
   }catch(e){}
   setTheme(savedTheme, false);
+
+  /* ---- triple-tap gesture: cycle dark → light → cyber ---- */
+  (function(){
+    let taps = 0;
+    let tapTimer = null;
+    const CYCLE = ['dark', 'light', 'cyber'];
+    document.addEventListener('touchend', handleTap, {passive:true});
+    document.addEventListener('click', handleTap);
+    function handleTap(e){
+      // ignore taps on buttons, links, inputs — only toggle on empty space
+      if(e.target.closest('button, a, input, textarea, select, .quiz-option, .vertex-handle, .phase-tab, .theme-btn, .nav-links, .code-window')) return;
+      taps++;
+      if(tapTimer) clearTimeout(tapTimer);
+      tapTimer = setTimeout(() => { taps = 0; }, 400);
+      if(taps >= 3){
+        taps = 0;
+        const current = rootEl.getAttribute('data-theme') || 'dark';
+        const idx = CYCLE.indexOf(current);
+        const next = CYCLE[(idx + 1) % CYCLE.length];
+        setTheme(next, true);
+        if(window.showToast) showToast('theme: ' + next);
+      }
+    }
+  })();
 
   /* ---- nav height sync ---- */
   function syncNav(){ rootEl.style.setProperty('--nav-h', navEl.offsetHeight + 'px'); }
