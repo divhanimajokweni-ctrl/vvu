@@ -1,0 +1,4 @@
+{
+  "privateKeyPem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIPwmCNGw9VWUJh1algql5t8UzTRcfIBRplWrMscY6esI\n-----END PRIVATE KEY-----\n",
+  "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAA0knaX/ZEes388vq8guV+O2Lr5A9SvXrwCm91P3sf0g=\n-----END PUBLIC KEY-----\n"
+}
