@@ -1,0 +1,18 @@
+[package]
+name = "proofbridge-obsidian-cargo-link"
+version = "1.2.0"
+edition = "2021"
+description = "Cargo to 2 link other Obsidian plugins — runner discovers via obsidian link only — fixes hollow view"
+authors = ["VVU / ProofBridge"]
+license = "MIT"
+
+[dependencies]
+# Link 2 other Obsidian plugins via cargo — example: dataview, templater, tasks
+# These are JS plugins, but cargo can generate manifests and bridge them
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+qrcode = "0.13"
+
+[lib]
+name = "proofbridge_cargo_link"
+path = "src/lib.rs"

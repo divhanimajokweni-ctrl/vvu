@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Digital Twin: Mechanical Operations Hub</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: white; }
+        
+        /* UI Overlay */
+        #ui-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; }
+        
+        /* Left Sidebar - Tool Index */
+        #tool-index {
+            width: 300px; height: 100%; background: rgba(20, 25, 30, 0.95);
+            pointer-events: auto; padding: 20px; box-sizing: border-box;
+            border-right: 1px solid #333; overflow-y: auto;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        }
+        
+        h2 { color: #00ffcc; margin-top: 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; }
+        h3 { color: #888; font-size: 0.9rem; margin-bottom: 5px; margin-top: 20px; border-bottom: 1px solid #333; padding-bottom: 5px;}
+        
+        .tool-item {
+            background: #2a2a2a; padding: 10px; margin-bottom: 8px; border-radius: 5px;
+            cursor: pointer; transition: all 0.2s; border-left: 3px solid #00ffcc;
+        }
+        .tool-item:hover { background: #3a3a3a; transform: translateX(5px); }
+        
+        /* Right Sidebar - API Integrations (Mockup) */
+        #api-panel {
+            position: absolute; right: 20px; top: 20px; width: 250px;
+            background: rgba(20, 25, 30, 0.85); padding: 15px; border-radius: 8px;
+            pointer-events: auto; font-size: 0.8rem; border: 1px solid #333;
+        }
+        
+        .api-badge { display: inline-block; background: #0055ff; color: white; padding: 3px 8px; border-radius: 12px; margin: 2px; font-size: 0.7rem; }
+        .api-badge.ai { background: #ff0055; }
+        .api-badge.db { background: #00aa55; }
+        
+        @media (max-width: 700px) {
+            #ui-container { align-items: flex-end; }
+            #tool-index { width: 100%; height: 36%; border-right: 0; border-top: 1px solid #333; padding: 12px; }
+            #api-panel { width: 58%; right: 8px; top: calc(8px + env(safe-area-inset-top, 0px)); font-size: 0.7rem; padding: 8px; }
+            #api-panel p { display: none; }
+            #view-toggle { bottom: calc(36% + 12px); padding: 8px 14px; }
+        }
+        /* Gods Eye View Toggle */
+        #view-toggle {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            pointer-events: auto; background: #00ffcc; color: #000; padding: 10px 20px;
+            border: none; border-radius: 5px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+        #view-toggle:hover { background: white; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-container">
+        <!-- Left Tool Index -->
+        <div id="tool-index">
+            <h2>Tool Index</h2>
+            <p style="font-size: 0.8rem; color: #aaa;">Click a tool to spawn it in the 3D room.</p>
+            
+            <h3>Mechanical Components</h3>
+            <div class="tool-item" onclick="spawnTool('gear')">⚙️ Standard Spur Gear</div>
+            <div class="tool-item" onclick="spawnTool('pipe')">🔧 Steel Pipe Section</div>
+            <div class="tool-item" onclick="spawnTool('valve')">🚰 Industrial Valve</div>
+
+            <h3>Hardware & Tools</h3>
+            <div class="tool-item" onclick="spawnTool('box')">📦 Equipment Crate</div>
+            <div class="tool-item" onclick="spawnTool('sphere')">⚪ Calibration Sphere</div>
+
+            <h3>Future Integrations</h3>
+            <div class="tool-item" style="opacity: 0.5; cursor: not-allowed;">🤖 YOLOv8 Camera Feed</div>
+            <div class="tool-item" style="opacity: 0.5; cursor: not-allowed;">📐 Zoo.cad Import</div>
+            <div class="tool-item" style="opacity: 0.5; cursor: not-allowed;">🧊 Hologram Projector</div>
+        </div>
+
+        <!-- Right API Panel -->
+        <div id="api-panel">
+            <h3 style="margin-top:0; color:#fff;">Connected Systems</h3>
+            <div>
+                <span class="api-badge db">Supabase</span>
+                <span class="api-badge ai">YOLOv8 / HF</span>
+                <span class="api-badge">Slack</span>
+                <span class="api-badge">Zoo.cad</span>
+                <span class="api-badge">Arduino</span>
+            </div>
+            <p style="color:#aaa; margin-top:15px; line-height: 1.4;">
+                <em>Operator Note:</em> Moves are logged to Supabase. YOLOv8 monitors workspace safety. Slack alerts dispatch on tool spawn.
+            </p>
+        </div>
+
+        <!-- View Toggle -->
+        <button id="view-toggle" onclick="toggleGodsEye()">Activate God's Eye View</button>
+    </div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // --- 1. SETUP 3D ENVIRONMENT ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        // Starting position (God's Eye View will move this)
+        camera.position.set(5, 8, 10); 
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.enableDamping = true;
+
+        // --- 2. LIGHTING ---
+        // Soft sky/ground fill + key light with soft, high-resolution shadows
+        scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x1a1c1e, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+        dirLight.position.set(6, 12, 7);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(2048, 2048);
+        dirLight.shadow.radius = 4;
+        dirLight.shadow.bias = -0.0004;
+        Object.assign(dirLight.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 40 });
+        scene.add(dirLight);
+
+        // Procedural studio environment for PBR reflections (no external HDR needed)
+        (function () {
+            const env = new THREE.Scene();
+            const dome = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true }));
+            const pos = dome.geometry.attributes.position, col = [];
+            for (let i = 0; i < pos.count; i++) { const t = (pos.getY(i) / 50 + 1) / 2; col.push(0.08 + 0.55 * t, 0.1 + 0.6 * t, 0.12 + 0.7 * t); }
+            dome.geometry.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+            env.add(dome);
+            const panel = new THREE.Mesh(new THREE.PlaneGeometry(30, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
+            panel.position.set(0, 30, 10); panel.rotation.x = Math.PI / 2.4; env.add(panel);
+            const pm = new THREE.PMREMGenerator(renderer);
+            scene.environment = pm.fromScene(env, 0.04).texture;
+            pm.dispose();
+        })();
+
+        // --- 3. THE BLANK ROOM ---
+        // Floor
+        const floorGeo = new THREE.PlaneGeometry(20, 20);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x2b2e30, roughness: 0.55, metalness: 0.25 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Grid Helper (For spatial awareness)
+        const gridHelper = new THREE.GridHelper(20, 20, 0x00ffcc, 0x444444);
+        scene.add(gridHelper);
+
+        // Back Walls
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x222222, side: THREE.DoubleSide });
+        const backWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), wallMat);
+        backWall.position.set(0, 5, -10);
+        scene.add(backWall);
+
+        const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), wallMat);
+        leftWall.position.set(-10, 5, 0);
+        leftWall.rotation.y = Math.PI / 2;
+        scene.add(leftWall);
+
+        // --- 4. TOOL SPAWNING LOGIC ---
+        let toolOffset = 0;
+        const spinners = [];
+        // Shared PBR materials (created once, reused by every spawned tool)
+        const neonMat = new THREE.MeshPhysicalMaterial({ color: 0x00d9b0, emissive: 0x003d33, metalness: 0.6, roughness: 0.28, clearcoat: 1.0, clearcoatRoughness: 0.12 });
+        const greyMat = new THREE.MeshPhysicalMaterial({ color: 0x9a9fa4, metalness: 1.0, roughness: 0.32, clearcoat: 0.3, clearcoatRoughness: 0.4 });
+
+        function spawnTool(type) {
+            let geometry, material, mesh;
+
+            // Randomize spawn position slightly so they don't overlap perfectly
+            const spawnX = (Math.random() - 0.5) * 4;
+            const spawnZ = (Math.random() - 0.5) * 4;
+
+            switch(type) {
+                case 'gear':
+                    // Create a gear-like shape
+                    geometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 32);
+                    mesh = new THREE.Mesh(geometry, neonMat);
+                    spinners.push(mesh);
+                    mesh.position.set(spawnX, 0.5, spawnZ);
+                    // Add teeth
+                    for(let i=0; i<8; i++){
+                        const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.3), neonMat);
+                        tooth.position.set(Math.cos(i * Math.PI/4)*0.6, 0, Math.sin(i * Math.PI/4)*0.6);
+                        tooth.rotation.y = i * Math.PI/4;
+                        mesh.add(tooth);
+                    }
+                    break;
+                case 'pipe':
+                    geometry = new THREE.CylinderGeometry(0.2, 0.2, 2, 32);
+                    mesh = new THREE.Mesh(geometry, greyMat);
+                    mesh.position.set(spawnX, 1, spawnZ);
+                    mesh.rotation.z = Math.PI / 2;
+                    break;
+                case 'valve':
+                    // A complex shape made of a torus and a box
+                    mesh = new THREE.Group();
+                    const valveBody = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.15, 16, 50), neonMat);
+                    valveBody.rotation.x = Math.PI / 2;
+                    const valveStem = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.6), greyMat);
+                    valveStem.position.y = 0.4;
+                    mesh.add(valveBody);
+                    mesh.add(valveStem);
+                    mesh.position.set(spawnX, 0.5, spawnZ);
+                    break;
+                case 'box':
+                    geometry = new THREE.BoxGeometry(1, 1, 1);
+                    mesh = new THREE.Mesh(geometry, greyMat);
+                    mesh.position.set(spawnX, 0.5, spawnZ);
+                    break;
+                case 'sphere':
+                    geometry = new THREE.SphereGeometry(0.5, 32, 32);
+                    mesh = new THREE.Mesh(geometry, neonMat);
+                    mesh.position.set(spawnX, 0.5, spawnZ);
+                    break;
+            }
+
+            if (mesh) {
+                mesh.traverse(o => { o.castShadow = true; o.receiveShadow = true; });
+                scene.add(mesh);
+                console.log(`[API TOOL CALL] Spawned ${type}. Logged to Supabase.`);
+            }
+        }
+
+        // --- 5. GOD'S EYE VIEW TOGGLE ---
+        let isGodsEye = false;
+        function toggleGodsEye() {
+            isGodsEye = !isGodsEye;
+            const btn = document.getElementById('view-toggle');
+            
+            if (isGodsEye) {
+                // Move camera to top-down view
+                camera.position.set(0, 15, 0.1);
+                controls.target.set(0, 0, 0);
+                btn.innerText = "Return to Operator View";
+                btn.style.background = "#ff0055";
+                btn.style.boxShadow = "0 0 15px #ff0055";
+            } else {
+                // Move camera back to 3D perspective
+                camera.position.set(5, 8, 10);
+                controls.target.set(0, 0, 0);
+                btn.innerText = "Activate God's Eye View";
+                btn.style.background = "#00ffcc";
+                btn.style.boxShadow = "0 0 15px #00ffcc";
+            }
+        }
+
+        // --- 6. ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate gears slightly for visual effect
+            spinners.forEach(g => { g.rotation.y += 0.01; });
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Handle Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        window.spawnTool = spawnTool; window.toggleGodsEye = toggleGodsEye;
+
+        animate();
+    </script>
+</body>
+</html>

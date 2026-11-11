@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kerr Black Hole · Full Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Space Grotesk', sans-serif;
+            color: #fff;
+            user-select: none;
+        }
+        canvas#bh-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        /* ─── HUD ─── */
+        #hud {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px 28px;
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .hud-logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: rgba(0, 255, 255, 0.7);
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+        .hud-logo .sub {
+            font-size: 8px;
+            color: rgba(255,255,255,0.2);
+            letter-spacing: 0.2em;
+            display: block;
+            margin-top: 4px;
+        }
+        .hud-top-right {
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: rgba(255,255,255,0.3);
+            letter-spacing: 0.1em;
+            line-height: 1.8;
+        }
+        .hud-top-right .val { color: rgba(0, 255, 255, 0.6); }
+        .hud-top-right .sonic { color: rgba(255, 100, 200, 0.6); }
+
+        /* Crosshair */
+        .crosshair-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 15;
+            opacity: 0.35;
+        }
+        .crosshair {
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(0, 255, 255, 0.4);
+        }
+        .crosshair::before {
+            width: 1px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .crosshair::after {
+            width: 100%;
+            height: 1px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .crosshair .dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(0, 255, 255, 0.8);
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.4);
+        }
+        .crosshair .ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            border: 1px solid rgba(0, 255, 255, 0.12);
+            border-radius: 50%;
+        }
+        .crosshair .tick {
+            position: absolute;
+            background: rgba(0, 255, 255, 0.25);
+            width: 1px;
+            height: 5px;
+        }
+        .crosshair .tick.t1 { top: -5px; left: 50%; transform: translateX(-50%); }
+        .crosshair .tick.t2 { bottom: -5px; left: 50%; transform: translateX(-50%); }
+        .crosshair .tick.t3 { left: -5px; top: 50%; transform: translateY(-50%); }
+        .crosshair .tick.t4 { right: -5px; top: 50%; transform: translateY(-50%); }
+
+        /* Bottom HUD */
+        .hud-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: auto;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .param-panel {
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 255, 255, 0.07);
+            border-radius: 8px;
+            padding: 14px 18px;
+            min-width: 170px;
+            pointer-events: auto;
+        }
+        .param-panel .title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: rgba(255,255,255,0.2);
+            margin-bottom: 8px;
+        }
+        .param-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: rgba(255,255,255,0.5);
+        }
+        .param-row .label {
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 7px;
+        }
+        .param-row .value {
+            color: rgba(0, 255, 255, 0.7);
+            font-weight: 500;
+        }
+        .param-row .value.sonic { color: rgba(255, 100, 200, 0.8); }
+        .param-row input[type="range"] {
+            width: 70px;
+            height: 2px;
+            background: rgba(255,255,255,0.08);
+            border: none;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+        .param-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(0, 255, 255, 0.5);
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.15);
+        }
+
+        .param-panel.right {
+            text-align: right;
+            min-width: 140px;
+        }
+        .param-panel.right .param-row { justify-content: flex-end; gap: 12px; }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7px;
+            color: rgba(255,255,255,0.2);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        .status-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        .status-dot.sonic-dot {
+            background: #ff66cc;
+            animation: pulse-dot 0.6s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .orbit-hint {
+            position: fixed;
+            bottom: 85px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8px;
+            color: rgba(255,255,255,0.08);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            pointer-events: none;
+            z-index: 5;
+            text-align: center;
+        }
+
+        .sonic-indicator {
+            position: fixed;
+            bottom: 130px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7px;
+            color: rgba(255, 100, 200, 0.3);
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        @media (max-width: 768px) {
+            #hud { padding: 14px; }
+            .param-panel { padding: 10px 12px; min-width: 120px; }
+            .param-row { font-size: 7px; }
+            .param-row input[type="range"] { width: 40px; }
+            .hud-logo { font-size: 10px; }
+            .crosshair-container { display: none; }
+            .orbit-hint { bottom: 70px; font-size: 6px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Canvas -->
+    <canvas id="bh-canvas"></canvas>
+
+    <!-- Crosshair -->
+    <div class="crosshair-container">
+        <div class="crosshair">
+            <div class="dot"></div>
+            <div class="ring"></div>
+            <div class="tick t1"></div>
+            <div class="tick t2"></div>
+            <div class="tick t3"></div>
+            <div class="tick t4"></div>
+        </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div class="hud-top">
+            <div class="hud-logo">
+                KERR BLACK HOLE
+                <span class="sub">✦ Kerr Metric · Particle Trails · Gravitational Sonification</span>
+            </div>
+            <div class="hud-top-right">
+                <div>FRAME <span class="val" id="frameCount">0000</span></div>
+                <div>FPS <span class="val" id="fpsDisplay">60</span></div>
+                <div>SONIC <span class="sonic" id="sonicStatus">● ACTIVE</span></div>
+            </div>
+        </div>
+
+        <div class="hud-bottom">
+            <div class="param-panel">
+                <div class="title">✦ Kerr Parameters</div>
+                <div class="param-row">
+                    <span class="label">Mass (M)</span>
+                    <input type="range" id="massSlider" min="0.5" max="3.0" step="0.1" value="1.5" />
+                    <span class="value" id="massValue">1.5</span>
+                </div>
+                <div class="param-row">
+                    <span class="label">Spin (a/M)</span>
+                    <input type="range" id="spinSlider" min="0.0" max="0.99" step="0.01" value="0.85" />
+                    <span class="value" id="spinValue">0.85</span>
+                </div>
+                <div class="param-row">
+                    <span class="label">Inclination</span>
+                    <input type="range" id="inclinationSlider" min="0" max="90" step="1" value="30" />
+                    <span class="value" id="inclinationValue">30°</span>
+                </div>
+                <div class="param-row" style="border-top:1px solid rgba(255,255,255,0.05);padding-top:6px;margin-top:4px;">
+                    <span class="label">Particles</span>
+                    <input type="range" id="particleCountSlider" min="50" max="500" step="10" value="200" />
+                    <span class="value" id="particleCountValue">200</span>
+                </div>
+            </div>
+
+            <div class="param-panel right">
+                <div class="title">✦ Telemetry</div>
+                <div class="param-row">
+                    <span class="label">Ergosphere</span>
+                    <span class="value" id="ergosphereRadius">2.10</span>
+                </div>
+                <div class="param-row">
+                    <span class="label">Event Horizon</span>
+                    <span class="value" id="ehRadius">1.50</span>
+                </div>
+                <div class="param-row">
+                    <span class="label">Photon Ring</span>
+                    <span class="value" id="photonRing">3.00</span>
+                </div>
+                <div class="param-row" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.05);">
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span>Engine Active</span>
+                    </div>
+                    <div class="status-indicator" style="margin-left:12px;">
+                        <span class="status-dot sonic-dot"></span>
+                        <span class="sonic" style="color:rgba(255,100,200,0.4);">Sonification</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="orbit-hint">🔄 Drag to orbit · Scroll to zoom · <span>Double-click toggle rotation</span></div>
+    <div class="sonic-indicator">🎵 Gravitational Wave Sonification · Frame-synced</div>
+
+    <!-- ============================================================
+    IMPORTS
+    ============================================================ -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+        import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+
+        // ─── DOM ───
+        const canvas = document.getElementById('bh-canvas');
+        const frameCountEl = document.getElementById('frameCount');
+        const fpsDisplayEl = document.getElementById('fpsDisplay');
+        const sonicStatusEl = document.getElementById('sonicStatus');
+        const massSlider = document.getElementById('massSlider');
+        const spinSlider = document.getElementById('spinSlider');
+        const inclinationSlider = document.getElementById('inclinationSlider');
+        const particleCountSlider = document.getElementById('particleCountSlider');
+        const massValue = document.getElementById('massValue');
+        const spinValue = document.getElementById('spinValue');
+        const inclinationValue = document.getElementById('inclinationValue');
+        const particleCountValue = document.getElementById('particleCountValue');
+        const ehRadiusEl = document.getElementById('ehRadius');
+        const ergosphereRadiusEl = document.getElementById('ergosphereRadius');
+        const photonRingEl = document.getElementById('photonRing');
+
+        // ─── Scene ───
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 0.3, 5.5);
+
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+
+        // ─── Controls ───
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.15;
+        controls.minDistance = 2.5;
+        controls.maxDistance = 15;
+        controls.update();
+
+        // ─── Post-Processing ───
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        const bloomPass = new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            0.5, 0.3, 0.05
+        );
+        composer.addPass(bloomPass);
+        const fxaaPass = new ShaderPass(FXAAShader);
+        fxaaPass.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
+        composer.addPass(fxaaPass);
+
+        // ─── KERR METRIC RAY-TRACING SHADER ───
+        const raytraceVertex = `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+
+        const raytraceFragment = `
+            precision highp float;
+            uniform float uTime;
+            uniform vec2 uResolution;
+            uniform float uMass;
+            uniform float uSpin;
+            uniform float uInclination;
+            uniform float uAspect;
+            uniform float uParticleCount;
+
+            varying vec2 vUv;
+
+            #define PI 3.14159265359
+            #define TWO_PI 6.28318530718
+
+            // ─── Noise ───
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+            float smoothNoise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                float a = hash(i);
+                float b = hash(i + vec2(1.0, 0.0));
+                float c = hash(i + vec2(0.0, 1.0));
+                float d = hash(i + vec2(1.0, 1.0));
+                return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+            }
+
+            // ─── Kerr Metric Functions ───
+            // Returns { ergosphere, eventHorizon, photonRing } for given mass and spin
+            void kerrRadii(float mass, float spin, out float ergosphere, out float horizon, out float photon) {
+                float rs = 2.0 * mass;
+                // Event horizon: r+ = M + sqrt(M^2 - a^2)
+                horizon = mass + sqrt(max(0.0, mass * mass - spin * spin));
+                // Ergosphere: r_ergo = M + sqrt(M^2 - a^2 * cos^2(theta))
+                // Simplified: equatorial ergosphere
+                ergosphere = mass + sqrt(max(0.0, mass * mass - spin * spin * 0.0)); // equatorial
+                // Photon ring (prograde) approximation
+                photon = 2.0 * mass * (1.0 + cos(2.0/3.0 * acos(-spin/mass)));
+                // Clamp to reasonable values
+                photon = max(photon, horizon * 1.1);
+            }
+
+            // ─── Ray-Tracing with Kerr Metric ───
+            vec3 traceKerr(vec3 origin, vec3 direction, float mass, float spin, float inclination, float time) {
+                vec3 dir = normalize(direction);
+
+                float rs = 2.0 * mass;
+                float ergo, hor, photon;
+                kerrRadii(mass, spin, ergo, hor, photon);
+
+                // Find closest approach
+                float t = -dot(origin, dir);
+                vec3 closest = origin + t * dir;
+                float impact = length(closest);
+
+                // Frame dragging effect (Lense-Thirring)
+                float frameDrag = spin * mass / (impact * impact + mass * mass);
+
+                // Deflection with Kerr correction
+                float deflection = (2.0 * rs) / (impact + rs * 0.5);
+                deflection += frameDrag * 0.3;
+
+                // Photon capture inside photon ring
+                if (impact < photon && impact > hor * 0.9) {
+                    // Photon ring glow with spin-induced asymmetry
+                    float angle = atan(closest.z, closest.x);
+                    float spinMod = 1.0 + spin * 0.5 * sin(angle + time * 0.5);
+                    return vec3(0.9, 0.6, 0.1) * 1.8 * spinMod;
+                }
+
+                if (impact < hor) {
+                    return vec3(0.0);
+                }
+
+                // Bend ray
+                vec3 gravityDir = -normalize(closest);
+                float bendStrength = (2.0 * rs) / (impact * impact + rs * rs * 0.5);
+                vec3 bentDir = normalize(dir + gravityDir * bendStrength * 0.6);
+
+                // Project to disk
+                float inclAngle = inclination * PI / 180.0;
+                vec3 diskNormal = vec3(0.0, cos(inclAngle), sin(inclAngle));
+
+                float denom = dot(bentDir, diskNormal);
+                float diskRadius = 0.0, diskAngle = 0.0;
+
+                if (abs(denom) > 1e-6) {
+                    float d = dot(origin, diskNormal) / denom;
+                    vec3 hitPoint = origin + bentDir * (-d);
+                    diskRadius = length(hitPoint);
+                    diskAngle = atan(hitPoint.z, hitPoint.x);
+                }
+
+                if (diskRadius < 0.01) {
+                    // Stars
+                    vec2 uv = vUv * 2.0 - 1.0;
+                    float star = smoothNoise(uv * 120.0 + time * 0.008);
+                    return vec3(star * 0.015);
+                }
+
+                // Disk boundaries with spin warp
+                float innerDisk = photon * 0.7;
+                float outerDisk = 14.0 * mass;
+
+                if (diskRadius < innerDisk || diskRadius > outerDisk) {
+                    vec2 uv = vUv * 2.0 - 1.0;
+                    float star = smoothNoise(uv * 100.0 + time * 0.005);
+                    return vec3(star * 0.012);
+                }
+
+                // Disk texture with spin warping
+                float diskNorm = (diskRadius - innerDisk) / (outerDisk - innerDisk);
+                float warp = 1.0 + spin * 0.3 * cos(diskAngle * 2.0);
+                float spiral = sin(diskAngle * 4.0 + diskRadius * 8.0 * warp + time * 0.25) * 0.5 + 0.5;
+                float turbulence = smoothNoise(vec2(diskRadius * 3.0 + time * 0.015, diskAngle * 2.5));
+
+                float intensity = (0.3 + 0.7 * spiral) * (0.5 + 0.5 * turbulence);
+                intensity *= (1.0 - diskNorm * 0.4);
+
+                // Temperature gradient
+                float temp = 1.0 - pow(diskNorm, 0.5);
+                vec3 innerColor = vec3(0.9, 0.85, 1.0);
+                vec3 midColor = vec3(1.0, 0.65, 0.25);
+                vec3 outerColor = vec3(0.4, 0.1, 0.02);
+                vec3 diskColor = mix(innerColor, midColor, diskNorm * 1.0);
+                diskColor = mix(diskColor, outerColor, diskNorm * diskNorm * 2.0);
+
+                // Doppler + frame dragging asymmetry
+                float doppler = sin(diskAngle - time * 0.15 + spin * 0.3) * 0.12;
+                diskColor *= (1.0 + doppler * temp);
+
+                // Gravitational redshift
+                float redshiftFactor = 1.0 - hor / (diskRadius + hor * 0.3);
+                diskColor *= (0.7 + 0.3 * redshiftFactor);
+
+                // Ergosphere glow
+                float ergoGlow = exp(-abs(diskRadius - ergo) * 8.0);
+                diskColor += vec3(0.6, 0.3, 0.8) * ergoGlow * 0.3;
+
+                // Particle trails (simulated with noise)
+                float particleDensity = uParticleCount / 200.0;
+                float trails = smoothNoise(vec2(diskRadius * 5.0 + time * 0.02, diskAngle * 4.0 + time * 0.03));
+                trails = pow(trails, 1.5) * 0.3 * particleDensity;
+                diskColor += vec3(1.0, 0.8, 0.4) * trails * intensity;
+
+                intensity *= (1.0 - abs(diskNorm - 0.5) * 0.5);
+
+                // Photon ring glow
+                float ringGlow = exp(-abs(diskRadius - photon) * 25.0);
+                diskColor += vec3(0.9, 0.7, 0.15) * ringGlow * 0.6;
+
+                // Event horizon shadow
+                float shadow = 1.0 - exp(-diskRadius * 15.0 / hor);
+                diskColor *= shadow;
+
+                // Spin-induced asymmetry in brightness
+                float asymmetry = 1.0 + spin * 0.2 * sin(diskAngle - time * 0.1);
+                diskColor *= asymmetry;
+
+                return diskColor * intensity * 1.4;
+            }
+
+            void main() {
+                vec2 uv = vUv;
+                vec2 pos = uv - 0.5;
+                pos.x *= uAspect;
+
+                vec3 origin = vec3(0.0, 0.0, 4.0);
+                vec3 target = vec3(0.0, 0.0, 0.0);
+                vec3 forward = normalize(target - origin);
+                vec3 right = normalize(cross(forward, vec3(0.0, 1.0, 0.0)));
+                vec3 up = normalize(cross(right, forward));
+
+                float fov = 0.75;
+                vec3 rayDir = normalize(
+                    forward +
+                    right * pos.x * fov +
+                    up * pos.y * fov * (uResolution.y / uResolution.x)
+                );
+
+                vec3 color = traceKerr(origin, rayDir, uMass, uSpin, uInclination, uTime);
+
+                // Vignette
+                float vignette = 1.0 - dot(pos, pos) * 0.25;
+                color *= vignette;
+
+                // Tone mapping
+                color = color / (color + vec3(1.0));
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // ─── Material ───
+        const raytraceMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime: { value: 0 },
+                uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                uMass: { value: 1.5 },
+                uSpin: { value: 0.85 },
+                uInclination: { value: 30.0 },
+                uAspect: { value: window.innerWidth / window.innerHeight },
+                uParticleCount: { value: 200.0 },
+            },
+            vertexShader: raytraceVertex,
+            fragmentShader: raytraceFragment,
+            depthWrite: false,
+        });
+
+        const geometry = new THREE.PlaneGeometry(2, 2);
+        const mesh = new THREE.Mesh(geometry, raytraceMaterial);
+        scene.add(mesh);
+
+        // ─── Particle System (3D trails) ───
+        const particleCount = 500;
+        const particleGeo = new THREE.BufferGeometry();
+        const particlePos = new Float32Array(particleCount * 3);
+        const particleVel = new Float32Array(particleCount * 3);
+        const particleLife = new Float32Array(particleCount);
+        const particleSizes = new Float32Array(particleCount);
+        const particleColors = new Float32Array(particleCount * 3);
+
+        function initParticles(count) {
+            const total = Math.min(count, 2000);
+            for (let i = 0; i < total; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const radius = 0.5 + Math.random() * 4.0;
+                const height = (Math.random() - 0.5) * 1.5;
+                particlePos[i * 3] = radius * Math.cos(theta);
+                particlePos[i * 3 + 1] = height;
+                particlePos[i * 3 + 2] = radius * Math.sin(theta);
+                particleVel[i * 3] = -Math.sin(theta) * 0.02;
+                particleVel[i * 3 + 1] = (Math.random() - 0.5) * 0.01;
+                particleVel[i * 3 + 2] = Math.cos(theta) * 0.02;
+                particleLife[i] = Math.random() * 100;
+                particleSizes[i] = 0.02 + Math.random() * 0.06;
+                particleColors[i * 3] = 0.8 + Math.random() * 0.2;
+                particleColors[i * 3 + 1] = 0.5 + Math.random() * 0.3;
+                particleColors[i * 3 + 2] = 0.1 + Math.random() * 0.2;
+            }
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+            particleGeo.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+            particleGeo.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+        }
+
+        initParticles(particleCount);
+
+        const particleMat = new THREE.PointsMaterial({
+            size: 0.04,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            vertexColors: true,
+            sizeAttenuation: true,
+        });
+        const particleSystem = new THREE.Points(particleGeo, particleMat);
+        scene.add(particleSystem);
+
+        // ─── Background Stars ───
+        const starCount = 3000;
+        const starGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount; i++) {
+            const r = 5 + Math.random() * 60;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+            starPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+            starPos[i * 3 + 2] = r * Math.cos(phi);
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+
+        const starMat = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.05,
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending,
+            sizeAttenuation: true,
+        });
+        const stars = new THREE.Points(starGeo, starMat);
+        scene.add(stars);
+
+        // ─── WebAudio Sonification ───
+        let audioCtx = null;
+        let sonicOscillator = null;
+        let sonicGain = null;
+        let sonicActive = false;
+
+        function initAudio() {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                sonicGain = audioCtx.createGain();
+                sonicGain.gain.value = 0.03;
+                sonicGain.connect(audioCtx.destination);
+                sonicActive = true;
+                sonicStatusEl.textContent = '● ACTIVE';
+                sonicStatusEl.style.color = 'rgba(255,100,200,0.8)';
+            } catch (e) {
+                console.warn('WebAudio not available');
+                sonicActive = false;
+                sonicStatusEl.textContent = '✕ UNAVAILABLE';
+            }
+        }
+
+        function playSonicPulse(frequency, duration, volume) {
+            if (!sonicActive || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = frequency;
+                gain.gain.setValueAtTime(volume * 0.03, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(sonicGain);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) { /* ignore */ }
+        }
+
+        // ─── Update Functions ───
+        function updateRadii(mass, spin) {
+            const rs = 2.0 * mass;
+            const hor = mass + Math.sqrt(Math.max(0, mass * mass - spin * spin));
+            const ergo = mass + Math.sqrt(Math.max(0, mass * mass - spin * spin * 0.0));
+            const photon = 2.0 * mass * (1 + Math.cos((2/3) * Math.acos(Math.max(-1, Math.min(1, -spin/mass)))));
+            ehRadiusEl.textContent = hor.toFixed(2);
+            ergosphereRadiusEl.textContent = ergo.toFixed(2);
+            photonRingEl.textContent = photon.toFixed(2);
+        }
+
+        function updateHUD(mass, spin, inclination, particleCount) {
+            massValue.textContent = mass.toFixed(1);
+            spinValue.textContent = spin.toFixed(2);
+            inclinationValue.textContent = inclination.toFixed(0) + '°';
+            particleCountValue.textContent = Math.floor(particleCount);
+            updateRadii(mass, spin);
+        }
+
+        // ─── Slider Events ───
+        massSlider.addEventListener('input', () => {
+            const val = parseFloat(massSlider.value);
+            raytraceMaterial.uniforms.uMass.value = val;
+            updateHUD(val, parseFloat(spinSlider.value), parseFloat(inclinationSlider.value), parseFloat(particleCountSlider.value));
+        });
+
+        spinSlider.addEventListener('input', () => {
+            const val = parseFloat(spinSlider.value);
+            raytraceMaterial.uniforms.uSpin.value = val;
+            updateHUD(parseFloat(massSlider.value), val, parseFloat(inclinationSlider.value), parseFloat(particleCountSlider.value));
+        });
+
+        inclinationSlider.addEventListener('input', () => {
+            const val = parseFloat(inclinationSlider.value);
+            raytraceMaterial.uniforms.uInclination.value = val;
+            updateHUD(parseFloat(massSlider.value), parseFloat(spinSlider.value), val, parseFloat(particleCountSlider.value));
+        });
+
+        particleCountSlider.addEventListener('input', () => {
+            const val = parseFloat(particleCountSlider.value);
+            raytraceMaterial.uniforms.uParticleCount.value = val;
+            particleCountValue.textContent = Math.floor(val);
+            // Resize particle system
+            const currentCount = particleGeo.attributes.position.count;
+            if (val > currentCount) {
+                const newPos = new Float32Array(particleGeo.attributes.position.array);
+                const newColors = new Float32Array(particleGeo.attributes.color.array);
+                const newSizes = new Float32Array(particleGeo.attributes.size.array);
+                for (let i = currentCount; i < Math.floor(val); i++) {
+                    const theta = Math.random() * Math.PI * 2;
+                    const radius = 0.5 + Math.random() * 4.0;
+                    newPos[i * 3] = radius * Math.cos(theta);
+                    newPos[i * 3 + 1] = (Math.random() - 0.5) * 1.5;
+                    newPos[i * 3 + 2] = radius * Math.sin(theta);
+                    newColors[i * 3] = 0.8 + Math.random() * 0.2;
+                    newColors[i * 3 + 1] = 0.5 + Math.random() * 0.3;
+                    newColors[i * 3 + 2] = 0.1 + Math.random() * 0.2;
+                    newSizes[i] = 0.02 + Math.random() * 0.06;
+                }
+                particleGeo.setAttribute('position', new THREE.BufferAttribute(newPos, 3));
+                particleGeo.setAttribute('color', new THREE.BufferAttribute(newColors, 3));
+                particleGeo.setAttribute('size', new THREE.BufferAttribute(newSizes, 1));
+            }
+        });
+
+        // ─── Resize ───
+        window.addEventListener('resize', () => {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            composer.setSize(w, h);
+            raytraceMaterial.uniforms.uResolution.value.set(w, h);
+            raytraceMaterial.uniforms.uAspect.value = w / h;
+        });
+
+        // ─── Frame Counter ───
+        let frameCount = 0;
+        let lastFpsUpdate = performance.now();
+        let fps = 60;
+        let sonicCounter = 0;
+
+        // ─── Animation ───
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsed = clock.getElapsedTime();
+            const delta = clock.getDelta();
+
+            // Update shader
+            raytraceMaterial.uniforms.uTime.value = elapsed;
+
+            // Update particles (spiral in-fall)
+            const positions = particleGeo.attributes.position.array;
+            const count = particleGeo.attributes.position.count;
+            for (let i = 0; i < count; i++) {
+                const idx = i * 3;
+                const x = positions[idx];
+                const y = positions[idx + 1];
+                const z = positions[idx + 2];
+                const radius = Math.sqrt(x * x + z * z);
+                const angle = Math.atan2(z, x);
+
+                // Spiral in-fall with accretion
+                const newAngle = angle + 0.02 / (radius + 0.5);
+                const newRadius = radius - 0.002 * (1 + 0.5 / (radius + 0.5));
+
+                positions[idx] = newRadius * Math.cos(newAngle);
+                positions[idx + 1] = y - 0.001 + Math.sin(elapsed + i) * 0.001;
+                positions[idx + 2] = newRadius * Math.sin(newAngle);
+
+                // Reset particles that fall in too close
+                if (newRadius < 0.3 || Math.abs(y) > 2.0) {
+                    const theta = Math.random() * Math.PI * 2;
+                    const r = 3.0 + Math.random() * 2.0;
+                    positions[idx] = r * Math.cos(theta);
+                    positions[idx + 1] = (Math.random() - 0.5) * 1.0;
+                    positions[idx + 2] = r * Math.sin(theta);
+                }
+            }
+            particleGeo.attributes.position.needsUpdate = true;
+
+            // Rotate stars
+            stars.rotation.y = elapsed * 0.002;
+
+            // Controls
+            controls.update();
+
+            // Render
+            composer.render();
+
+            // Frame counter
+            frameCount++;
+            const now = performance.now();
+            if (now - lastFpsUpdate > 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFpsUpdate = now;
+                fpsDisplayEl.textContent = fps;
+            }
+            frameCountEl.textContent = String(frameCount).padStart(4, '0');
+
+            // ─── Sonification ───
+            sonicCounter++;
+            if (sonicActive && sonicCounter % 3 === 0) {
+                // Generate gravitational wave tones based on spin and mass
+                const mass = parseFloat(massSlider.value);
+                const spin = parseFloat(spinSlider.value);
+                const baseFreq = 80 + mass * 40 + spin * 60;
+                const harmonic = 1 + Math.floor(sonicCounter / 30) % 4;
+                const freq = baseFreq * harmonic;
+                const duration = 0.05 / harmonic;
+                const volume = 0.3 / harmonic;
+                playSonicPulse(freq, duration, volume);
+
+                // Occasional low-frequency "chirp" (merger simulation)
+                if (sonicCounter % 60 === 0) {
+                    playSonicPulse(30 + mass * 20, 0.3, 0.5);
+                }
+                if (sonicCounter % 45 === 0) {
+                    playSonicPulse(120 + spin * 80, 0.08, 0.2);
+                }
+            }
+
+            // Auto-rotate toggle hint
+            const hintSpan = document.querySelector('.orbit-hint span');
+            if (hintSpan) {
+                hintSpan.textContent = controls.autoRotate ? 'Auto-rotate active' : 'Manual control';
+            }
+        }
+
+        // ─── Toggle auto-rotate ───
+        renderer.domElement.addEventListener('dblclick', () => {
+            controls.autoRotate = !controls.autoRotate;
+        });
+
+        // ─── Init Audio on user interaction ───
+        document.addEventListener('click', () => {
+            if (!audioCtx) initAudio();
+        }, { once: true });
+
+        // ─── Init ───
+        updateHUD(1.5, 0.85, 30, 200);
+        initAudio();
+        animate();
+
+        console.log('✦ Kerr Black Hole Simulation Active');
+        console.log('✦ Double-click to toggle auto-rotation');
+        console.log('✦ Click anywhere to enable WebAudio sonification');
+    </script>
+</body>
+</html>

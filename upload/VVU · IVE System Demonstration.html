@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VVU · IVE System Demonstration</title>
+<style>
+:root{--bg:#0b0e10;--panel:#12171a;--line:#28332e;--ink:#e6efe8;--dim:#8a9a90;--acc:#00ffcc;--ok:#a3e635;--warn:#ffb224;--bad:#ff4d5e;--f:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#eef2f0;--panel:#fff;--line:#c5d0ca;--ink:#10201a;--dim:#4d5f56;--acc:#007a63;--ok:#3d7a00;--warn:#8a5a00;--bad:#c4003f;color-scheme:light}}
+:root[data-theme="dark"]{--bg:#0b0e10;--panel:#12171a;--line:#28332e;--ink:#e6efe8;--dim:#8a9a90;--acc:#00ffcc;--ok:#a3e635;--warn:#ffb224;--bad:#ff4d5e}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:12px/1.4 var(--f);overflow:hidden}
+#app{height:100%;display:grid;grid-template-rows:auto minmax(120px,1fr) auto auto}
+header{display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+header b{color:var(--acc)}#src{margin-left:auto;color:var(--dim);font-size:10px;text-align:right}
+#stage{position:relative;min-height:0}canvas{display:block;width:100%;height:100%;touch-action:none}
+#err{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;background:var(--bg);color:var(--bad)}
+#tabs{display:flex;background:var(--panel);border-top:1px solid var(--line)}
+#tabs button{flex:1;border:0;border-bottom:2px solid transparent;border-radius:0;background:none}
+#sheet{background:var(--panel);max-height:44vh;overflow:auto;padding:8px 10px;border-top:1px solid var(--line)}
+button,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 9px;min-height:38px}
+button{cursor:pointer}button[aria-pressed=true],button[aria-selected=true]{border-color:var(--acc);color:var(--acc)}
+button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:4px 0}
+.dim{color:var(--dim)}.tag{font-size:10px;border:1px solid var(--line);border-radius:3px;padding:0 4px;color:var(--dim)}
+.PASS{color:var(--ok)}.BLOCK{color:var(--bad)}.INCONCLUSIVE{color:var(--warn)}.NE{color:var(--dim)}
+.g{display:grid;grid-template-columns:auto 1fr;gap:2px 8px}.item{padding:5px 0;border-bottom:1px solid var(--line)}
+.led{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:2px;border:1px solid var(--line)}.led.on{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+textarea{width:100%;min-height:130px;font-size:11px}h4{margin:8px 0 3px;color:var(--acc);font-size:12px}
+.bar{height:8px;background:var(--bg);border:1px solid var(--line);display:flex}.bar i{display:block;height:100%}
+</style>
+</head>
+<body>
+<div id="app">
+ <header><b>VVU · IVE</b><span class="dim">system demonstration</span><span id="src"></span></header>
+ <div id="stage"><canvas id="c"></canvas><div id="err" role="alert"></div></div>
+ <div id="tabs" role="tablist"></div>
+ <div id="sheet"></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const E=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fail=t=>{const e=$('err');e.style.display='flex';e.textContent=t};
+if(!window.THREE||!THREE.OrbitControls){fail('Three.js could not be loaded. Check your connection and reload.');return}
+if(!(window.crypto&&crypto.subtle)){fail('WebCrypto (SHA-256) is unavailable in this context.');return}
+let renderer;try{renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:true})}catch(e){fail('WebGL is unavailable. Enable hardware acceleration and reload.');return}
+
+/* ================= REGISTRY (embedded copy of the patch registry + demo-proposed manifests) ================= */
+const m=(id,title,layer,requires,provides,capabilities,trustBoundary,status,description,extra)=>Object.assign({id,version:'1.0.0',title,layer,description,requires,provides,capabilities,trustBoundary,failMode:'closed',status},extra||{});
+const EMBEDDED=[
+ m('evidence.collector','Evidence Collector','evidence',[],['evidence.raw','evidence.source-reference'],['read-evidence','write-evidence'],'source adapters are untrusted until independently checked','registered','Normalizes source observations and preserves source references.'),
+ m('eis.boundary-check','EIS','eis',['evidence.raw'],['evidence.boundary-checked'],['read-evidence','write-evidence'],'does not assert source truth merely because the shape is valid','registered','Checks provenance links, independence declarations, schema and causal bindings.'),
+ m('safekrypte.verifier','SafeKrypte','cryptography',['evidence.boundary-checked'],['crypto.verified'],['read-evidence','verify-signatures'],'must call authoritative key custody and cryptographic verifier','planned','Adapter boundary for signature, key epoch and attestation verification.'),
+ m('mainframe.triad','Mainframe Triad','operations',['crypto.verified'],['operations.corroborated'],['read-evidence','emit-telemetry'],'operational metrics are not underwriting decisions','planned','Metric freshness, reporter lineage, independent corroboration.'),
+ m('underwriting.policy','Underwriting','underwriting',['operations.corroborated'],['underwriting.eligible'],['read-evidence'],'may classify eligibility; cannot execute payouts or change keys','planned','Matches verified incident facts against authoritative coverage terms.'),
+ m('safestakes.policy','SafeStakes Policy','policy',['underwriting.eligible'],['policy.permitted'],['read-evidence','evaluate-policy'],'policy evaluation is separate from execution','planned','Evaluates pool, bond, policy and slash conditions without key custody.'),
+ m('ubuntu-pools.application','Ubuntu Pools','application',['policy.permitted'],['application.consistent'],['read-evidence'],'application logic cannot bypass verification or invoke direct claims execution','planned','Checks application events against verified evidence and policy references.'),
+ m('ive.final-verifier','VVU·IVE Verifier','orchestration',['application.consistent'],['ive.terminal-decision','ive.verification-report'],['read-evidence','write-evidence'],'a PASS is not execution authorization','registered','Aggregates gate results; emits the terminal verification report.'),
+ m('evidence.durable-ledger','Durable Ledger','evidence',['ive.verification-report'],['evidence.receipt-durable'],['read-evidence','write-evidence'],'production must bind this to append-only/WORM storage; registration alone proves no durability','planned','Persists the terminal report and returns a durable-receipt reference.'),
+ m('safestakes.execution-boundary','SafeStakes Execution','execution',['policy.permitted','application.consistent','evidence.receipt-durable'],['execution.request-reviewed'],['read-evidence','authorize-execution'],'reviewing a request does not move funds; execution stays in the authoritative service','planned','Checks a separate execution request against policy, application event and durable receipt.'),
+ m('lab.workspace','Lab Workspace','presentation',[],['ui.lab-workspace'],['render-ui'],'visualization only; no authority over evidence, policy or execution','registered','Standalone Three.js spatial lab and presentation surface.',{entrypoint:'/lab-workspace/'}),
+ m('system.observability','Observability','observability',[],['telemetry.component-health'],['emit-telemetry'],'telemetry is descriptive and cannot mutate domain state','registered','Collects component health and trace identifiers.',{failMode:'isolated'})];
+const DEMO=[
+ m('device.proofbridge-8bit','ProofBridge 8-Bit Node','evidence',[],['device.cpu-trace'],['emit-telemetry','write-evidence'],'execution trace is a source observation, untrusted until checked','registered','Registers, RAM, ALU, PC, EEPROM, bus, clock, output LEDs.'),
+ m('device.esp32s3-n16r8','ESP32-S3-N16R8 Board','evidence',[],['device.board-telemetry'],['emit-telemetry','write-evidence'],'board identity and firmware status are claims until attested','registered','16 MB flash / 8 MB PSRAM module; sensors, firmware status, telemetry.'),
+ m('device.earthtech-node','Earth Tech Node','evidence',[],['device.field-observation'],['emit-telemetry','write-evidence'],'field readings are claims until origin and integrity are checked','registered','Field sensor node: soil readings, offline buffer, power status.'),
+ m('spatial.twin','Spatial Twin','presentation',[],['ui.spatial-twin'],['render-ui'],'visualization only; cannot raise evidence tiers','registered','Links users, services, devices, sites and evidence in 3D.'),
+ m('business.hbk-water-kernel','HBK Water-Kernel (assumed)','application',['evidence.boundary-checked'],['business.hbk-workflow'],['read-evidence','write-evidence'],'business outputs are untrusted until verified by the owning layer','planned','CAD → parameters → spec → proof obligations → verification → evidence → release.'),
+ m('env.study','Study','presentation',['ive.verification-report'],['ui.study'],['read-evidence','render-ui'],'learner sees own records only','registered','Assigned work, progress, submissions, verifiable records.'),
+ m('env.studio','Study Studio','presentation',['ive.verification-report'],['ui.studio'],['read-evidence','write-evidence','render-ui'],'experiments are self-verification, not IVE verdicts','registered','Experiments, proof construction, self-verification.'),
+ m('env.developer','Developer','presentation',['ive.verification-report'],['ui.developer'],['read-evidence','emit-telemetry','render-ui'],'inspection only; no verdict authority','registered','8-bit architecture, circuits, execution states, debugging.'),
+ m('env.business','Business','presentation',['ive.verification-report'],['ui.business'],['read-evidence','write-evidence','render-ui'],'workspace-scoped; shares evidence by explicit grant','registered','Organisation workspaces, connected systems, workflows, reporting.'),
+ m('env.enterprise','Enterprise','presentation',['ive.verification-report'],['ui.enterprise'],['read-evidence','administer-components','render-ui'],'tenant-isolated; admin cannot alter verdicts','registered','Tenant isolation, permissions, integrations, governance.')];
+let COMPS=EMBEDDED.concat(DEMO),SRC='embedded copy of patch registry + demo-proposed manifests';
+const DEMO_IDS=new Set(DEMO.map(x=>x.id));
+const LAYERS=['evidence','eis','cryptography','operations','underwriting','policy','execution','application','orchestration','presentation','observability'];
+const CAPS=['read-evidence','write-evidence','verify-signatures','evaluate-policy','issue-coverage','authorize-execution','execute-value-transfer','render-ui','emit-telemetry','administer-components'];
+
+/* ---- resolver (same rules as registry.ts) ---- */
+function resolve(cs){
+ const ids=new Set(),prov=new Map();
+ for(const c of cs){if(ids.has(c.id))return{err:'DUPLICATE_COMPONENT_ID:'+c.id};ids.add(c.id);
+  if(c.capabilities.includes('execute-value-transfer'))return{err:'FORBIDDEN_CAPABILITY_GRANT:'+c.id};
+  for(const p of c.provides){if(prov.has(p))return{err:'AMBIGUOUS_PROVIDER:'+p+':'+prov.get(p)+','+c.id};prov.set(p,c.id)}}
+ const miss=cs.flatMap(c=>c.requires.filter(r=>!prov.has(r)).map(r=>c.id+'->'+r));
+ if(miss.length)return{err:'MISSING_COMPONENT_REQUIREMENTS:'+miss.join(',')};
+ const edges=[],indeg=new Map(cs.map(c=>[c.id,0])),out=new Map(cs.map(c=>[c.id,[]]));
+ for(const c of cs)for(const r of c.requires){const p=prov.get(r);edges.push([p,c.id,r]);out.get(p).push(c.id);indeg.set(c.id,indeg.get(c.id)+1)}
+ const q=cs.filter(c=>!indeg.get(c.id)).map(c=>c.id).sort(),order=[];
+ while(q.length){const id=q.shift();order.push(id);for(const t of out.get(id).sort()){indeg.set(t,indeg.get(t)-1);if(!indeg.get(t)){q.push(t);q.sort()}}}
+ if(order.length!==cs.length)return{err:'COMPONENT_DEPENDENCY_CYCLE'};
+ return{order,edges};
+}
+function validate(x,cs){
+ const e=[];if(!x||typeof x!=='object'||Array.isArray(x))return['NOT_AN_OBJECT'];
+ const allowed=['id','version','title','layer','description','requires','provides','capabilities','trustBoundary','failMode','status','entrypoint','owner'];
+ Object.keys(x).forEach(k=>{if(!allowed.includes(k))e.push('UNKNOWN_FIELD:'+k)});
+ if(!/^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/.test(x.id||''))e.push('BAD_ID');
+ if(!/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(x.version||''))e.push('BAD_VERSION');
+ if(!x.title)e.push('MISSING_TITLE');if(!x.description)e.push('MISSING_DESCRIPTION');if(!x.trustBoundary)e.push('MISSING_TRUST_BOUNDARY');
+ if(!LAYERS.includes(x.layer))e.push('BAD_LAYER');
+ if(x.failMode&&!['closed','read-only','isolated'].includes(x.failMode))e.push('BAD_FAIL_MODE');
+ if(x.status&&!['planned','registered','healthy','degraded','blocked','retired'].includes(x.status))e.push('BAD_STATUS');
+ ['requires','provides','capabilities'].forEach(k=>{if(x[k]!==undefined&&!Array.isArray(x[k]))e.push('BAD_'+k.toUpperCase())});
+ (x.capabilities||[]).forEach(c=>{if(!CAPS.includes(c))e.push('UNKNOWN_CAPABILITY:'+c)});
+ if(e.length)return e;
+ const n=Object.assign({requires:[],provides:[],capabilities:[],failMode:'closed',status:'registered'},x);
+ const r=resolve(cs.concat([n]));if(r.err)return[r.err];
+ return[];
+}
+
+/* ================= SCENARIOS + REAL SHA-256 HASH CHAIN ================= */
+const SCN={
+ farm:{name:'Farm soil reading → insurer claim',viewer:'Agricultural insurer',
+  recs:[['EARTH-TN-0007','boot','firmware 0.9.2-sim, self-test ok'],['EARTH-TN-0007','soil.vwc','23.4 % (SIM)'],['EARTH-TN-0007','soil.temp','18.2 °C (SIM)'],['EARTH-TN-0007','power','battery 76 %, solar charging'],['EARTH-TN-0007','buffer','offline 6 h, 41 records flushed']],
+  claim:[1,2],hides:'other records, farm workspace, site layout, unrelated sensors'},
+ hbk:{name:'HBK water-kernel release (assumed workflow)',viewer:'Release auditor',
+  recs:[['CAD','model.digest','sha256 of CAD model (SIM)'],['PARAM','parameter-set','v3, 14 parameters'],['SPEC','specification','rev C'],['PROOF','obligations','22 generated, 22 discharged (SIM)'],['VERIFY','result','all obligations discharged (SIM)'],['RELEASE','tag','kernel-1.0.0-rc1']],
+  claim:[3,4,5],hides:'CAD geometry, parameter values, internal repository'}};
+const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+const sha=async s=>hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)));
+const canon=r=>JSON.stringify({seq:r.seq,src:r.src,k:r.k,v:r.v,t:r.t});
+async function chain(recs){let prev=await sha('genesis');const out=[];
+ for(const r of recs){const h=await sha(prev+'|'+canon(r));out.push(h);prev=h}return out}
+let chainState=null; // {scn,recs,hashes}
+async function build(scnId){
+ const base=Date.parse('2026-10-21T06:00:00Z');
+ const recs=SCN[scnId].recs.map((r,i)=>({seq:i,src:r[0],k:r[1],v:r[2],t:new Date(base+i*600000).toISOString()}));
+ chainState={scnId,recs,hashes:await chain(recs)};
+}
+
+/* ================= PIPELINE RUN (honest gates) ================= */
+const edgeGroup=id=>/^(device|env|spatial|business)\./.test(id)?id.split('.')[0]:null;
+const inPipe=c=>!edgeGroup(c.id)&&!['presentation','observability'].includes(c.layer);
+let LAST=null,MODE='contract',TAMPER=false;
+async function run(){
+ await build($('scn')?$('scn').value:'farm');
+ const res=resolve(COMPS);if(res.err){LAST={err:res.err};return}
+ const recs=chainState.recs.map(r=>Object.assign({},r));
+ if(TAMPER)recs[2].v=recs[2].v+' [edited after sealing]';
+ const re=await chain(recs);const brk=re.findIndex((h,i)=>h!==chainState.hashes[i]);
+ const order=res.order.filter(id=>inPipe(COMPS.find(c=>c.id===id))&&id!=='safestakes.execution-boundary');
+ const rows=[];let worst='PASS',real=0,sim=0,dead=null;
+ for(const id of order){const c=COMPS.find(x=>x.id===id);let d,why,tag='';
+  if(dead){d='NE';why=['NOT_EVALUATED:'+dead]}
+  else if(id==='evidence.collector'){d='PASS';why=['NORMALIZED',recs.length+'_RECORDS','SOURCE_TRUTH_NOT_ESTABLISHED'];real++}
+  else if(id==='eis.boundary-check'){if(brk>=0){d='BLOCK';why=['HASH_CHAIN_BREAK@seq'+brk]}else{d='PASS';why=['HASH_CHAIN_VALID','INDEPENDENCE_DECLARED_NOT_PROVEN'];real++}}
+  else if(id==='ive.final-verifier'){d=worst==='PASS'?'PASS':worst;why=worst==='PASS'?['ALL_UPSTREAM_PASS','EXECUTION_NOT_AUTHORIZED']:['UPSTREAM_'+worst];if(d==='PASS'&&sim)tag='SIM';if(d==='PASS'&&!sim)real++}
+  else if(c.status==='planned'){if(MODE==='contract'){d='INCONCLUSIVE';why=['ADAPTER_NOT_BOUND']}else{d=worst==='PASS'?'PASS':worst;why=worst==='PASS'?['SIMULATED_ADAPTER']:['UPSTREAM_'+worst];tag='SIM';if(d==='PASS')sim++}}
+  else{d='INCONCLUSIVE';why=['NO_VERIFIER_IMPLEMENTATION']}
+  if(d==='BLOCK'){dead=c.title;worst='BLOCK'}else if(d==='INCONCLUSIVE'&&worst==='PASS')worst='INCONCLUSIVE';
+  rows.push({id,title:c.title,layer:c.layer,d,why,tag,strength:d==='PASS'&&!tag?1:0})}
+ const receipt=(worst==='PASS'&&MODE==='sim')?'SIM-RECEIPT-'+re[re.length-1].slice(0,12)+' (not durable)':null;
+ LAST={rows,worst,real,sim,total:order.length,head:re[re.length-1],brk,receipt,recs};
+}
+
+/* ================= 8-BIT NODE (SAP-1 style) ================= */
+const CPU={};
+function cpuReset(){Object.assign(CPU,{pc:0,mar:0,ir:0,a:0,b:0,out:0,bus:0,t:0,halt:false,flags:'Z0 C0',ram:[0x1E,0x2F,0xE0,0xF0,0,0,0,0,0,0,0,0,0,0,23,5],clk:0,log:'reset: EEPROM image → RAM'})}
+function cpuTick(){if(CPU.halt)return;const c=CPU;c.clk++;const op=c.ir>>4,ad=c.ir&15;
+ if(c.t===0){c.mar=c.pc;c.bus=c.pc;c.log='T1 MAR←PC'}
+ else if(c.t===1){c.bus=c.ram[c.mar];c.ir=c.bus;c.pc=(c.pc+1)&15;c.log='T2 IR←RAM, PC++'}
+ else if(c.t===2){if(op===1||op===2||op===3){c.mar=ad;c.bus=ad;c.log='T3 MAR←operand'}else if(op===14){c.bus=c.a;c.out=c.a;c.log='T3 OUT←A';c.t=5}else if(op===15){c.halt=true;c.log='HLT';return}else{c.t=5}}
+ else if(c.t===3){c.bus=c.ram[c.mar];if(op===1){c.a=c.bus;c.log='T4 A←RAM';c.t=5}else{c.b=c.bus;c.log='T4 B←RAM'}}
+ else if(c.t===4){const r=op===2?c.a+c.b:c.a-c.b;c.a=r&255;c.bus=c.a;c.flags='Z'+(c.a===0?1:0)+' C'+(r>255||r<0?1:0);c.log='T5 A←ALU'}
+ c.t=(c.t+1)%6;if(c.t===0&&c.log.indexOf('T5')<0&&false)c.t=0}
+const bin=(v,n)=>v.toString(2).padStart(n||8,'0');
+const leds=(v,n)=>bin(v,n).split('').map(b=>'<span class="led '+(b==='1'?'on':'')+'"></span>').join('');
+
+/* ================= 3D SCENE ================= */
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0d1113);
+const camera=new THREE.PerspectiveCamera(55,1,.1,200);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enableDamping=true;
+scene.add(new THREE.AmbientLight(0xffffff,.75));const dl=new THREE.DirectionalLight(0xffffff,.7);dl.position.set(6,12,8);scene.add(dl);
+const grid=new THREE.GridHelper(40,40,0x00ffcc,0x2a3430);scene.add(grid);
+let nodes=[],world=new THREE.Group();scene.add(world);
+const STC={planned:0xffb224,registered:0x00e5ff,healthy:0xa3e635,degraded:0xffb224,blocked:0xff4d5e,retired:0x666666};
+function lbl(t){const cv=document.createElement('canvas');cv.width=320;cv.height=64;const g=cv.getContext('2d');g.fillStyle='rgba(10,14,16,.85)';g.fillRect(0,0,320,64);g.fillStyle='#fff';g.font='bold 26px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t.length>20?t.slice(0,19)+'…':t,160,34);
+ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthTest:false}));s.scale.set(2.5,.5,1);return s}
+function rebuild(){
+ world.remove(...world.children);nodes=[];
+ const res=resolve(COMPS);if(res.err){$('src').textContent='GRAPH BLOCKED: '+res.err;return}
+ const pipe=res.order.filter(id=>inPipe(COMPS.find(c=>c.id===id)));
+ const grp={dev:[],env:[],biz:[],sup:[]};
+ COMPS.forEach(c=>{const g=edgeGroup(c.id);if(g==='device'||g==='spatial')grp.dev.push(c);else if(g==='env')grp.env.push(c);else if(g==='business')grp.biz.push(c);else if(!inPipe(c))grp.sup.push(c)});
+ const place=(c,x,y,z,kind)=>{
+  const geo=kind==='pipe'?new THREE.BoxGeometry(1.4,.8,1.1):kind==='dev'?new THREE.CylinderGeometry(.5,.5,.8,16):kind==='env'?new THREE.OctahedronGeometry(.6):kind==='biz'?new THREE.DodecahedronGeometry(.55):new THREE.SphereGeometry(.4,16,12);
+  const mat=new THREE.MeshStandardMaterial({color:STC[c.status]||0x888888,emissive:0x111111,transparent:true,opacity:1});
+  const mesh=new THREE.Mesh(geo,mat);mesh.position.set(x,y,z);mesh.userData.id=c.id;world.add(mesh);
+  const l=lbl(c.title);l.position.set(x,y+.95,z);world.add(l);nodes.push({id:c.id,mesh,mat,base:STC[c.status]||0x888888})};
+ const sp=(arr,z,y,kind,gap)=>arr.forEach((c,i)=>place(c,(i-(arr.length-1)/2)*gap,y,z,kind));
+ sp(pipe.map(id=>COMPS.find(c=>c.id===id)),0,1,'pipe',1.9);
+ sp(grp.dev,5,.5,'dev',2.4);sp(grp.env,-5,1.2,'env',2.4);sp(grp.biz,-2.6,1,'biz',2.4);sp(grp.sup,-8,.6,'sup',2.4);
+ const pos=id=>{const n=nodes.find(n=>n.id===id);return n&&n.mesh.position};
+ const line=(a,b,col,dash)=>{if(!a||!b)return;const g=new THREE.BufferGeometry().setFromPoints([a,b]);
+  const l=new THREE.Line(g,dash?new THREE.LineDashedMaterial({color:col,dashSize:.2,gapSize:.15}):new THREE.LineBasicMaterial({color:col}));if(dash)l.computeLineDistances();world.add(l)};
+ res.edges.forEach(([p,c])=>line(pos(p),pos(c),0x3d5a4e,false));
+ COMPS.filter(c=>c.id.startsWith('device.')).forEach(c=>line(pos(c.id),pos('evidence.collector'),0xffb224,true));
+ $('src').textContent=COMPS.length+' components · '+SRC;
+ applyView();
+}
+const SCOPE={
+ study:{p:'Assigned work, progress, submissions, verifiable records.',s:['env.study','ive.final-verifier','evidence.durable-ledger'],no:'Other learners’ records; verdict authority; devices.'},
+ studio:{p:'Interactive experiments, proof construction, self-verification.',s:['env.studio','evidence.collector','eis.boundary-check','safekrypte.verifier','ive.final-verifier'],no:'Final verdicts. Self-verification is not an IVE result.'},
+ developer:{p:'8-bit architecture, circuits, execution states, debugging.',s:['env.developer','device.proofbridge-8bit','device.esp32s3-n16r8','device.earthtech-node','spatial.twin','system.observability','evidence.collector','eis.boundary-check'],no:'Business workspaces; policy and execution authority.'},
+ business:{p:'Organisation workspace, connected systems, evidence collection, workflows, reporting.',s:['env.business','business.hbk-water-kernel','device.earthtech-node','evidence.collector','eis.boundary-check','ive.final-verifier','evidence.durable-ledger'],no:'Other tenants; key custody; execution.'},
+ enterprise:{p:'Tenant isolation, permissions, integrations, governance, independent verification.',s:['*'],no:'Altering verdicts; cross-tenant reads; value transfer.'},
+ ive:{p:'Unified runtime that coordinates verification and emits evidence-backed results.',s:['evidence.collector','eis.boundary-check','safekrypte.verifier','mainframe.triad','underwriting.policy','safestakes.policy','ubuntu-pools.application','ive.final-verifier','evidence.durable-ledger','safestakes.execution-boundary'],no:'Execution: a PASS never authorizes value transfer.'}};
+let ENV='ive',SEL=null;
+function applyView(){const sc=SCOPE[ENV].s;
+ nodes.forEach(n=>{const vis=sc[0]==='*'||sc.includes(n.id)||COMPS.find(c=>c.id===n.id&&!DEMO_IDS.has(c.id)&&inPipe(c)&&ENV==='ive');
+  n.mat.opacity=vis?1:.18;
+  let col=n.base;if(LAST&&LAST.rows){const r=LAST.rows.find(r=>r.id===n.id);if(r)col=r.d==='PASS'?0xa3e635:r.d==='BLOCK'?0xff4d5e:r.d==='NE'?0x555555:0xffb224}
+  n.mat.color.setHex(col);n.mesh.scale.setScalar(n.id===SEL?1.35:1)})}
+function resize(){const s=$('stage');const w=s.clientWidth,h=s.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w/h<1?80:55;camera.updateProjectionMatrix()}
+addEventListener('resize',resize);
+const ray=new THREE.Raycaster(),pt=new THREE.Vector2();let down=null;
+renderer.domElement.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY]});
+renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>6)return;
+ const r=renderer.domElement.getBoundingClientRect();pt.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pt,camera);
+ const h=ray.intersectObjects(nodes.map(n=>n.mesh))[0];if(h){SEL=h.object.userData.id;tab('reg');applyView()}});
+(function loop(){requestAnimationFrame(loop);controls.update();renderer.render(scene,camera)})();
+
+/* ================= PANELS ================= */
+const TABS=[['path','Pathway'],['roles','Roles'],['hw','Hardware'],['reg','Registry']];let TAB='path',timer=null;
+function tab(t){TAB=t;clearInterval(timer);$('tabs').innerHTML=TABS.map(x=>'<button role="tab" data-t="'+x[0]+'" aria-selected="'+(x[0]===t)+'">'+x[1]+'</button>').join('');
+ $('tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>tab(b.dataset.t));draw()}
+function draw(){const s=$('sheet');({path:pPath,roles:pRoles,hw:pHw,reg:pReg})[TAB](s)}
+function pPath(s){
+ const L=LAST,bars=L&&L.rows?'<div class="bar"><i style="width:'+L.real/L.total*100+'%;background:var(--ok)"></i><i style="width:'+L.sim/L.total*100+'%;background:var(--warn)"></i></div>':'';
+ s.innerHTML='<div class="row"><select id="scn" aria-label="Scenario">'+Object.keys(SCN).map(k=>'<option value="'+k+'">'+E(SCN[k].name)+'</option>').join('')+'</select></div>'+
+ '<div class="row"><button id="mode" aria-pressed="'+(MODE==='sim')+'">Adapters: '+(MODE==='sim'?'simulated (SIM)':'contract-only')+'</button><button id="tam" aria-pressed="'+TAMPER+'">Tamper record 2</button><button id="go">Run pathway</button></div>'+
+ '<div class="dim">Evidence → EIS → SafeKrypte → Mainframe → Underwriting → SafeStakes → Ubuntu Pools → IVE → durable receipt. Hashing is real SHA-256; planned adapters are not connected.</div>'+
+ (L?(L.err?'<h4 class="BLOCK">Graph blocked: '+E(L.err)+'</h4>':
+ '<h4>Terminal decision: <span class="'+L.worst+'">'+L.worst+'</span> · executionAuthorized: false</h4>'+bars+
+ '<div class="dim">verified for real: '+L.real+' · simulated: '+L.sim+' · of '+L.total+' gates. Chain head '+L.head.slice(0,16)+'…'+(L.receipt?'<br>'+E(L.receipt):'')+'</div>'+
+ L.rows.map(r=>'<div class="item"><b>'+E(r.title)+'</b> <span class="'+r.d+'">'+(r.d==='NE'?'NOT EVALUATED':r.d)+'</span>'+(r.tag?' <span class="tag">SIM</span>':'')+'<br><span class="dim">'+E(r.why.join(' · '))+'</span></div>').join('')+
+ '<div class="item"><b>SafeStakes Execution</b> <span class="INCONCLUSIVE">INCONCLUSIVE</span><br><span class="dim">EXECUTION_REQUEST_NOT_SUBMITTED · financial execution is separately authorised</span></div>'+views(L)):'<div class="dim">Press Run pathway.</div>');
+ $('scn').value=chainState?chainState.scnId:'farm';
+ $('mode').onclick=()=>{MODE=MODE==='sim'?'contract':'sim';run().then(()=>{applyView();draw()})};
+ $('tam').onclick=()=>{TAMPER=!TAMPER;run().then(()=>{applyView();draw()})};
+ $('go').onclick=()=>run().then(()=>{applyView();draw()});$('scn').onchange=()=>run().then(()=>{applyView();draw()});
+}
+function views(L){const S=SCN[chainState.scnId];if(L.brk>=0)return'<h4>Views blocked</h4><div class="dim">Evidence failed integrity; no role view is released.</div>';
+ const full=L.recs.map(r=>'['+r.seq+'] '+E(r.k)+': '+E(r.v)).join('<br>'),sub=S.claim.map(i=>'['+i+'] '+E(L.recs[i].k)+': '+E(L.recs[i].v)).join('<br>');
+ return'<h4>Same evidence, different views</h4><div class="item"><b>Developer</b> <span class="dim">full chain + hardware path</span><br>'+full+'</div><div class="item"><b>'+E(S.viewer)+'</b> <span class="dim">claim-scoped</span><br>'+sub+'<br><span class="dim">Hidden: '+E(S.hides)+'</span></div><div class="dim">Both views cite chain head '+L.head.slice(0,16)+'… The projection changes what is shown, not what the evidence establishes.</div>'}
+function pRoles(s){s.innerHTML='<div class="row">'+Object.keys(SCOPE).map(k=>'<button data-e="'+k+'" aria-pressed="'+(k===ENV)+'">'+k+'</button>').join('')+'</div>'+
+ '<h4>'+ENV+'</h4><div>'+E(SCOPE[ENV].p)+'</div><div class="dim">Sees: '+(SCOPE[ENV].s[0]==='*'?'all components (tenant-scoped)':SCOPE[ENV].s.length+' components highlighted in 3D')+'<br>Cannot: '+E(SCOPE[ENV].no)+'</div><div class="dim">Every environment requires the same ive.verification-report contract; they differ in permission scope, not in evidence format. Scopes here are demonstration policy, not enforced access control.</div>';
+ s.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{ENV=b.dataset.e;applyView();pRoles(s)})}
+function bits(l,v,n){return'<div class="row"><span class="dim" style="min-width:48px">'+l+'</span>'+leds(v,n)+' <span class="dim">'+v.toString(16).toUpperCase().padStart(2,'0')+'h</span></div>'}
+function pHw(s){const c=CPU;
+ s.innerHTML='<h4>ProofBridge 8-bit node <span class="tag">SIM</span></h4><div class="row"><button id="tk">Clock tick</button><button id="ru" aria-pressed="false">Run</button><button id="rs">Reset</button></div>'+
+ bits('PC',c.pc,4)+bits('MAR',c.mar,4)+bits('IR',c.ir)+bits('A',c.a)+bits('B',c.b)+bits('BUS',c.bus)+bits('OUT',c.out)+
+ '<div class="dim">T-state '+(c.t)+' · clk '+c.clk+' · flags '+c.flags+' · '+E(c.log)+(c.halt?' · HALTED':'')+'</div><div class="dim">RAM (loaded from EEPROM image): '+c.ram.map(x=>x.toString(16).padStart(2,'0')).join(' ')+'<br>Program: LDA 14 · ADD 15 · OUT · HLT. RAM[14]=23 reading, RAM[15]=5 calibration offset → OUT 28.</div>'+
+ '<h4>ESP32-S3-N16R8 <span class="tag">SIM</span></h4><div class="g"><span class="dim">module</span><span>ESP32-S3, 16 MB flash, 8 MB PSRAM</span><span class="dim">firmware</span><span>0.9.2-sim (not attested)</span><span class="dim">sensors</span><span>soil moisture, temperature, battery</span><span class="dim">telemetry</span><span>1 frame / 10 min, signed? no (SafeKrypte planned)</span></div>'+
+ '<h4>Earth Tech Node <span class="tag">SIM</span></h4><div class="g"><span class="dim">site</span><span>farm plot (simulated)</span><span class="dim">soil VWC</span><span>23.4 %</span><span class="dim">power</span><span>battery 76 %, solar</span><span class="dim">offline</span><span>6 h buffered, 41 records flushed</span></div>'+
+ '<div class="dim">Path: sensor → ESP32 → 8-bit trace → Earth Tech buffer → Evidence Collector → EIS … Readings are claims until the pathway verifies them.</div>';
+ $('tk').onclick=()=>{cpuTick();pHw(s)};$('rs').onclick=()=>{cpuReset();pHw(s)};
+ $('ru').onclick=function(){if(timer){clearInterval(timer);timer=null;return}timer=setInterval(()=>{cpuTick();if(CPU.halt){clearInterval(timer);timer=null}pHw(s);},400)}}
+const EXAMPLE={id:'domain.example-adapter',version:'1.0.0',title:'Example Domain Adapter',layer:'application',description:'A new independently deployable system component.',requires:['evidence.boundary-checked'],provides:['domain.example-observation'],capabilities:['read-evidence'],trustBoundary:'Adapter output is untrusted until verified by the owning layer.',failMode:'closed',status:'planned'};
+function pReg(s){const c=COMPS.find(x=>x.id===SEL);
+ let d='';if(c){const cons=COMPS.filter(x=>x.requires.some(r=>c.provides.includes(r))).map(x=>x.id);
+  d='<h4>'+E(c.title)+' <span class="tag">'+E(c.status)+'</span>'+(DEMO_IDS.has(c.id)?' <span class="tag">DEMO-PROPOSED</span>':'')+'</h4><div class="g"><span class="dim">id</span><span>'+E(c.id)+' @ '+E(c.version)+'</span><span class="dim">layer</span><span>'+E(c.layer)+'</span><span class="dim">does</span><span>'+E(c.description)+'</span><span class="dim">requires</span><span>'+E(c.requires.join(', ')||'—')+'</span><span class="dim">provides</span><span>'+E(c.provides.join(', ')||'—')+'</span><span class="dim">capabilities</span><span>'+E(c.capabilities.join(', ')||'—')+'</span><span class="dim">consumed by</span><span>'+E(cons.join(', ')||'—')+'</span><span class="dim">authority limit</span><span>'+E(c.trustBoundary)+'</span><span class="dim">fail mode</span><span>'+E(c.failMode)+'</span><span class="dim">health</span><span>'+(c.status==='planned'?'not connected (no health claimed)':'contract registered; live health not measured')+'</span></div>'}
+ s.innerHTML=(d||'<div class="dim">Tap a node in the 3D view for its manifest.</div>')+'<h4>Register a component</h4><div class="dim">Validated by the same rules as the registry: unique id, one provider per capability, no missing requirements, no cycles, no value-transfer grant.</div><textarea id="mj" spellcheck="false" aria-label="Manifest JSON">'+E(JSON.stringify(EXAMPLE,null,2))+'</textarea><div class="row"><button id="ad">Validate and add</button><button id="fb">Try forbidden grant</button><button id="rm">Remove added</button></div><div id="msg"></div>';
+ const add=txt=>{let x;try{x=JSON.parse(txt)}catch(e){$('msg').innerHTML='<span class="BLOCK">REJECTED: INVALID_JSON</span>';return}
+  const er=validate(x,COMPS);if(er.length){$('msg').innerHTML='<span class="BLOCK">REJECTED: '+E(er.join(', '))+'</span>';return}
+  COMPS.push(Object.assign({requires:[],provides:[],capabilities:[],failMode:'closed',status:'registered'},x));SEL=x.id;rebuild();run().then(()=>{applyView();pReg(s);$('msg').innerHTML='<span class="PASS">ADDED '+E(x.id)+'. Graph re-resolved; pathway re-run.</span>'})};
+ $('ad').onclick=()=>add($('mj').value);
+ $('fb').onclick=()=>{$('mj').value=JSON.stringify(Object.assign({},EXAMPLE,{id:'domain.rogue-executor',provides:['domain.rogue'],capabilities:['execute-value-transfer']}),null,2);add($('mj').value)};
+ $('rm').onclick=()=>{COMPS=COMPS.filter(x=>EMBEDDED.includes(x)||DEMO.includes(x));SEL=null;rebuild();run().then(()=>{applyView();pReg(s)})}}
+
+/* ================= BOOT ================= */
+async function boot(){
+ cpuReset();resize();camera.position.set(0,11,15);controls.target.set(0,0,-1);
+ try{const ctl=new AbortController();setTimeout(()=>ctl.abort(),1500);const r=await fetch('/api/system/components',{signal:ctl.signal});
+  if(r.ok){const j=await r.json();if(Array.isArray(j.components)&&j.components.length){COMPS=j.components.concat(DEMO);SRC='live /api/system/components + demo-proposed manifests'}}}catch(e){}
+ rebuild();await run();applyView();tab('path');
+}
+boot();
+})();
+</script>
+</body>
+</html>

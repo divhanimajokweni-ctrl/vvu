@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VVU · OpenMaps Viewer</title>
+<meta name="description" content="VVU Spatial Intelligence — physical-to-digital bridge for industrial assets. Field + Forge stack. OpenLayers + OpenFreeMap vector tiles, IndexedDB cache for raster fallback, FORGE-signed GPS receipts.">
+<!-- OpenLayers 10.x UMD — exposes global `ol` -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.3.1/ol.css">
+<script src="https://cdn.jsdelivr.net/npm/ol@10.3.1/dist/ol.js"></script>
+<!-- ol-mapbox-style 12.x UMD — exposes global `olms` -->
+<!-- Required to translate OpenFreeMap's MapLibre Style Spec JSON → OpenLayers VectorTile layers -->
+<script src="https://cdn.jsdelivr.net/npm/ol-mapbox-style@12.3.5/dist/olms.js"></script>
+<style>
+/* ============== VVU palette (extends water-infrastructure.html) ============== */
+:root{
+  --bg:#0a0a0c;--s1:#0f0f12;--s2:#141418;--b1:#1e1e24;--b2:#2a2a33;
+  --tx:#e8e8ec;--tx2:#b4b4be;--dim:#7a7a85;--dimmer:#52525b;
+  --lime:#a3e635;--ochre:#f59e0b;--crimson:#ef4444;--sage:#4ade80;--gold:#eab308;
+  /* surface 19 accent */
+  --signal-blue:#0090FF;--signal-blue-bg:rgba(0,144,255,.08);--signal-blue-border:rgba(0,144,255,.4);
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --hdr-h:48px;--ftr-h:34px;--side-w:340px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+body{display:flex;flex-direction:column}
+
+/* ============== Header ============== */
+.hdr{position:sticky;top:0;z-index:30;background:rgba(10,10,12,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--b1);padding:.5rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;height:var(--hdr-h)}
+.brand{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.875rem}
+.mark{color:var(--signal-blue);font-weight:700;letter-spacing:.1em}
+.brand-name{font-weight:700;letter-spacing:.15em;color:var(--tx)}
+.sep{color:var(--dim)}
+.surface-name{color:var(--tx2)}
+.hdr-meta{display:flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.75rem;color:var(--dim)}
+.tag{display:inline-flex;align-items:center;padding:.125rem .375rem;border-radius:.25rem;font-family:var(--mono);font-size:.6875rem;font-weight:600;border:1px solid;letter-spacing:.05em}
+.tag-t1{color:var(--lime);border-color:rgba(163,230,53,.4);background:rgba(163,230,53,.08)}
+.tag-surface{color:var(--signal-blue);border-color:var(--signal-blue-border);background:var(--signal-blue-bg)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--signal-blue);box-shadow:0 0 8px var(--signal-blue);animation:vvu-pulse 2s infinite}
+@keyframes vvu-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ============== Main: map + side panel ============== */
+.main{flex:1;display:grid;grid-template-columns:1fr var(--side-w);gap:0;overflow:hidden}
+.map-wrap{position:relative;background:var(--s2);overflow:hidden;border-right:1px solid var(--b1)}
+#map{position:absolute;inset:0;background:#0a0a0c}
+
+/* OpenLayers control dark theme overrides */
+.ol-attribution{background:rgba(10,10,12,.7)!important;border-radius:3px 0 0 0!important}
+.ol-attribution a{color:#7a7a85!important;font-family:var(--mono);font-size:9px;text-decoration:none}
+.ol-attribution ul{color:#7a7a85!important;font-family:var(--mono);font-size:9px}
+.ol-attribution button{display:none}
+.ol-zoom{background:rgba(15,15,18,.85)!important;border:1px solid var(--b1)!important;border-radius:4px!important;padding:2px!important;left:.5rem!important;top:auto!important;bottom:2.75rem!important}
+.ol-zoom button{background:var(--s2)!important;color:var(--tx)!important;border:1px solid var(--b1)!important;font-family:var(--mono)!important;font-size:14px!important;font-weight:700!important;border-radius:3px!important;width:24px!important;height:24px!important;margin:1px!important;cursor:pointer}
+.ol-zoom button:hover{background:rgba(0,144,255,.15)!important;border-color:var(--signal-blue-border)!important;color:var(--signal-blue)!important}
+.ol-scale-line{background:rgba(15,15,18,.85)!important;border:1px solid var(--b1)!important;border-radius:3px!important;bottom:.5rem!important;left:.5rem!important;padding:2px 6px!important}
+.ol-scale-line-inner{color:var(--tx2)!important;font-family:var(--mono)!important;font-size:9px!important;border-color:var(--tx2)!important}
+.ol-rotate{display:none}
+
+/* map top overlay (legend) */
+.map-legend{position:absolute;top:.75rem;left:.75rem;z-index:5;background:rgba(15,15,18,.92);backdrop-filter:blur(8px);border:1px solid var(--b1);border-left:3px solid var(--signal-blue);border-radius:.375rem;padding:.5rem .625rem;font-family:var(--mono);font-size:.6875rem;color:var(--tx2);min-width:180px}
+.map-legend .title{font-size:.5625rem;letter-spacing:.1em;color:var(--dim);margin-bottom:.375rem}
+.legend-row{display:flex;align-items:center;gap:.375rem;margin-bottom:.1875rem}
+.legend-row:last-child{margin-bottom:0}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.legend-dot.green{background:var(--sage);box-shadow:0 0 4px var(--sage)}
+.legend-dot.yellow{background:var(--ochre);box-shadow:0 0 4px var(--ochre)}
+.legend-dot.red{background:var(--crimson);box-shadow:0 0 4px var(--crimson)}
+.legend-row .lab{color:var(--tx2)}
+.legend-row .cnt{color:var(--dim);margin-left:auto}
+
+/* map top-right: tile source + last ping */
+.map-status{position:absolute;top:.75rem;right:.75rem;z-index:5;display:flex;gap:.5rem;font-family:var(--mono);font-size:.625rem}
+.status-chip{background:rgba(15,15,18,.92);backdrop-filter:blur(8px);border:1px solid var(--b1);border-radius:.25rem;padding:.25rem .4375rem;color:var(--tx2);letter-spacing:.05em}
+.status-chip b{color:var(--lime);font-weight:600}
+.status-chip.blue b{color:var(--signal-blue)}
+
+/* asset markers (HTML overlay via ol.Overlay) */
+.asset-marker{pointer-events:auto;cursor:pointer;display:block}
+.asset-marker .pin-wrap{position:relative;width:14px;height:14px}
+.asset-marker .pin{position:absolute;left:0;top:0;width:14px;height:14px;border-radius:50%;border:2px solid var(--bg);background:var(--signal-blue);box-shadow:0 0 0 2px var(--signal-blue),0 0 12px var(--signal-blue);transition:transform .15s}
+.asset-marker:hover .pin{transform:scale(1.3)}
+.asset-marker.selected .pin{background:#fff;box-shadow:0 0 0 3px var(--signal-blue),0 0 16px var(--signal-blue)}
+.asset-marker .halo{position:absolute;left:-6px;top:-6px;width:26px;height:26px;border-radius:50%;border:1px solid;opacity:.5;pointer-events:none}
+.asset-marker.h-green .halo{border-color:var(--sage);animation:halo-pulse 3s infinite}
+.asset-marker.h-yellow .halo{border-color:var(--ochre);animation:halo-pulse 2.4s infinite}
+.asset-marker.h-red .halo{border-color:var(--crimson);animation:halo-pulse 1.2s infinite}
+@keyframes halo-pulse{0%{transform:scale(.9);opacity:.6}50%{transform:scale(1.5);opacity:.15}100%{transform:scale(.9);opacity:.6}}
+.asset-marker .aid{position:absolute;top:18px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:.5625rem;color:var(--tx2);background:rgba(10,10,12,.85);padding:.0625rem .3125rem;border-radius:.1875rem;border:1px solid var(--b1);white-space:nowrap;pointer-events:none}
+
+/* ============== FORGE receipt popup (ol.Overlay) ============== */
+.ol-overlay-container{padding:0}
+.receipt-popup{background:var(--s1);border:1px solid var(--signal-blue-border);border-left:3px solid var(--signal-blue);border-radius:.375rem;width:280px;font-family:var(--mono);font-size:11px;color:var(--tx);box-shadow:0 12px 32px rgba(0,0,0,.6);overflow:hidden}
+.receipt-popup::before{content:"";position:absolute;left:50%;bottom:-6px;transform:translateX(-50%) rotate(45deg);width:10px;height:10px;background:var(--s1);border-right:1px solid var(--signal-blue-border);border-bottom:1px solid var(--signal-blue-border)}
+.receipt-popup .pop-h{display:flex;justify-content:space-between;align-items:center;padding:.4375rem .5625rem;border-bottom:1px solid var(--b1)}
+.receipt-popup .pop-h .t{color:var(--signal-blue);font-size:.6875rem;letter-spacing:.1em}
+.receipt-popup .pop-h .x{font-size:14px;color:var(--dim);cursor:pointer;border:none;background:none;padding:0 .1875rem;line-height:1}
+.receipt-popup .pop-h .x:hover{color:var(--tx)}
+.receipt-popup .pop-body{padding:.5rem .5625rem;display:flex;flex-direction:column;gap:.375rem}
+.receipt-popup .photo{width:100%;height:88px;background:var(--s2);border:1px solid var(--b1);border-radius:.3125rem;background-size:cover;background-position:center;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:.3125rem}
+.receipt-popup .photo::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(15,15,18,.95) 100%)}
+.receipt-popup .photo .badge{position:relative;z-index:1;font-size:.5625rem;color:var(--lime);background:rgba(10,10,12,.85);padding:.125rem .3125rem;border-radius:.1875rem;border:1px solid rgba(163,230,53,.4)}
+.receipt-popup .grid{display:grid;grid-template-columns:1fr 1fr;gap:.3125rem}
+.receipt-popup .cell{background:var(--s2);border:1px solid var(--b1);border-radius:.3125rem;padding:.375rem .4375rem}
+.receipt-popup .cell .k{font-size:.5625rem;color:var(--dim);letter-spacing:.06em}
+.receipt-popup .cell .v{font-size:.75rem;color:var(--tx);font-weight:600;margin-top:.0625rem;word-break:break-all}
+.receipt-popup .cell.accent .v{color:var(--signal-blue)}
+.receipt-popup .sig-block{background:var(--s2);border:1px solid var(--signal-blue-border);border-radius:.3125rem;padding:.4375rem .5rem}
+.receipt-popup .sig-block .k{font-size:.5625rem;color:var(--signal-blue);letter-spacing:.06em;margin-bottom:.1875rem}
+.receipt-popup .sig-block .v{font-size:.625rem;color:var(--tx2);word-break:break-all;line-height:1.5}
+.receipt-popup .gate-row{display:flex;gap:.3125rem;flex-wrap:wrap}
+.gate{display:inline-flex;font-family:var(--mono);font-size:.5625rem;padding:.0625rem .3125rem;border-radius:.1875rem;border:1px solid}
+.gate.pass{color:var(--sage);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.04)}
+.gate.warn{color:var(--ochre);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.04)}
+.gate.fail{color:var(--crimson);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.04)}
+.receipt-popup .bridge-link{font-size:.5625rem;color:var(--dim);border-top:1px dashed var(--b1);padding-top:.375rem;margin-top:.125rem;display:flex;justify-content:space-between}
+.receipt-popup .bridge-link a{color:var(--signal-blue);text-decoration:none}
+
+/* ============== Side panel: ledger + receipt (inline) ============== */
+.side{background:var(--s1);display:flex;flex-direction:column;overflow:hidden}
+.side-h{padding:.625rem .75rem;border-bottom:1px solid var(--b1);display:flex;justify-content:space-between;align-items:center}
+.side-h .t{font-family:var(--mono);font-size:.6875rem;color:var(--dim);letter-spacing:.1em}
+.side-h .ct{font-family:var(--mono);font-size:.75rem;color:var(--signal-blue);font-weight:700}
+
+.ledger{flex:1;overflow-y:auto;padding:.5rem .625rem;display:flex;flex-direction:column;gap:.3125rem}
+.ledger::-webkit-scrollbar{width:6px}.ledger::-webkit-scrollbar-track{background:transparent}.ledger::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
+
+.asset-row{background:var(--s2);border:1px solid var(--b1);border-left:3px solid var(--dim);border-radius:.3125rem;padding:.4375rem .5625rem;cursor:pointer;transition:border-color .15s,background .15s;display:flex;flex-direction:column;gap:.1875rem}
+.asset-row:hover{border-color:var(--signal-blue);background:var(--bg)}
+.asset-row.sel{border-color:var(--signal-blue);background:rgba(0,144,255,.06);border-left-color:var(--signal-blue)}
+.asset-row.h-green{border-left-color:var(--sage)}
+.asset-row.h-yellow{border-left-color:var(--ochre)}
+.asset-row.h-red{border-left-color:var(--crimson)}
+.asset-row .r1{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.asset-row .aid{font-family:var(--mono);font-size:.75rem;color:var(--tx);font-weight:700;letter-spacing:.04em}
+.asset-row .health{font-family:var(--mono);font-size:.625rem;padding:.0625rem .3125rem;border-radius:.1875rem;border:1px solid;letter-spacing:.05em}
+.asset-row.h-green .health{color:var(--sage);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.05)}
+.asset-row.h-yellow .health{color:var(--ochre);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.05)}
+.asset-row.h-red .health{color:var(--crimson);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.05)}
+.asset-row .r2{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.625rem;color:var(--dim);letter-spacing:.02em}
+.asset-row .r2 .ll{color:var(--tx2)}
+.asset-row .r2 .ts{color:var(--dim)}
+.asset-row .sha{font-family:var(--mono);font-size:.5625rem;color:var(--signal-blue);opacity:.75;letter-spacing:.04em}
+
+/* ============== Footer ============== */
+.ftr{position:sticky;bottom:0;background:rgba(10,10,12,.92);backdrop-filter:blur(8px);border-top:1px solid var(--b1);padding:.4375rem 1rem;font-family:var(--mono);font-size:.6875rem;color:var(--dim);display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;justify-content:center;height:var(--ftr-h);flex-shrink:0}
+.ftr .sep{color:var(--b2)}
+.ftr .live{color:var(--signal-blue);font-weight:600}
+
+@media(max-width:900px){
+  .main{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  .map-wrap{border-right:none;border-bottom:1px solid var(--b1);min-height:50vh}
+  .side{max-height:46vh}
+  :root{--side-w:auto}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="brand">
+    <span class="mark" aria-hidden="true">◢◣</span>
+    <span class="brand-name">VVU</span>
+    <span class="sep" aria-hidden="true">/</span>
+    <span class="surface-name">OpenMaps Viewer</span>
+  </div>
+  <div class="hdr-meta">
+    <span class="tag tag-t1" title="Tier 1 surface">T1 · FIELD</span>
+    <span class="tag tag-surface" title="Surface 19">SURFACE 19</span>
+    <span class="dot" title="Tileserver live"></span>
+    <span>OPENMAPS-VIEWER.HTML</span>
+  </div>
+</header>
+
+<main class="main">
+  <div class="map-wrap">
+    <div id="map" role="application" aria-label="VVU Spatial Intelligence map of Germiston industrial assets"></div>
+
+    <div class="map-legend" aria-label="Asset legend">
+      <div class="title">ASSET HEALTH</div>
+      <div class="legend-row"><span class="legend-dot green"></span><span class="lab">R80+</span><span class="cnt" id="leg-green">0</span></div>
+      <div class="legend-row"><span class="legend-dot yellow"></span><span class="lab">R60–R79</span><span class="cnt" id="leg-yellow">0</span></div>
+      <div class="legend-row"><span class="legend-dot red"></span><span class="lab">&lt; R60</span><span class="cnt" id="leg-red">0</span></div>
+    </div>
+
+    <div class="map-status">
+      <span class="status-chip blue">TILE SRC: <b id="tile-src">—</b></span>
+      <span class="status-chip">CACHE: <b id="cache-cnt">0</b></span>
+      <span class="status-chip">LAST GPS: <b id="last-ping">—</b></span>
+    </div>
+  </div>
+
+  <aside class="side" aria-label="Asset ledger">
+    <div class="side-h">
+      <span class="t">FIELD LEDGER</span>
+      <span class="ct" id="asset-count">0 ASSETS</span>
+    </div>
+    <div class="ledger" id="ledger" role="list"></div>
+  </aside>
+</main>
+
+<footer class="ftr" aria-label="Public promises">
+  <span>100% Founder-Owned</span><span class="sep">·</span>
+  <span>Constitutional tiers</span><span class="sep">·</span>
+  <span>Fire never emits PROVEN</span><span class="sep">·</span>
+  <span>Oracle Boundary</span><span class="sep">·</span>
+  <span class="live" id="bridge-status">SPATIAL: 0 ASSETS · BRIDGE :3020</span>
+</footer>
+
+<script>
+/* =========================================================================
+ * VVU · OpenMaps Viewer — Surface 19 (FIELD stack)
+ *   OpenLayers 10.x + OpenFreeMap vector tiles + ol-mapbox-style
+ *
+ * Trust model: every asset carries GPS + timestamp + photo_sha + Ed25519 sig.
+ * Tile strategy (3-tier):
+ *   PRIMARY    → OpenFreeMap public instance — vector tiles (.pbf MVT)
+ *                Style: https://tiles.openfreemap.org/styles/dark
+ *                Tiles: https://tiles.openfreemap.org/planet/latest/{z}/{x}/{y}.pbf
+ *                Cached at CDN (24h, max-age=86400 per OpenFreeMap docs)
+ *   SELF-HOST  → change OPENFREEMAP_STYLE_URL to https://YOUR_DOMAIN/styles/dark
+ *                Deploy per https://github.com/hyperknot/openfreemap
+ *                (linux_host module — Ubuntu 24.04, 170 GB SSD for planet)
+ *   FALLBACK   → CARTO dark raster — when OpenFreeMap unreachable
+ *                IDB cache via ol.source.XYZ.tileLoadFunction (FIELD dual-tier)
+ *
+ * Library: OpenLayers 10.x UMD (global `ol`) + ol-mapbox-style 12.x UMD (global `olms`)
+ *   Modules used:
+ *     ol/Map, ol/View, ol/proj
+ *     ol/layer/Tile        (CARTO fallback — pre-rendered tiled images)
+ *     ol/layer/VectorTile  (OpenFreeMap — vector tiles)
+ *     ol/source/XYZ        (CARTO dark raster)
+ *     ol/source/VectorTile (OpenFreeMap — created by olms.applyStyle internally)
+ *     ol/format/MVT        (Mapbox Vector Tile format, applied by olms)
+ *     ol/Overlay            (HTML markers + FORGE receipt popup)
+ *     ol/control/defaults, ol/control/ScaleLine
+ * ========================================================================= */
+(function(){
+  'use strict';
+
+  // ---- constants -------------------------------------------------------
+  // To self-host OpenFreeMap: deploy per https://github.com/hyperknot/openfreemap
+  // and change this URL to https://YOUR_DOMAIN/styles/dark
+  const OPENFREEMAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
+
+  const MAP_CENTER_LONLAT = [28.17, -26.22]; // Germiston (lng, lat) — OL uses [lng,lat] for fromLonLat
+  const MAP_ZOOM          = 13;
+  const CARTO_DARK_TILES = [
+    'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+    'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+    'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+    'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+  ];
+  const CARTO_ATTRIBUTION = '&copy; OpenStreetMap &copy; CARTO';
+  // Transparent 1x1 placeholder for failed tile loads (CARTO fallback only)
+  const TRANSPARENT_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+  // ---- demo ledger (would come from GET /api/bridge in production) -----
+  // 12 lemon tree assets around Germiston — each one = one signed GPS receipt.
+  const DEMO_ASSETS = [
+    { id:'LEMON-001', lat:-26.2205, lng:28.1512, health:84, last_scan:'2m ago',  ts:'2026-10-17T13:58:02Z', sha:'a3f7c9b2e8d4f1a6c0b5e9d2f4a8c1b7e3d6f9a2c5b8e1d4f7a0b3c6e9d2f5a8', photo_seed:'lemontree-001' },
+    { id:'LEMON-002', lat:-26.2189, lng:28.1724, health:79, last_scan:'4m ago',  ts:'2026-10-17T13:56:14Z', sha:'b4e8d0c3f9e5a2b7d1c6f0e3a5b9c2c8f4e7a0b3d6c9f2e5a8b1c4d7f0e3a6b9', photo_seed:'lemontree-002' },
+    { id:'LEMON-003', lat:-26.2241, lng:28.1856, health:91, last_scan:'1m ago',  ts:'2026-10-17T13:59:31Z', sha:'c5f9e1d4a0b6c3e8f2d7a1b4c6d0e3f9a5b8c2d6f0e4a7b1c5d8f2e6a0b4c7d1', photo_seed:'lemontree-003' },
+    { id:'LEMON-004', lat:-26.2158, lng:28.1638, health:62, last_scan:'8m ago',  ts:'2026-10-17T13:52:47Z', sha:'d6a0f2e5b1c7d4f9a3e8b2c5d7a1f4a0b6c9e3d7a1b5c8f2e6a0b4d7c1f5a8b2', photo_seed:'lemontree-004' },
+    { id:'LEMON-005', lat:-26.2278, lng:28.1942, health:58, last_scan:'12m ago', ts:'2026-10-17T13:48:09Z', sha:'e7b1a3c6f2d8e5b0c4f9a3d7b6a1c8f4e0b5d2a6c9f3e7a1b4d8c0f6e9a2d5b8', photo_seed:'lemontree-005' },
+    { id:'LEMON-006', lat:-26.2114, lng:28.1489, health:88, last_scan:'3m ago',  ts:'2026-10-17T13:57:55Z', sha:'f8c2b4d7a3e9f6c1d5b0a4e8c7b2f5a1d6c9e3b7a0f4d8c2e6b1a5d9c3f7e0b4', photo_seed:'lemontree-006' },
+    { id:'LEMON-007', lat:-26.2331, lng:28.1605, health:74, last_scan:'5m ago',  ts:'2026-10-17T13:55:21Z', sha:'a9d3c5e8b4f0a7d2c6b1e5a9f8c3d6b0e4a7c2f5d8b1e6a4c0b9f3d7e1a5c8', photo_seed:'lemontree-007' },
+    { id:'LEMON-008', lat:-26.2187, lng:28.2004, health:95, last_scan:'30s ago', ts:'2026-10-17T13:59:48Z', sha:'b0e4d6f1c7a3b9e5d0c4f8a2b6c1e7d3a5f9c2b6e0d4a8c1f5b9e3d7a0c4f8b2', photo_seed:'lemontree-008' },
+    { id:'LEMON-009', lat:-26.2226, lng:28.1418, health:67, last_scan:'7m ago',  ts:'2026-10-17T13:53:33Z', sha:'c1f5e7a2d8b4c0f6e1a5d9c3b7a2f8e4d0b6c9f3a7e1d5b8c2f6a0b4d7e1c5', photo_seed:'lemontree-009' },
+    { id:'LEMON-010', lat:-26.2289, lng:28.1783, health:81, last_scan:'2m ago',  ts:'2026-10-17T13:58:40Z', sha:'d2a6f8b3e9c5d1a7f2b6e0c4d8a3f5b1e7c0d4a8b2f6e0c5d9a3b7f1e4c8d2', photo_seed:'lemontree-010' },
+    { id:'LEMON-011', lat:-26.2203, lng:28.1696, health:43, last_scan:'15m ago', ts:'2026-10-17T13:45:12Z', sha:'e3b7a9c4f0d6e2b8a3c7d1e5b9a4f6c2d8b0e4a7c1f5d9b3e6a0c4f8d2b5e1a7', photo_seed:'lemontree-011' },
+    { id:'LEMON-012', lat:-26.2267, lng:28.1853, health:90, last_scan:'1m ago',  ts:'2026-10-17T13:59:07Z', sha:'f4c8b0d5a1e7f3c9b4d8a2e6c0b5f9a3d7e1c4b8f2a6d0e5b9c3f7a1d4e8b2', photo_seed:'lemontree-012' }
+  ];
+
+  // ---- helpers ---------------------------------------------------------
+  const $ = sel => document.querySelector(sel);
+  const fmtSha = s => s.length > 12 ? s.slice(0,8) + '…' + s.slice(-4) : s;
+  const healthClass = h => h >= 80 ? 'green' : (h >= 60 ? 'yellow' : 'red');
+  const healthGate  = h => h >= 80 ? 'pass'  : (h >= 60 ? 'warn'  : 'fail');
+
+  // ---- IndexedDB tile cache (FIELD dual-tier — for CARTO fallback path) -
+  // OpenFreeMap vector tiles use browser HTTP cache + CDN cache headers
+  // (max-age=86400 = 24h). For full offline-first on vector tiles,
+  // register a Service Worker — that's the more idiomatic pattern for OL.
+  // The IDB cache stays active for the CARTO raster fallback path.
+  const DB_NAME = 'vvu-tile-cache', STORE = 'tiles';
+  let idb = null;
+  function openIDB(){
+    return new Promise((resolve) => {
+      if (!window.indexedDB) { resolve(null); return; }
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror   = () => resolve(null);
+    });
+  }
+  async function idbGet(key){
+    if (!idb) return null;
+    return new Promise(res => {
+      const tx = idb.transaction(STORE, 'readonly').objectStore(STORE).get(key);
+      tx.onsuccess = () => res(tx.result || null);
+      tx.onerror  = () => res(null);
+    });
+  }
+  async function idbPut(key, val){
+    if (!idb) return;
+    return new Promise(res => {
+      const tx = idb.transaction(STORE, 'readwrite').objectStore(STORE).put(val, key);
+      tx.onsuccess = () => res();
+      tx.onerror  = () => res();
+    });
+  }
+  async function idbCount(){
+    if (!idb) return 0;
+    return new Promise(res => {
+      const tx = idb.transaction(STORE, 'readonly').objectStore(STORE).count();
+      tx.onsuccess = () => res(tx.result || 0);
+      tx.onerror   = () => res(0);
+    });
+  }
+
+  // OpenLayers tile loader — intercepts each tile URL, checks IDB first.
+  // Signature per OL API: tileLoadFunction(tile, src) where tile.getImage() returns HTMLImageElement
+  function cachedTileLoadFunction(tile, src){
+    const img = tile.getImage();
+    idbGet(src).then(cached => {
+      if (cached) {
+        img.src = cached;          // blob URL cached from prior load
+        updateCacheCount();
+        return;
+      }
+      fetch(src, { mode:'cors' })
+        .then(r => r.ok ? r.blob() : Promise.reject(new Error('http ' + r.status)))
+        .then(blob => {
+          const blobUrl = URL.createObjectURL(blob);
+          return idbPut(src, blobUrl).then(() => {
+            img.src = blobUrl;
+            updateCacheCount();
+          });
+        })
+        .catch(() => {
+          // graceful degradation — transparent 1x1 keeps the map rendering
+          img.src = TRANSPARENT_PNG;
+        });
+    });
+  }
+
+  async function updateCacheCount(){
+    const n = await idbCount();
+    const el = document.getElementById('cache-cnt');
+    if (el) el.textContent = n + ' tiles';
+  }
+
+  // ---- map init --------------------------------------------------------
+  let map = null;
+  let tileSourceLabel = '—';
+  const overlaysByAid = new Map();   // aid → ol.Overlay (marker)
+  let receiptOverlay = null;         // ol.Overlay for the FORGE receipt popup
+
+  async function probeOpenFreeMap(){
+    // Probe OpenFreeMap public instance style endpoint.
+    // Per OpenFreeMap docs, style JSON is served at /styles/{name}
+    // and tiles at /planet/latest/{z}/{x}/{y}.pbf (24h CDN cache).
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 1500);
+      const resp = await fetch(OPENFREEMAP_STYLE_URL, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (resp.ok) {
+        const ct = resp.headers.get('content-type') || '';
+        if (ct.includes('application/json')) return true;
+      }
+    } catch(e) { /* expected when offline */ }
+    return false;
+  }
+
+  function buildMapControls(){
+    return ol.control.defaults.defaults({
+      attributionOptions: ({ collapsible: false }),
+      zoomOptions: ({ duration: 280 })
+    }).extend([
+      new ol.control.ScaleLine({ units: 'metric', bar: false, text: false })
+    ]);
+  }
+
+  function buildMapView(){
+    return new ol.View({
+      center: ol.proj.fromLonLat(MAP_CENTER_LONLAT),
+      zoom: MAP_ZOOM,
+      maxZoom: 19,
+      minZoom: 2,
+      constrainResolution: true
+    });
+  }
+
+  async function initOpenFreeMap(){
+    // Vector tile path: OpenFreeMap liberty/dark style via ol-mapbox-style.
+    // olms.applyStyle() reads the MapLibre Style Spec JSON, creates an
+    // ol.source.VectorTile with ol.format.MVT internally, and applies all
+    // 47 layer style rules from the dark style to an ol.layer.VectorTile.
+    tileSourceLabel = 'OPENFREEMAP · DARK';
+    document.getElementById('tile-src').textContent = tileSourceLabel;
+
+    map = new ol.Map({
+      target: 'map',
+      view: buildMapView(),
+      controls: buildMapControls()
+    });
+
+    // Empty VectorTile layer; applyStyle will populate its source + style.
+    // declutter:true keeps labels from overlapping (per ol-mapbox-style docs).
+    const vtLayer = new ol.layer.VectorTile({ declutter: true });
+    map.addLayer(vtLayer);
+
+    // Apply OpenFreeMap style (returns Promise that resolves when style is loaded).
+    // olms.applyStyle signature: applyStyle(layer, styleUrl, sourceIdOrLayers?, options?)
+    // We pass undefined for sourceIdOrLayers to apply all sources in the style.
+    try {
+      await olms.applyStyle(vtLayer, OPENFREEMAP_STYLE_URL);
+    } catch (err) {
+      console.warn('OpenFreeMap style apply failed, switching to CARTO fallback:', err);
+      // Tear down the empty layer and switch
+      map.removeLayer(vtLayer);
+      throw err;
+    }
+
+    // Once style is applied, add markers + ledger after first render.
+    map.once('postrender', () => {
+      addAssetMarkers();
+      renderLedger();
+      updateStatus();
+    });
+    // Force a render in case postrender already fired during applyStyle
+    map.render();
+  }
+
+  async function initCARTOFallback(){
+    // Raster fallback path: CARTO dark with IDB cache (FIELD dual-tier).
+    // Used when OpenFreeMap is unreachable or ol-mapbox-style failed to load.
+    tileSourceLabel = 'CARTO DARK (FALLBACK)';
+    document.getElementById('tile-src').textContent = tileSourceLabel;
+
+    const source = new ol.source.XYZ({
+      urls: CARTO_DARK_TILES,
+      attributions: CARTO_ATTRIBUTION,
+      maxZoom: 19,
+      tileLoadFunction: cachedTileLoadFunction,
+      crossOrigin: 'anonymous'
+    });
+
+    const baseLayer = new ol.layer.Tile({
+      source: source,
+      opacity: 0.92,
+      preload: 1  // preload one zoom level below for smoother transitions
+    });
+
+    map = new ol.Map({
+      target: 'map',
+      layers: [ baseLayer ],
+      view: buildMapView(),
+      controls: buildMapControls()
+    });
+
+    map.once('postrender', () => {
+      addAssetMarkers();
+      renderLedger();
+      updateStatus();
+    });
+    map.render();
+  }
+
+  async function initMap(){
+    if (typeof ol === 'undefined' || !ol.Map) {
+      document.getElementById('map').innerHTML =
+        '<div style="display:flex;height:100%;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:var(--dim);text-align:center;padding:2rem">// OPENLAYERS FAILED TO LOAD — check CDN connection</div>';
+      return;
+    }
+
+    idb = await openIDB();
+    updateCacheCount();
+
+    const ofmReachable = await probeOpenFreeMap();
+    const olmsReady = (typeof olms !== 'undefined' && typeof olms.applyStyle === 'function');
+
+    if (ofmReachable && olmsReady) {
+      try {
+        await initOpenFreeMap();
+        return;
+      } catch (err) {
+        console.warn('OpenFreeMap init failed, falling through to CARTO:', err);
+      }
+    } else if (!olmsReady) {
+      console.warn('ol-mapbox-style failed to load — using CARTO fallback');
+    }
+
+    await initCARTOFallback();
+  }
+
+  // ---- asset markers (ol.Overlay with HTML element) -------------------
+  // Using HTML overlays instead of canvas styles so we get CSS animations
+  // for the pulsing health halo (ol.style.Circle is canvas-only — no CSS).
+  function addAssetMarkers(){
+    DEMO_ASSETS.forEach(asset => {
+      const el = document.createElement('div');
+      el.className = 'asset-marker h-' + healthClass(asset.health);
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', asset.id + ' at ' + asset.lat.toFixed(4) + ',' + asset.lng.toFixed(4) + ' health R' + asset.health);
+      el.setAttribute('tabindex', '0');
+      el.innerHTML = `
+        <div class="pin-wrap">
+          <div class="halo"></div>
+          <div class="pin"></div>
+          <div class="aid">${asset.id}</div>
+        </div>
+      `;
+      el.addEventListener('click', () => selectAsset(asset.id));
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectAsset(asset.id); } });
+
+      // ol.Overlay — HTML element anchored to a coordinate
+      const overlay = new ol.Overlay({
+        element: el,
+        positioning: 'center-center',
+        stopEvent: false,
+        insertFirst: false
+      });
+      overlay.setPosition(ol.proj.fromLonLat([asset.lng, asset.lat]));
+      overlay.set('aid', asset.id);
+      map.addOverlay(overlay);
+      overlaysByAid.set(asset.id, overlay);
+    });
+  }
+
+  // ---- ledger sidebar --------------------------------------------------
+  function renderLedger(){
+    const root = document.getElementById('ledger');
+    const counts = { green:0, yellow:0, red:0 };
+    root.innerHTML = DEMO_ASSETS.map(a => {
+      counts[healthClass(a.health)]++;
+      return `
+        <div class="asset-row h-${healthClass(a.health)}" role="listitem" tabindex="0" data-aid="${a.id}">
+          <div class="r1">
+            <span class="aid">${a.id}</span>
+            <span class="health">R${a.health}</span>
+          </div>
+          <div class="r2">
+            <span class="ll">${a.lat.toFixed(4)}°S, ${a.lng.toFixed(4)}°E</span>
+            <span class="ts">${a.last_scan}</span>
+          </div>
+          <div class="sha">SHA ${fmtSha(a.sha)}</div>
+        </div>
+      `;
+    }).join('');
+    document.getElementById('asset-count').textContent = DEMO_ASSETS.length + ' ASSETS';
+    document.getElementById('leg-green').textContent  = counts.green;
+    document.getElementById('leg-yellow').textContent = counts.yellow;
+    document.getElementById('leg-red').textContent    = counts.red;
+
+    root.querySelectorAll('.asset-row').forEach(row => {
+      const aid = row.dataset.aid;
+      row.addEventListener('click', () => selectAsset(aid));
+      row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectAsset(aid); } });
+    });
+  }
+
+  // ---- select asset: fly to + open FORGE receipt popup ----------------
+  let selectedId = null;
+  function selectAsset(aid){
+    const overlay = overlaysByAid.get(aid);
+    if (!overlay) return;
+    const a = DEMO_ASSETS.find(x => x.id === aid);
+    if (!a) return;
+    selectedId = aid;
+
+    // visual selection on map markers
+    document.querySelectorAll('.asset-marker').forEach(m => m.classList.remove('selected'));
+    overlay.getElement().classList.add('selected');
+
+    // OL view flyTo (animated pan + zoom)
+    const view = map.getView();
+    view.animate({
+      center: ol.proj.fromLonLat([a.lng, a.lat]),
+      zoom: Math.max(view.getZoom(), 15),
+      duration: 900
+    });
+
+    // highlight ledger row
+    document.querySelectorAll('.asset-row').forEach(r => r.classList.toggle('sel', r.dataset.aid === aid));
+
+    // open FORGE receipt popup anchored at the asset
+    openReceiptPopup(a);
+  }
+
+  function openReceiptPopup(a){
+    // Remove existing popup overlay
+    if (receiptOverlay) {
+      map.removeOverlay(receiptOverlay);
+      receiptOverlay = null;
+    }
+
+    const pop = document.createElement('div');
+    pop.className = 'receipt-popup';
+    const photoUrl = `https://picsum.photos/seed/${a.photo_seed}/320/180`;
+    pop.innerHTML = `
+      <div class="pop-h">
+        <span class="t">// FORGE RECEIPT · ${a.id}</span>
+        <button class="x" aria-label="Close receipt">×</button>
+      </div>
+      <div class="pop-body">
+        <div class="photo" style="background-image:url('${photoUrl}')">
+          <span class="badge">PHOTO · SHA ${fmtSha(a.sha)}</span>
+        </div>
+        <div class="grid">
+          <div class="cell"><div class="k">ASSET_ID</div><div class="v">${a.id}</div></div>
+          <div class="cell accent"><div class="k">HEALTH</div><div class="v">R${a.health}</div></div>
+          <div class="cell"><div class="k">LAT</div><div class="v">${a.lat.toFixed(5)}°S</div></div>
+          <div class="cell"><div class="k">LNG</div><div class="v">${a.lng.toFixed(5)}°E</div></div>
+          <div class="cell"><div class="k">LAST SCAN</div><div class="v">${a.last_scan}</div></div>
+          <div class="cell"><div class="k">TIMESTAMP</div><div class="v">${a.ts.replace('T',' ').replace('Z',' UTC')}</div></div>
+        </div>
+        <div class="sig-block">
+          <div class="k">SHA-256 · PHOTO</div>
+          <div class="v">${a.sha}</div>
+        </div>
+        <div class="sig-block">
+          <div class="k">Ed25519 · FORGE SIGNATURE</div>
+          <div class="v">7c4e8a9b2f1d6c0e5a3b8d4f7c2e9a1b6d0f3c8e5a2b7d4f9c0e3a6b1d8f5c2e9a</div>
+        </div>
+        <div class="gate-row">
+          <span class="gate pass">GPS VERIFIED</span>
+          <span class="gate pass">SHA MATCH</span>
+          <span class="gate ${healthGate(a.health)}">HEALTH ${healthGate(a.health).toUpperCase()}</span>
+          <span class="gate pass">FORGE SIGNED</span>
+        </div>
+        <div class="bridge-link">
+          <span>// BRIDGE-CRON :3020</span>
+          <a href="#" onclick="event.preventDefault();return false">→ Spatial Intelligence target</a>
+        </div>
+      </div>
+    `;
+
+    // ol.Overlay positioned above the marker
+    receiptOverlay = new ol.Overlay({
+      element: pop,
+      positioning: 'bottom-center',
+      stopEvent: true,
+      offset: [0, -22],
+      autoPan: { animation: { duration: 280 } }
+    });
+    receiptOverlay.setPosition(ol.proj.fromLonLat([a.lng, a.lat]));
+    map.addOverlay(receiptOverlay);
+
+    // close button
+    pop.querySelector('.x').addEventListener('click', closeReceipt);
+  }
+
+  function closeReceipt(){
+    if (receiptOverlay) {
+      map.removeOverlay(receiptOverlay);
+      receiptOverlay = null;
+    }
+    document.querySelectorAll('.asset-marker').forEach(m => m.classList.remove('selected'));
+    document.querySelectorAll('.asset-row').forEach(r => r.classList.remove('sel'));
+    selectedId = null;
+  }
+
+  // ---- status updates --------------------------------------------------
+  function updateStatus(){
+    document.getElementById('last-ping').textContent = '2m ago';
+    const live = DEMO_ASSETS.filter(a => !a.last_scan.includes('h'));
+    document.getElementById('bridge-status').textContent =
+      `SPATIAL: ${DEMO_ASSETS.length} ASSETS · ${live.length} LIVE · BRIDGE :3020`;
+  }
+
+  // ---- keyboard shortcuts (matches VVU Ctrl+1 hash route convention) --
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'Escape') { closeReceipt(); return; }
+    if (e.key === '/' ) { e.preventDefault(); document.getElementById('ledger').focus(); }
+  });
+
+  // ---- boot ------------------------------------------------------------
+  initMap().catch(err => {
+    console.error('VVU OpenMaps init failed:', err);
+    document.getElementById('map').innerHTML =
+      '<div style="display:flex;height:100%;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:var(--crimson);text-align:center;padding:2rem">// MAP INIT FAILED: ' + (err.message || err) + '</div>';
+  });
+
+  // Expose for console debugging
+  window.__vvu = {
+    get map(){ return map; },
+    get overlays(){ return overlaysByAid; },
+    DEMO_ASSETS,
+    OPENFREEMAP_STYLE_URL
+  };
+})();
+</script>
+</body>
+</html>

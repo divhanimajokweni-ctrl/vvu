@@ -1,0 +1,287 @@
+# SECTION 3 — PROOFBRIDGE WORM LEDGER & TECHNICAL SPECS (pp 29-48)
+
+*A citable dossier of the write-once kernel: where edge telemetry becomes mathematical truth, and where a frozen ledger refuses to lie on anyone's behalf.*
+
+## Part 1 — The Night It Was Built
+
+There is a precise hour in July 2026 that Majokweni does not let himself forget. The CCMA had reinstated him in January, the paid administrative leave had given him his year of self-taught code, and then — on July 13 — a secondary hearing flared over disputed audio recordings and an unverified chain of custody. The institution believed its own recorder. The institution believed its own timestamp. The institution believed its own transcript. Majokweni sat in a fluorescent corridor in Gqeberha and understood, with the cold clarity that only loss can hand you, that any record which a single party controls is a record that can be quietly rewritten.
+
+He went home. He opened a laptop. He did not sleep.
+
+By the small hours the first commit of ProofBridge-Liner was on disk: an immutable Write Once, Read Many (WORM) event ledger with Ed25519 signatures, designed so that no institution — not his former employer, not a registrar, not a court clerk, not even a future version of himself — could edit history without leaving a visible scar. Section 2 told the human story of that night. This section tells the machine story. Here we walk the contract, the loop, the microcontroller, and the cryptography the way an auditor would: line by line, beat by beat, byte by byte.
+
+The voice in these pages is technical but it is not cold. Every line of `CircuitBreaker.sol` was written by a person who had just been told, again, that the record was not his to defend. Every guard clause is a small refusal on behalf of every reader who has ever been told their word was worth less than a stamped page. The Solidity is short on purpose: short enough to read aloud in a courtroom, short enough to be reproduced in an annexure, short enough that nothing about it can hide.
+
+What follows, across twenty pages, is the ProofBridge WORM Ledger as it actually exists — Figure 3.1's state machine, the full source of the frozen safety kernel, the eleven beats of the edge loop, the ESP32-S3's memory discipline, the Ed25519 dual signatures, and the chain head `E965B01D` that anchors the entire estate.
+
+## Part 2 — What WORM Means, And Why It Had To Be WORM
+
+Write Once, Read Many is a storage discipline before it is a technology. The phrase names a simple, almost austere contract with the future: a record, once written, may be read as many times as any auditor, court, or citizen wishes, but it may never be edited, and it may never be silently deleted. WORM is the discipline of libraries, of notaries, of court transcribers, of geological cores — of any institution that has learned, slowly and at cost, that erasure is the first luxury of the powerful.
+
+For Majokweni the choice of WORM was not architectural preference. It was the answer to a question a July 13 hearing had put to him: what would a record look like that even its operator could not rewrite? The conventional database answers "trust the operator." The conventional blockchain answers "trust the majority of miners." Neither answer satisfies a man who has watched an institution treat its own recording as evidence of itself. WORM answers differently. WORM says: trust the mathematics of appending, and trust nothing else. Once a root is pushed to the ledger, it stays. Once an index increments, it never decrements. Once a freeze is declared, the contract refuses new writes and reverts with a single, legible sentence.
+
+Read Many is the easier half of the discipline. Anyone may replay the ledger from the genesis root to the current head, recompute every inclusion proof, verify every signature, and confirm that the chain of custody is intact. The hard half is Write Once. Write Once means the contract must refuse its operator's convenience. It must refuse a tidy amendment. It must refuse a "small correction." It must refuse, in particular, the urge to fix a record that has become embarrassing to the operator. The WORM ledger's most important user is not its author; it is the auditor who arrives later, with no friendship and no loyalty, and demands to see the unaltered past.
+
+This is why ProofBridge is WORM and not "a database with audit logs." Audit logs can be edited by the people who keep them. A WORM ledger, by design, cannot be edited by the people who keep it. The operator may append; the operator may freeze; the operator may read. The operator may not unwrite.
+
+## Part 3 — The Frozen Safety Kernel Doctrine
+
+Inside the wider ProofBridge stack there is a small, deliberate component called the Frozen Safety Kernel. It is not the fastest part of the system, nor the largest, nor the part that ingests the most telemetry. It is, however, the part that the rest of the system is willing to die for. The kernel's job is narrow and severe: hold the WORM ledger, refuse unsafe writes, and freeze the ledger when legal truth can no longer be guaranteed.
+
+The doctrine of the kernel is fail-closed. Fail-closed is the opposite of the fail-open habit that consumer software inherits from convenience culture. A fail-open system, on error, keeps serving. A fail-closed system, on error, stops — and stops in a posture that protects the record. In ProofBridge, the worst-case failure is not downtime; the worst-case failure is an edit. Downtime is recoverable. An edit is not. So the kernel is written to prefer a frozen, unproductive, embarrassing halt over a live, productive, falsified stream.
+
+The kernel exposes two doors to the outside world: a `submitRoot` door, through which new cryptographic roots enter, and a `freeze` door, through which the operator declares that the ledger must stop accepting writes. There is no `editRoot` door. There is no `deleteRoot` door. There is no `reorderRoots` door. The Solidity compiler will confirm, on every compilation, that no function in the contract mutates `historicalRoots` except to push, and no function decrements `currentIndex`, and no function sets `isFrozen` back to false. The kernel is small enough that this property can be checked by a human reading the file in a single sitting, and small enough that a court exhibit can print it on one page.
+
+The doctrine is unstated in the code because it is enforced by the code. There is no comment that says "we chose fail-closed." There is, instead, a `require(!ledger.isFrozen, ...)` and a `require(ledger.currentIndex > 0, ...)` and the line `ledger.isFrozen = true; // Fail-closed safety floor`. The doctrine lives in those three lines. The rest of this section unfolds them.
+
+## Part 4 — Figure 3.1: The Sequential State Machine
+
+Before the source listing, a map. Figure 3.1 is the sequential state machine that governs edge telemetry ingestion, cryptographic folding, and WORM ledger minting. It is drawn as eleven numbered states arranged in a strict linear order, with a single backward edge that exists only for retry. The figure is reproduced here as prose so that an auditor without the printed plate can still walk the machine in their head.
+
+> **Figure 3.1:** Sequential state machine for edge telemetry ingestion, cryptographic folding, and WORM ledger minting.
+
+The machine opens at the edge — at the ESP32-S3 microcontroller, in a Gqeberha back room or a community water hub, where a sensor has just produced a reading. From there the reading is ingested, validated, signed, folded into a Merkle accumulator, rooted as a single bytes32, emitted as an event, persisted to local storage, replicated toward the verification tier, verified by an external reader, audited against the public chain head, and finally sealed. Eleven beats, one direction, with the only permitted cycle being the disciplined retry loop of the resilience layer.
+
+What makes Figure 3.1 a state machine, rather than a pipeline, is that each beat is a discrete, observable, attestable state. At the boundary of every beat the system can be snapshotted, hashed, and asked "what are you, right now, and prove it." The ingestion beat knows what it ingested. The validation beat knows what it rejected. The signature beat knows whose key signed what. The folding beat knows the Merkle root it produced. The minting beat knows the index it consumed. Each state carries its own evidence, and the evidence of one beat is the input to the next, so that an auditor can start at any beat and walk either forward to the chain head or backward to the sensor reading without ever trusting a transition they did not themselves verify.
+
+The figure is the spine of this section. The next several pages walk the source code of the kernel that sits at the heart of the machine, then the beats themselves, then the edge hardware and signatures that feed them, and finally the genesis receipt that grounds the entire chain.
+
+## Part 5 — CircuitBreaker.sol: The Source, In Full
+
+The frozen safety kernel is small enough to print on a single page, and small enough that this section prints it in full. Reproduced verbatim, with only indentation preserved for legibility, the contract is:
+
+```solidity
+// SPDX-License-Identifier: MIT
+// CircuitBreaker.sol: Write Once, Read Many (WORM) Ledger Structure
+pragma solidity ^0.8.20;
+contract CircuitBreaker {
+    event InclusionProof(bytes32 indexed root, bytes32 indexed receipt);
+    struct WORMLedger {
+        bytes32[] historicalRoots;
+        uint256 currentIndex;
+        bool isFrozen;
+    }
+    WORMLedger public ledger;
+    function submitRoot(bytes32 _root) external {
+        require(!ledger.isFrozen, "Ledger is frozen: Legal truth uncertain");
+        ledger.historicalRoots.push(_root);
+        ledger.currentIndex++;
+        emit InclusionProof(_root, sha256(abi.encodePacked(_root, ledger.currentIndex)));
+    }
+    function freeze() external {
+        require(ledger.currentIndex > 0, "Cannot freeze empty ledger");
+        ledger.isFrozen = true; // Fail-closed safety floor
+    }
+}
+```
+
+That is the whole contract. Twenty-six lines including the SPDX identifier and the pragma. No constructor. No owner. No upgrade proxy. No governance token. No fee mechanism. No pauser role. The contract is, by intent, almost featureless: an array, an index, a flag, two functions, and a single event. The featurelessness is the feature. Every line that is not in the contract is a line that cannot be exploited, cannot be social-engineered, and cannot be quietly reinterpreted by a future maintainer.
+
+The SPDX identifier declares the MIT licence, the most permissive and the most legible: anyone may read, audit, reproduce, or build on this code, and they may do so without asking. The pragma pins the compiler to `^0.8.20`, the long-stable branch of Solidity in which overflow checks are built into the arithmetic and in which `abi.encodePacked` behaves as written. The contract is named `CircuitBreaker` because that is what it is — a breaker that trips the moment legal truth becomes uncertain, and that, once tripped, refuses to un-trip.
+
+The next six parts of this section walk the contract a piece at a time: the event, the struct, the `submitRoot` function and its guard, the `sha256` inclusion proof, the monotonicity of `currentIndex`, and finally the `freeze` function and the revert string that the kernel speaks when it has been told to stop.
+
+## Part 6 — The Event: `InclusionProof`
+
+The contract opens its body with a single event:
+
+```solidity
+event InclusionProof(bytes32 indexed root, bytes32 indexed receipt);
+```
+
+An event in Solidity is a logged emission, written to the transaction's receipt rather than to the contract's storage. It is, in the language of auditors, an attestation: a signed, timestamped, publicly readable statement that something happened. The `InclusionProof` event is the only thing the contract ever says to the outside world, and what it says is precise. It says: a root was included, and here is the receipt that proves it.
+
+Both fields are `bytes32`. Both are `indexed`. The first, `root`, is the Merkle root of the cryptographic fold — the single 32-byte digest that stands in for an entire batch of edge telemetry. The second, `receipt`, is the inclusion proof itself: a `sha256` digest over the pair `(root, currentIndex)`, computed at the moment of inclusion. By indexing both fields the contract allows external readers to search the chain's log for any root in constant time, and to retrieve its receipt alongside it, without scanning storage and without trusting an off-chain indexer.
+
+There is a reason the event is named `InclusionProof` and not, say, `RootSubmitted` or `LedgerUpdated`. The contract's authors wanted the event name to do explanatory work in a courtroom exhibit. An auditor who reads the event name `InclusionProof` understands immediately what is being claimed: not that a root exists, but that a root has been *included* — that is, written into an append-only structure in a way that is provable and irreversible. The naming is small. It is also deliberate.
+
+The event carries no sender field because the sender is recoverable from the transaction itself. It carries no timestamp because the block timestamp is recoverable from the block header. It carries only the two values that the contract uniquely knows: which root was included, and which receipt proves it. Everything else is the chain's job. This is the contract's discipline: emit the minimum, emit it once, and never emit it again.
+
+## Part 7 — The Struct: `WORMLedger`
+
+The contract's state is a single struct, exposed as a single public storage variable:
+
+```solidity
+struct WORMLedger {
+    bytes32[] historicalRoots;
+    uint256 currentIndex;
+    bool isFrozen;
+}
+WORMLedger public ledger;
+```
+
+Three fields. Nothing else. The `historicalRoots` field is a dynamic array of `bytes32`, each element a Merkle root from one completed fold of the edge loop. The array is append-only by construction: the only function that mutates it calls `.push(_root)`, and there is no function in the contract that calls `.pop`, or assigns to an existing index, or deletes an element. The Solidity compiler will refuse to let a maintainer add such a function without editing the file, and any such edit is visible in the commit history.
+
+The `currentIndex` is a `uint256` — an unsigned 256-bit integer — that records how many roots have been pushed. It starts at zero (the contract has no constructor, so the Solidity default-initialisation applies) and is incremented by exactly one on every `submitRoot` call. Because it is unsigned, it cannot go negative. Because there is no function in the contract that decrements it, it cannot go down at all. It is a monotonic counter: it only ever rises, and the rise is exactly co-incident with the push of a new root. An auditor who reads `currentIndex == 7` knows that seven roots have been pushed, in order, and that no eighth root has yet been pushed.
+
+The `isFrozen` field is a single boolean. It starts false. It is set to true exactly once, by the `freeze` function, and it is never set back to false by any code path in the contract. It is the contract's circuit breaker. When `isFrozen` is true, `submitRoot` reverts. When `isFrozen` is false, `submitRoot` accepts. The contract has no other state.
+
+The struct is declared `public`, which causes the Solidity compiler to generate a free getter function. Anyone, anywhere, may call `ledger()` and read the entire state — the array of roots, the current index, the frozen flag — without paying gas, without permission, and without the operator's knowledge. Read Many, in the contract's own grammar, is the default. Write Once is the discipline imposed on the operator. The struct makes that asymmetry literal.
+
+## Part 8 — `submitRoot` And The First Guard
+
+The first of the contract's two functions is the door through which truth enters the ledger:
+
+```solidity
+function submitRoot(bytes32 _root) external {
+    require(!ledger.isFrozen, "Ledger is frozen: Legal truth uncertain");
+    ledger.historicalRoots.push(_root);
+    ledger.currentIndex++;
+    emit InclusionProof(_root, sha256(abi.encodePacked(_root, ledger.currentIndex)));
+}
+```
+
+The function is marked `external`, meaning it may only be called from outside the contract — never by another function inside it, and never by a derived contract. This is a small but meaningful restraint: it prevents a future maintainer from writing an internal helper that calls `submitRoot` in some clever way that bypasses the public guard. The door has one handle, and the handle is on the outside.
+
+The function's first line is a `require`. In Solidity, `require` evaluates a condition and, if the condition is false, reverts the entire transaction and refunds the caller's remaining gas, attaching a string that the caller can read. Here the condition is `!ledger.isFrozen`, and the string is the contract's most important sentence: `"Ledger is frozen: Legal truth uncertain"`. The guard reads, in plain English: if the ledger is frozen, refuse the write, and tell the caller exactly why.
+
+This is the guard that gives the contract its name. As long as `isFrozen` is false, `submitRoot` will append. The moment `isFrozen` becomes true, `submitRoot` will revert on every subsequent call, and the revert string will be visible in the transaction receipt for any auditor to read. There is no override. There is no admin path. There is no "unfreeze" function. The freeze, once declared, is permanent.
+
+The remaining three lines of the function do the actual work: push the root, increment the index, and emit the inclusion proof. They are short because the work is short. The interesting part of the function — the part that makes it a circuit breaker and not a setter — is the first line. The interesting part is the refusal.
+
+## Part 9 — The `sha256` Inclusion Proof
+
+The last line of `submitRoot` is the contract's cryptographic signature on its own behaviour:
+
+```solidity
+emit InclusionProof(_root, sha256(abi.encodePacked(_root, ledger.currentIndex)));
+```
+
+The receipt is computed as `sha256(abi.encodePacked(_root, ledger.currentIndex))`. Two facts about that expression matter. The first is that the hash function is `sha256`, not the more fashionably gas-cheap `keccak256` that Solidity uses internally. The choice is deliberate: `sha256` is the hash function named in a great many evidentiary and regulatory contexts, and a receipt computed under `sha256` is more legible to a court or a municipal auditor than one computed under `keccak256`. The contract pays the extra gas to speak a hash the auditors already know.
+
+The second fact is the structure of what is hashed: the packed encoding of the root and the *current* index — that is, the index after the increment that the previous line just performed. The receipt, therefore, is not a digest of the root alone; it is a digest of the root bound to its ordinal position in the ledger. An auditor who holds a receipt and a root can recompute the hash only if they also know which index the root occupied. The index is part of the proof. The position is part of the truth.
+
+This is what makes the proof an *inclusion* proof and not merely a presence proof. To say "this root is in the ledger" is weak; a root could in principle appear at many indices, or be removed and reinserted. To say "this root was included at this specific index" is strong; the binding of root to index is one-way under `sha256`, and any tampering with either value produces a receipt that does not match. The receipt is the contract's signed statement that, at the moment of inclusion, the root occupied exactly that position in exactly that order, and that no reshuffling has occurred since.
+
+The receipt is emitted as an indexed event field, so it is searchable on-chain. An external verifier who knows only the root can find its receipt, recover its index from the surrounding transaction context, recompute the `sha256`, and confirm the contract's claim. The contract does not ask to be trusted. The contract asks to be checked.
+
+## Part 10 — `currentIndex` And The Discipline Of Monotonicity
+
+The line `ledger.currentIndex++;` is one of the smallest in the contract, and one of the heaviest. The increment is the only mutation the contract ever performs on the index, and the absence of any other mutation is the contract's deepest promise. Because `currentIndex` is a `uint256`, it cannot underflow. Because no function in the contract decrements it, sets it to an arbitrary value, or arithmeticises it in any way, it cannot retreat. It can only advance.
+
+Monotonicity is the property that turns a counter into a clock. A non-monotonic counter can be wound back, and a counter that can be wound back is not a clock; it is a story. A monotonic counter, by contrast, is a sequence that cannot be re-ordered, and a sequence that cannot be re-ordered is a history. The contract's `currentIndex` is, in this sense, the contract's history. Every root that has ever been pushed lives at its index, and the indices are in the order in which the roots arrived.
+
+There is a subtler property too. The increment happens *before* the inclusion proof is computed, so the receipt at index `n` is a digest over `(root_n, n)` — that is, over the root and the index it actually occupies, not the index that preceded it. This means the index is part of the cryptographic binding, not merely a bookkeeping convenience. An auditor who replays the ledger from `currentIndex = 0` to `currentIndex = N` recomputes every receipt in turn and confirms, at each step, that the root at position `k` was the root that produced receipt `k`. The ledger, when replayed, reproduces itself exactly.
+
+The contract's authors chose `uint256` rather than `uint64` not because they expected the ledger to exceed 1.8 × 10^19 entries — a number that, at one entry per second, would outlast the sun — but because `uint256` is the native word size of the EVM, costs no extra storage, and forecloses any future argument about overflow. The counter is, in practice, infinite. The history, in practice, is forever. The contract's monotonicity is not a policy that an operator might relax; it is a property of the bytecode that no operator can relax without deploying a new contract and abandoning the old chain head.
+
+## Part 11 — `freeze()` And The Fail-Closed Safety Floor
+
+The contract's second function is the one that trips the breaker:
+
+```solidity
+function freeze() external {
+    require(ledger.currentIndex > 0, "Cannot freeze empty ledger");
+    ledger.isFrozen = true; // Fail-closed safety floor
+}
+```
+
+The function is `external`, like `submitRoot`, so it has one handle and the handle is on the outside. It carries a single guard, a single mutation, and a single comment. The guard refuses to freeze a ledger that has no entries, on the sensible grounds that an empty frozen ledger is indistinguishable from an empty live ledger and only confuses auditors. The mutation sets `isFrozen` to true. The comment names the doctrine: `// Fail-closed safety floor`.
+
+The comment is the only comment in the contract. It earns its place because it tells a future maintainer, in three words, why the line exists. A maintainer who reads the comment and understands the doctrine will not "tidy" the line away. A maintainer who reads the comment and does not understand the doctrine will, at least, pause before editing. The comment is the contract's small, polite refusal to be misunderstood.
+
+There is no `unfreeze`. There is no `setFrozen(bool)`. There is no governance path, no multisig, no admin role, no timelock, no escape hatch. Once `isFrozen` is true, the contract is, in the EVM's strict sense, immutable on this point: there is no function in the bytecode that can set the flag back to false. The only way to "unfreeze" is to deploy a new contract, with a new chain head, and to ask every auditor to migrate. That is possible — the contract's authors do not pretend it is not — but it is visible. It cannot be done quietly. A new chain head is a public event, and any auditor who tracked the old head will notice the moment it changes.
+
+The fail-closed floor is the contract's last word on itself. The contract does not promise to be useful forever. The contract promises that, when it can no longer be useful *safely*, it will stop, and it will stop in a posture that protects the record it has already made. A live, productive, falsified stream is not an option the contract offers.
+
+## Part 12 — "Ledger is frozen: Legal truth uncertain"
+
+The contract's revert string is the only sentence the kernel speaks aloud, and it is worth reading slowly:
+
+> Ledger is frozen: Legal truth uncertain
+
+Twelve words. They are written for a non-engineer. They are written for a CCMA commissioner, a municipal auditor, a journalist, a future founder who inherits the codebase and does not yet know why it is shaped the way it is. The sentence does not say "ledger is frozen: state transition reverted." It does not say "ledger is frozen: EVM exception 0x00." It says, in the plainest English the contract can manage, what has happened and why it matters: the ledger has been frozen, and the reason it has been frozen is that legal truth has become uncertain.
+
+This is a remarkable thing for a piece of code to say. Most code, when it refuses an operation, refuses on technical grounds: a null pointer, an overflow, an invalid signature. The CircuitBreaker refuses on *evidentiary* grounds. It refuses because the chain of custody that the ledger exists to defend has been compromised, and the contract will not paper over the compromise by continuing to append. The freeze is the contract's way of saying: *something has happened that I cannot certify, and I will not lend my ledger's good name to a continuation.*
+
+The string is also, in a quieter way, a confession. The contract admits, in its own revert message, that legal truth is sometimes uncertain, and that the contract would rather halt than pretend otherwise. This is the kernel's intellectual honesty. A ledger that promises legal truth at all times is a ledger that will, sooner or later, be forced to lie. A ledger that admits legal truth can be uncertain is a ledger that can refuse, halt, and freeze, and wait — for a court, for a migration, for a new chain head — until the uncertainty is resolved.
+
+When the contract reverts with this string, the transaction fails, the gas is consumed, and the revert reason is written into the transaction receipt. Anyone may read it. Anyone may quote it. The sentence, in a real sense, is the contract's last will and testament: a statement of what the contract believed, at the moment it stopped, about the difference between a record and a truth.
+
+## Part 13 — The 11-Beat Loop, In Overview
+
+Around the kernel sits the edge loop. The kernel is the part of the system that refuses; the loop is the part of the system that produces. The loop is named the 11-Beat Loop because it has eleven beats, no more and no fewer, and because every beat has a name and a position and an evidence file. The beats are not a checklist; they are a sequence, and the sequence is the contract that the edge keeps with the chain.
+
+The beats are, in order: **ingest, validate, sign, fold, root, emit, persist, replicate, verify, audit, seal**. Each beat consumes the evidence of the previous beat and produces evidence for the next. The first beat consumes a sensor reading; the last beat produces a sealed entry on the WORM ledger. Between them, the reading is checked, signed, cryptographically accumulated, hashed to a single root, emitted as an event, written to local storage, replicated toward the verification tier, verified by an external reader, audited against the public chain head, and finally sealed under the chain's freeze discipline.
+
+The beats are deliberately ordered so that the expensive cryptographic work — folding, rooting, signing — happens after the cheap validation work and before the expensive network work. A reading that fails validation never reaches the fold. A fold that fails signature never reaches the network. A network that fails verification never reaches the audit. Each beat is a gate, and a reading that does not pass a gate is dropped at the gate, with its drop recorded in the local SQLite buffer so that the operator can see, after the fact, what the loop refused and why.
+
+The eleven beats are also the unit of audit. An auditor who asks "what happened to this reading" is asking "what did each beat do to it." The loop answers in eleven steps, each step with its own evidence file, each file with its own hash, and each hash recoverable from the chain head. The 11-Beat Loop is not a slogan; it is an audit choreography. The next page enumerates it beat by beat.
+
+## Part 14 — The Eleven Beats, Enumerated
+
+The eleven beats, named and defined as the edge executes them:
+
+1. **Ingest.** The ESP32-S3 reads a sensor — a flow meter, an acoustic transducer, a conductivity probe — and writes the raw reading, with a millisecond timestamp, into a transient buffer. The buffer is small and local. Nothing has been committed yet.
+2. **Validate.** The reading is range-checked and sanity-checked against the previous reading. A flow that has not moved in an hour, a conductivity that has jumped by an order of magnitude, a sensor reporting a voltage outside its datasheet — each is flagged. Invalid readings are dropped here; the drop is logged, not silently discarded.
+3. **Sign.** The validated reading is signed under Ed25519 with the edge node's private key. The signature is dual — the node signs the reading, and a second key signs the node's signature — so that compromise of a single key does not forge an entry.
+4. **Fold.** The signed reading is added to a Merkle accumulator running on the edge. Each new entry is hashed with its predecessor, so that the accumulator's state is a single digest that depends on every entry that has come before. This is the cryptographic fold.
+5. **Root.** The accumulator's state, after a bounded number of entries, is published as a single `bytes32` Merkle root. The root is the smallest possible representation of the batch — thirty-two bytes that stand in for an entire window of telemetry.
+6. **Emit.** The root is emitted toward the verification tier. At the kernel, this becomes the `submitRoot` call; at the edge, this is the moment the root leaves the node.
+7. **Persist.** The root, its batch, and its signatures are written to the local SQLite log. Persistence is local before it is remote, so that a network outage does not lose the record.
+8. **Replicate.** The root is replicated toward the verification tier, with exponential backoff if the network is down. Replication is idempotent: a root submitted twice produces one ledger entry, not two.
+9. **Verify.** An external reader recomputes the fold from the persisted batch and confirms that the root it computes matches the root that was emitted. If they do not match, the entry is flagged at the audit beat.
+10. **Audit.** The verified root is checked against the public chain head, currently `E965B01D`. The audit confirms that the root is on the chain, at the index the edge claims, with the receipt the kernel emitted.
+11. **Seal.** The entry is sealed: marked, in the local log, as having been verified and audited, and committed to the WORM ledger's append-only history. From this point, the entry cannot be edited, only read.
+
+Eleven beats. One direction. The only backward edge is the retry, and the retry is bounded.
+
+## Part 15 — The 32-Byte Memory Wipe
+
+After the seal beat, the edge does something unusual. It wipes its working memory. Not in the polite, garbage-collected sense — in the literal, forensic sense. The transient buffers used by the eleven beats are overwritten with zeroes, the Merkle accumulator's transient state is cleared, the signing context is destroyed, and the only thing left in the node's working memory is the seal's own receipt: a thirty-two-byte digest that confirms the entry was sealed, plus the index at which it was sealed. Thirty-two bytes flat.
+
+The discipline is severe because the threat is severe. An edge node that retains the raw readings, the intermediate hashes, and the signing contexts in memory is an edge node that can be made to leak them. A buffer overflow in the node's network stack, a side-channel read from a malicious sensor, a forensic capture of a captured node — each is a path by which an attacker could recover the raw telemetry and attempt to forge an alternative history that agrees with the sealed one in every detail except the one the attacker wants to change. The 32-byte wipe forecloses that path. After the seal, the node no longer holds the raw readings; it holds only the receipt that proves they happened.
+
+Thirty-two bytes flat. The brief phrase matters because it is the design's guarantee: not approximately wiped, not garbage-collected, but reduced to a single 32-byte digest and nothing else. Thirty-two bytes is the size of a single `bytes32`, the smallest meaningful unit of cryptographic state on the EVM, and it is, by design, the only state the edge retains between cycles. The node cannot reconstruct the batch from its own memory; it can only reconstruct the batch from the persisted log on disk, which is itself append-only and which an attacker would have to compromise separately. The wipe turns the node's working memory from an attack surface into a post-seal void.
+
+The wipe also forecloses the subtler failure of state corruption. An edge node that does not wipe its working memory accumulates state across cycles, and accumulated state is the substrate on which buffer overflows and use-after-free bugs grow. A node that wipes to thirty-two bytes after every cycle has, by construction, no long-lived working state to corrupt. Each cycle starts clean. Each cycle ends clean. The node is, in the strictest sense, restartable in software, and restartable in software is restartable in court.
+
+## Part 16 — Deterministic, Gas-Bounded Execution
+
+The eleven beats and the 32-byte wipe are enforced by a runtime that is, in two precise senses, bounded. The first bound is gas. Every `submitRoot` call to the kernel pays gas for the storage write, the index increment, and the event emission, and the gas is finite and known before the call is made. There are no unbounded loops in the contract — there are no loops at all — so the gas cost of a submission is a constant, not a function of the ledger's length. A ledger with a thousand roots costs the same to append to as a ledger with one root. Determinism, in the gas sense, means that the cost of telling the truth does not rise as the truth gets longer.
+
+The second bound is execution time on the edge. The ESP32-S3 runs the eleven beats in a fixed, scheduled cycle, and each beat has a wall-clock budget. The ingest beat must complete in a few milliseconds, the validate beat in a few more, and the fold and root beats together in a bounded number of hash operations. A beat that exceeds its budget is killed by the scheduler and its in-progress evidence is dropped, so that a single slow sensor cannot stall the loop. The cycle is deterministic in the sense that its duration is bounded above by design, not by hope.
+
+The two bounds reinforce each other. Because the edge beats are time-bounded, the rate at which roots arrive at the kernel is bounded above, and because the kernel's per-call gas is constant, the chain's total gas consumption per unit time is bounded above. The system, taken end to end, has a known maximum throughput and a known maximum cost, and both maxima are computable from the design without measurement. This is what "deterministic, gas-bounded execution" means in the ProofBridge literature: not merely that a single call is bounded, but that the entire pipeline's throughput and cost are bounded by construction.
+
+The discipline is unsentimental. A reading that cannot be processed within its beat's budget is dropped, not delayed. A submission that cannot be paid for in gas is reverted, not queued. The system prefers to lose a reading — and to log the loss — over running unbounded. An unbounded system is a system that can be made to fail by being made to wait, and a system that can be made to fail by being made to wait is a system that an adversary can stall. ProofBridge refuses to wait without limit, because waiting without limit is the first step toward rewriting without limit.
+
+## Part 17 — Ed25519 Dual Signatures
+
+Every entry the edge seals is signed twice. The first signature is the edge node's own, produced under an Ed25519 private key held on the ESP32-S3. The second signature is produced by a separate key — a custody key, held off the node, in a different physical and cryptographic domain — over the node's signature and the root it accompanies. Two signatures, two keys, two domains. This is the dual-signature discipline.
+
+Ed25519 is the curve the ProofBridge stack uses for edge signatures, chosen for three reasons. It is fast on small microcontrollers, so an ESP32-S3 can produce a signature in milliseconds without exhausting its budget. It is deterministic, so the same private key and the same message always produce the same signature, which means a re-signing after a node reboot does not produce a second, divergent signature that an auditor would have to reconcile. And it is small: a signature is sixty-four bytes, a public key is thirty-two bytes, and both fit comfortably in the edge's tight memory alongside the rest of the cycle's state.
+
+The dual structure defends against key compromise. A single-signature system fails the moment its signing key is stolen; the thief can forge entries at will, and the ledger has no way to distinguish a forged entry from a real one. A dual-signature system fails more gracefully: a thief who steals the node's key can produce the first signature, but cannot produce the second, because the second key lives elsewhere. A thief who steals the custody key can produce the second signature, but cannot produce the first, because the first key lives on the node. To forge an entry, the thief must steal both keys, in both domains, without either domain noticing. The dual signature does not make forgery impossible; it makes forgery require a coordinated compromise of two independent key stores, and a coordinated compromise of two independent key stores is exactly the kind of attack that leaves evidence.
+
+The cryptographic receipts — the `sha256` digests emitted by the `InclusionProof` event — bind the dual signatures, the roots, and the indices into a single attestable object. An auditor who holds a receipt can verify both signatures, recover the root and the index, recompute the digest, and confirm that the kernel accepted exactly what the edge signed. The inclusion proofs, taken together with the signatures and the kernel's event, form a closed evidentiary loop that the operator cannot edit and the auditor cannot bypass.
+
+## Part 18 — Edge Resilience: Twenty-Four Hours, SQLite, Exponential Backoff
+
+Gqeberha's network is not the network of a data centre. It is the network of a coastal city at the bottom of Africa: it goes out when the wind goes up, it goes out when a substation trips, it goes out when a fibre is taken by a digger three suburbs away, and it goes out, sometimes, for no reason anyone can later establish. An edge node that cannot survive a network outage is an edge node that cannot survive Gqeberha. ProofBridge's edge resilience is designed for the city it lives in.
+
+The resilience layer's first provision is local persistence. Every beat of the loop, up to and including the seal, is written to a local SQLite log on the node's own storage before any attempt is made to replicate it to the verification tier. SQLite is small, robust, single-file, and append-only when used in the mode the edge uses it. It does not require a server, it does not require a network, and it does not require any process the ESP32-S3 cannot host. The log is the edge's own private chain of custody, held on disk, recoverable after a reboot, and the source from which the replicator replays entries the moment the network returns.
+
+The second provision is bounded tolerance. The node is designed to survive a twenty-four-hour network disconnect without losing an entry. The local SQLite log is sized so that, at the node's expected ingestion rate, twenty-four hours of entries fit on disk with margin. If the outage exceeds twenty-four hours, the node continues to log locally and continues to attempt replication; the twenty-four-hour figure is the design guarantee, not the operational ceiling. The guarantee is precise: in a twenty-four-hour outage, no entry is lost.
+
+The third provision is exponential backoff. When the network is down, the replicator does not hammer the verification tier at line rate. It retries on an exponential schedule: a few seconds, then a dozen, then a minute, then several, then a quarter-hour, then an hour, until either the network returns or the backoff reaches its ceiling. When the network returns, the replicator drains the SQLite log in order, submitting each root exactly once, and the kernel at the verification tier receives the roots in the order the edge produced them, with the receipts the edge computed. The chain head advances as if the outage had not happened.
+
+Resilience, in the ProofBridge sense, is not the absence of failure. It is the disciplined continuation of the record across failure. The network may go down; the wind may come up; the substation may trip. The edge keeps logging, keeps signing, keeps folding, keeps sealing. When the network returns, the truth returns with it.
+
+## Part 19 — The WORM Head `E965B01D`
+
+Every chain has a head. The head is the public, citable identifier of the chain's current state — the single digest that an auditor can quote, compare, and verify against. ProofBridge's WORM chain head, as of this publication, is `E965B01D`. It is rendered in uppercase, eight hex digits, in the running header of this very issue: `EDGE: GQEBERHA • WORM HEAD: E965B01D`. It is also, more fully, a thirty-two-byte digest of which the first four bytes happen to be `E9 65 B0 1D`. The short form is the citable form; the long form is the verifiable form.
+
+The head is not a marketing string. It is the kernel's `historicalRoots` array, condensed. More precisely, the head is the digest that an external reader obtains by replaying the entire `historicalRoots` array from `currentIndex = 0` to `currentIndex = N` and hashing the result under a fixed ordering. An auditor who reads `E965B01D` in a court exhibit and reads `E965B01D` from a public chain reader has confirmed, in a single eight-character comparison, that the ledger in the exhibit and the ledger on the chain are the same ledger, with the same roots, in the same order, at the same index.
+
+The head is the genesis receipt in a second sense. It is the first thing the system quotes about itself, and the first thing an auditor asks of it. When ProofBridge is described in a partnership memorandum, in a municipal letter, in a sponsor's internal note, the head is the identifier that travels with the description. It is the system's name in the only namespace that resists renaming. Vaguely Magazine can change its tagline; Venture Vision Ubuntu can change its letterhead; the WORM head can change only by deploying a new chain, and a new chain has a new head, and a new head is a public event that no one can pretend did not happen.
+
+The head is also a promise the system makes to its own future. As long as the head is `E965B01D`, the chain is the chain. The day the head changes, the chain has changed, and the change is visible to every auditor who has ever quoted the old head. The head is the contract's way of saying, to everyone who has ever read it: *if I am not the same as I was when you read me, you will know.*
+
+## Part 20 — From The Ledger To The Water
+
+The ProofBridge WORM Ledger, taken as a whole, is a small and severe machine. It is twenty-six lines of Solidity, eleven edge beats, thirty-two bytes of working memory, two Ed25519 signatures, a twenty-four-hour tolerance for the city's wind, and a single eight-hex-digit head that any auditor can quote. It is small because smallness is verifiable, severe because severity is honest, and bound because the unbounded is the first refuge of the falsifier. It was built in a single night in July 2026 by a man who had been told, again, that his record was not his to defend, and it has been running, in one form or another, since.
+
+The ledger, however, is not the whole of Venture Vision Ubuntu. A ledger that records nothing is a ledger that protects nothing, and the ProofBridge ledger exists to record something — specifically, to record the truth about water. The readings the edge ingests, the roots the kernel seals, and the receipts the chain emits all describe the same physical fact: that a community, somewhere in the Eastern Cape, has or has not got clean water, and that the systems set up to provide it are or are not working.
+
+To record that fact, the edge has to be fed by hardware that touches the water itself. The next section turns from the ledger to the lab — to the twelve-metre repurposed container, the Jojo tank, the solar array, the stainless-steel piping, and the Hydro-Bayesian bench on which the ESP32-S3 sits and listens. Section 4 follows the truth from the chain head back to the pipe, and shows how the same discipline that froze the kernel shapes the hub.

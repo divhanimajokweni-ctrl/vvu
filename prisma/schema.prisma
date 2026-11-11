@@ -1,0 +1,102 @@
+// VVU — Venture Vision Ubuntu · digital twin publishing estate
+// SQLite-backed transient store. Every row has a TTL — the Mayfly principle.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  // The model: one free build, ever. After that, daily builds reset.
+  freeBuildUsed Boolean   @default(false)
+  exportUsed    Boolean   @default(false)
+  tier          String    @default("FREE_DAILY") // FREE_BUILD | FREE_DAILY | COMMERCIAL
+  licenceId     String?
+  lastBuildAt   DateTime?
+  builds        Build[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Build {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  twinName   String
+  // SHA-256 of the (simulated) twin content — the artifact fingerprint
+  twinHash   String
+  tier       String // FREE_BUILD | FREE_DAILY | COMMERCIAL
+  fidelity   String @default("T1") // T0 | T1 | T2
+  surface    String @default("rig") // rig | map | assembly | lab | admin | viewer
+  status     String @default("BUILT") // BUILT | EXPIRED | DELETED
+  // 24h on free daily, longer on commercial. The TTL is the product boundary.
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  shares     Share[]
+  exports    Export[]
+  chain      ChainEvent[]
+}
+
+model Share {
+  id           String      @id @default(cuid())
+  // the signed token id — what appears in share.vvu.co.za/{shareId}
+  shareId      String      @unique
+  buildId      String
+  build        Build       @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  tier         String
+  viewerLimit  Int
+  viewerCount  Int         @default(0)
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  // the canonical (JCS) signed payload, base64
+  tokenPayload String
+  tokenSig     String
+  createdAt    DateTime    @default(now())
+
+  @@index([shareId])
+}
+
+model ShareView {
+  id         String   @id @default(cuid())
+  shareRef   String // references Share.shareId — denormalised for cheap lookup
+  viewerHash String // SHA-256(IP + UA + shareId) — privacy-preserving dedup
+  viewedAt   DateTime @default(now())
+
+  @@index([shareRef])
+}
+
+model Export {
+  id        String   @id @default(cuid())
+  buildId   String
+  build     Build    @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  licence   String   @default("MIT")
+  // SHA-256 of the exported markdown — provenance for the MIT artefact
+  fileHash  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+}
+
+model ChainEvent {
+  id         String   @id @default(cuid())
+  buildId    String
+  build      Build    @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  seq        Int
+  // TWIN_BUILT | TWIN_SHARED | SHARE_VIEWED | SHARE_REVOKED | SHARE_EXPIRED |
+  // SHARE_EXHAUSTED | TWIN_EXPORTED | TWIN_DELETED | COMMERCIAL_LICENCE_ISSUED
+  eventType  String
+  // RFC-8785 JCS canonical JSON of the payload
+  payload    String
+  // SHA-256(payload) — the source hash
+  sourceHash String
+  // SHA-256(prevChainHash || sourceHash) — the chain link
+  chainHash  String
+  createdAt  DateTime @default(now())
+
+  @@index([buildId, seq])
+}

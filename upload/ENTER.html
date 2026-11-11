@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>EARTH TECH · CAD Native Hologram</title>
+<style>
+  :root{
+    --void:#020406; --glass:rgba(8,12,16,.85); --border:rgba(0,240,255,.2); --text:#e2e8f0;
+    --dim:#64748b; --cyan:#00f0ff; --green:#00ff88; --amber:#f59e0b; --red:#ef4444;
+    --font:'SF Mono','Fira Code',ui-monospace,Menlo,monospace;
+    --safe-bottom: env(safe-area-inset-bottom, 20px);
+  }
+  
+  *{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-tap-highlight-color:transparent}
+  
+  body{
+    background:var(--void); color:var(--text); font:12px var(--font); 
+    height:100dvh; /* Mobile fix: Dynamic Viewport Height */
+    overflow:hidden; display:flex; flex-direction:column;
+  }
+
+  /* --- HEADER --- */
+  header{
+    background:var(--glass); backdrop-filter:blur(20px); border-bottom:1px solid var(--border);
+    padding:12px 16px; display:flex; justify-content:space-between; align-items:center; 
+    z-index:100; gap:8px; flex-wrap:wrap; min-height:60px;
+  }
+  .brand{display:flex; align-items:center; gap:8px; color:var(--cyan); font-weight:700; font-size:14px; letter-spacing:1px}
+  .logo-mark{font-size:16px; font-weight:900; text-shadow:0 0 10px rgba(0,240,255,.5)}
+  .logo-mark span{opacity:.5}
+  .sys-status{display:flex; gap:10px; font-size:9px; letter-spacing:1px; align-items:center}
+  .status-item{display:flex; align-items:center; gap:4px; color:var(--dim)}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+  .dot.c{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .dot.a{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+  #exit{display:none;cursor:pointer;color:var(--cyan);padding:4px}
+  body.ws #exit{display:flex}
+
+  /* --- STAGE (3D Canvas) --- */
+  main{display:flex; flex:1; position:relative; overflow:hidden}
+  #stage{position:absolute; inset:0; z-index:1; cursor:crosshair}
+  #threeCanvas{width:100%; height:100%; display:block}
+  .crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;z-index:5;pointer-events:none;opacity:.3}
+  .crosshair::before,.crosshair::after{content:'';position:absolute;background:var(--cyan)}
+  .crosshair::before{top:9px;left:0;width:20px;height:2px}
+  .crosshair::after{top:0;left:9px;width:2px;height:20px}
+  
+  #enter{
+    position:absolute; right:16px; bottom:20px; z-index:20; display:flex; align-items:center; gap:8px;
+    padding:12px 18px; background:var(--glass); backdrop-filter:blur(18px); border:1px solid var(--cyan); 
+    border-radius:8px; color:var(--cyan); font:11px var(--font); letter-spacing:2px; cursor:pointer;
+    box-shadow:0 0 20px rgba(0,240,255,.2); transition:.2s;
+  }
+  body.ws #enter{display:none}
+
+  /* --- MOBILE BOTTOM NAV --- */
+  .mobile-nav {
+    display: flex; justify-content: space-around; background: var(--glass);
+    backdrop-filter: blur(20px); border-top: 1px solid var(--border);
+    padding-bottom: var(--safe-bottom); z-index: 110; position: relative;
+  }
+  .mobile-nav button {
+    flex: 1; padding: 16px 8px; background: transparent; border: none; color: var(--dim);
+    font: 10px var(--font); text-transform: uppercase; letter-spacing: 1px;
+    transition: color 0.2s; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .mobile-nav button.active { color: var(--cyan); border-bottom: 2px solid var(--cyan); }
+
+  /* --- HUD PANELS --- */
+  .hud {
+    position: absolute; z-index: 10; background: var(--glass); backdrop-filter: blur(16px);
+    border: 1px solid var(--border); border-radius: 12px 12px 0 0; 
+    box-shadow: 0 -10px 30px rgba(0,0,0,.8);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex; flex-direction: column;
+  }
+  
+  /* Mobile Default: Bottom Sheet */
+  .hud {
+    bottom: 0; left: 0; right: 0; width: 100%;
+    max-height: 55vh; transform: translateY(100%);
+    border-bottom: none;
+  }
+  .hud.open { transform: translateY(0); }
+  
+  .hud-head {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px; 
+    padding: 14px 16px; cursor: pointer; color: var(--cyan); font-size: 11px; 
+    letter-spacing: 2px; text-transform: uppercase; border-bottom: 1px solid var(--border);
+    background: rgba(0, 240, 255, 0.05);
+  }
+  .hud-body { padding: 16px; overflow-y: auto; flex: 1; }
+
+  /* Typography & Rows */
+  .row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; font-size: 11px; }
+  .k { color: var(--dim); } .v { font-weight: 700; text-align: right; }
+  .hi { color: var(--green); } .warn { color: var(--amber); } .bad { color: var(--red); }
+  
+  /* Buttons */
+  .controls { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .btn {
+    flex: 1; min-width: 70px; min-height: 44px; padding: 8px; background: transparent; 
+    border: 1px solid var(--border); color: var(--cyan); font: 11px var(--font);
+    text-transform: uppercase; cursor: pointer; transition: .2s; border-radius: 6px;
+  }
+  .btn:hover, .btn:active { background: rgba(0, 240, 255, 0.1); border-color: var(--cyan); }
+  .btn.active { background: var(--cyan); color: var(--void); }
+  .btn.g { color: var(--green); border-color: rgba(0, 255, 136, 0.3); }
+  .btn.g:active { background: rgba(0, 255, 136, 0.1); border-color: var(--green); }
+
+  /* Inputs & Logs */
+  textarea, input[type=text] {
+    width: 100%; background: rgba(0,0,0,.45); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font: 12px var(--font); padding: 12px; resize: vertical; outline: none;
+  }
+  textarea:focus, input:focus { border-color: var(--cyan); }
+  .prompt-row { display: flex; gap: 8px; margin-bottom: 12px; flex-direction: column; }
+  @media(min-width: 480px) { .prompt-row { flex-direction: row; } }
+  
+  .log { height: 120px; overflow: auto; background: rgba(0,0,0,.45); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 10px; line-height: 1.6; color: #9fb6c4; margin-top: 12px; }
+  
+  /* Training Stages */
+  .stages { display: flex; flex-direction: column; gap: 8px; }
+  .stg { display: flex; align-items: center; gap: 10px; font-size: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; opacity: .42; }
+  .stg.on { opacity: 1; border-color: var(--cyan); background: rgba(0, 240, 255, 0.06); }
+  .stg.done { opacity: 1; border-color: rgba(0, 255, 136, 0.35); }
+  .stg-n { color: var(--cyan); font-weight: 700; }
+  .stg-mid { flex: 1; min-width: 0; }
+  .stg-name { font-size: 11px; color: var(--text); }
+  .stg-detail { font-size: 9px; color: var(--dim); margin: 2px 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stg-mark { color: var(--dim); }
+  .stg.done .stg-mark { color: var(--green); }
+  .bar { height: 4px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .bar>i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--green)); width: 0; transition: width .15s linear; }
+  .bar.big { height: 6px; margin: 14px 0; }
+
+  /* --- DESKTOP OVERRIDE --- */
+  @media(min-width: 1024px) {
+    .mobile-nav { display: none; }
+    .hud {
+      width: 300px; max-height: none; bottom: auto; border-radius: 8px; 
+      transform: none !important; border-bottom: 1px solid var(--border);
+    }
+    .hud.collapsed { max-height: 38px; overflow: hidden; }
+    #panel-cad { top: 20px; left: 20px; }
+    #panel-io { bottom: 20px; left: 20px; }
+    #panel-zoo { top: 20px; right: 20px; }
+    #panel-train { top: 20px; right: 340px; }
+    body.ws #panel-cad { top: auto; bottom: 20px; }
+    #enter { top: 50%; bottom: auto; right: 40px; transform: translateY(-50%); padding: 16px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><div class="logo-mark">{=<span>/</span>&lt;}</div>EARTH TECH</div>
+  <div class="sys-status">
+    <div class="status-item"><div class="dot"></div>CAD</div>
+    <div class="status-item"><div class="dot c"></div>HOLO</div>
+    <div class="status-item"><div class="dot a" id="d-serial"></div><span id="s-serial">IDLE</span></div>
+    <div class="status-item" id="exit" onclick="setView('home')">← EXIT</div>
+  </div>
+</header>
+
+<main>
+  <div id="stage"><canvas id="threeCanvas"></canvas></div>
+  <div class="crosshair"></div>
+
+  <button id="enter" onclick="setView('workspace')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+      <path d="M3 21V8l6-4 6 4v13"/><path d="M9 21v-6h6v6"/><path d="M15 11h6v10h-6"/></svg>
+    ENTER WORKSPACE</button>
+
+  <!-- HUD: CAD -->
+  <section class="hud" id="panel-cad">
+    <div class="hud-head" onclick="toggleHud('panel-cad')"><span>CAD Native Context</span><span>▾</span></div>
+    <div class="hud-body">
+      <div class="row"><span class="k">MODEL</span><span class="v">EARTH-TECH-GEO-01</span></div>
+      <div class="row"><span class="k">KERNEL</span><span class="v">ZOO ENGINE (WEBGL)</span></div>
+      <div class="row"><span class="k">GEOMETRY</span><span class="v">PARAMETRIC LATHE</span></div>
+      <div class="row"><span class="k">NODES</span><span class="v" id="nodes">—</span></div>
+      <div class="row"><span class="k">TOLERANCE</span><span class="v hi" id="tol">± 0.005 mm</span></div>
+      <div class="row"><span class="k">FPS</span><span class="v hi" id="fps">—</span></div>
+      <div class="controls">
+        <button class="btn active" id="btn-holo" onclick="toggleHologram()">HOLO</button>
+        <button class="btn" id="btn-wire" onclick="toggleWireframe()">WIRE</button>
+        <button class="btn" onclick="Zoo.compile('manual rebuild')">REBUILD</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- HUD: IO -->
+  <section class="hud" id="panel-io">
+    <div class="hud-head" onclick="toggleHud('panel-io')"><span>Arduino Edge</span><span>▾</span></div>
+    <div class="hud-body">
+      <div class="row"><span class="k">MCU</span><span class="v" id="mcu">ESP32-S3 (IDLE)</span></div>
+      <div class="row"><span class="k">LINK</span><span class="v warn" id="link">IDLE</span></div>
+      <div class="row"><span class="k">PIN</span><span class="v">GPIO 34 (ADC)</span></div>
+      <div class="row"><span class="k">FLOW</span><span class="v" id="t-flow">0.00 L/s</span></div>
+      <div class="row"><span class="k">ACOUSTIC</span><span class="v" id="t-acou">0.00 V</span></div>
+      <div class="row"><span class="k">TEMP</span><span class="v" id="t-temp">— °C</span></div>
+      <div class="controls">
+        <button class="btn" onclick="Serial.connect()">CONNECT</button>
+        <button class="btn g" onclick="Serial.pulse()">PULSE</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- HUD: ZOO -->
+  <section class="hud" id="panel-zoo">
+    <div class="hud-head" onclick="toggleHud('panel-zoo')"><span>Zoo CAD Layer · KCL</span><span>▾</span></div>
+    <div class="hud-body">
+      <div class="row"><span class="k">ENGINE</span><span class="v">CLOUD GPU</span></div>
+      <div class="row"><span class="k">PIPELINE</span><span class="v">KCL → GLB · DRACO</span></div>
+      <div class="prompt-row">
+        <input type="text" id="cad-prompt" placeholder='e.g. "taller, more flare"' onkeydown="if(event.key==='Enter')Zoo.prompt(this.value)">
+        <button class="btn" style="flex:0 0 auto" onclick="Zoo.prompt(document.getElementById('cad-prompt').value)">GEN</button>
+      </div>
+      <textarea id="kcl" rows="6" spellcheck="false"></textarea>
+      <div class="controls"><button class="btn" onclick="Zoo.parseKCL(document.getElementById('kcl').value)">COMPILE ▸ GLB</button></div>
+      <div class="log" id="zoo-log"></div>
+    </div>
+  </section>
+
+  <!-- HUD: TRAIN -->
+  <section class="hud" id="panel-train">
+    <div class="hud-head" onclick="toggleHud('panel-train')"><span>Training · <span id="train-pct">0%</span> <span id="loop-ms"></span></span><span>▾</span></div>
+    <div class="hud-body">
+      <div class="stages" id="stages"></div>
+      <div class="bar big"><i id="train-bar"></i></div>
+      <div class="log" id="train-log"></div>
+    </div>
+  </section>
+</main>
+
+<!-- MOBILE NAVIGATION -->
+<nav class="mobile-nav">
+  <button onclick="openTab('panel-cad')" class="active" id="tab-cad">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    CAD
+  </button>
+  <button onclick="openTab('panel-io')" id="tab-io">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 7h10v10H7z"/></svg>
+    IO
+  </button>
+  <button onclick="openTab('panel-zoo')" id="tab-zoo">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    ZOO
+  </button>
+  <button onclick="openTab('panel-train')" id="tab-train">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    TRAIN
+  </button>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+/* =====================================================================
+   EARTH TECH · CAD-Native Holographic Foundation
+   MOBILE-FIRST REFACTOR
+   ===================================================================== */
+
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+const lerp = (a, b, k) => a + (b - a) * k;
+window.$ = $;
+
+// --- MOBILE UI LOGIC ---
+let activeTab = 'panel-cad';
+
+function openTab(id) {
+  // Close all panels
+  document.querySelectorAll('.hud').forEach(el => el.classList.remove('open'));
+  document.querySelectorAll('.mobile-nav button').forEach(el => el.classList.remove('active'));
+  
+  // Open clicked
+  if (activeTab === id && window.innerWidth < 1024) {
+    // Toggle close if clicking same tab
+    activeTab = null;
+  } else {
+    $(id).classList.add('open');
+    $('tab-' + id.replace('panel-', '')).classList.add('active');
+    activeTab = id;
+  }
+}
+
+function toggleHud(id) {
+  if (window.innerWidth >= 1024) {
+    $(id).classList.toggle('collapsed');
+  } else {
+    $(id).classList.remove('open');
+    document.querySelectorAll('.mobile-nav button').forEach(el => el.classList.remove('active'));
+    activeTab = null;
+  }
+}
+
+// Ensure only 1 panel is open on desktop
+window.addEventListener('resize', () => {
+  if (window.innerWidth >= 1024) {
+    document.querySelectorAll('.hud').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.mobile-nav button').forEach(el => el.classList.remove('active'));
+  }
+});
+
+
+// --- THREE.JS LOGIC (Untouched) ---
+const WATER_Y = -5.4;
+const canvas = $('threeCanvas');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x020406);
+scene.fog = new THREE.FogExp2(0x020406, 0.022);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 400);
+camera.position.set(0, 5, 15);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+const clock = new THREE.Clock();
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.0;
+controls.target.set(0, -1, 0);
+
+scene.add(new THREE.AmbientLight(0x36444e, 0.9));
+const sun = new THREE.DirectionalLight(0x9fd8e0, 0.85);
+sun.position.set(6, 12, 8);
+scene.add(sun);
+const glowPt = new THREE.PointLight(0x00f0ff, 0.7, 70);
+glowPt.position.set(0, 2, 0);
+scene.add(glowPt);
+
+// Holographic material
+const holoVertex = `
+  varying vec3 vNormal; varying vec3 vViewPosition; varying vec2 vUv;
+  void main() {
+    vNormal = normalize(normalMatrix * normal);
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vViewPosition = -mvPosition.xyz; vUv = uv;
+    gl_Position = projectionMatrix * mvPosition;
+  }`;
+const holoFragment = `
+  uniform vec3 uColor; uniform float uTime; uniform float uOpacity;
+  varying vec3 vNormal; varying vec3 vViewPosition; varying vec2 vUv;
+  void main() {
+    float fresnel = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 2.0);
+    float scanline = sin(vUv.y * 100.0 - uTime * 5.0) * 0.1 + 0.9;
+    float grid = step(0.98, fract(vUv.x * 20.0)) + step(0.98, fract(vUv.y * 20.0));
+    vec3 finalColor = uColor * (0.5 + fresnel * 1.5) * scanline + (uColor * grid * 0.3);
+    float alpha = (0.1 + fresnel * 0.8) * uOpacity * scanline;
+    gl_FragColor = vec4(finalColor, alpha);
+  }`;
+const holoMaterial = new THREE.ShaderMaterial({
+  uniforms: { uColor: { value: new THREE.Color(0x00f0ff) }, uTime: { value: 0 }, uOpacity: { value: 1.0 } },
+  vertexShader: holoVertex, fragmentShader: holoFragment, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+});
+const wireMaterial = new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true, transparent: true, opacity: 0.2 });
+const holoBase = new THREE.Color(0x00f0ff);
+const holoHot = new THREE.Color(0xffffff);
+let holoPulseT = 0;
+function setHoloTint(hex) { holoBase.setHex(hex); holoMaterial.uniforms.uColor.value.copy(holoBase); }
+function holoPulse() { holoPulseT = 0.9; }
+
+// Water
+const Water = (() => {
+  const MAXR = 16;
+  const ripples = []; for (let i = 0; i < MAXR; i++) ripples.push(new THREE.Vector4(0, 0, -100, 0));
+  let idx = 0;
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0x00f0ff) }, uRipples: { value: ripples } },
+    vertexShader: `
+      uniform float uTime; uniform vec4 uRipples[16];
+      varying vec2 vUv; varying vec2 vXY; varying float vH;
+      float ripH(vec2 p, vec4 r) {
+        float t = uTime - r.z;
+        if (r.w <= 0.0 || t <= 0.0 || t > 4.5) return 0.0;
+        float d = distance(p, r.xy); float radius = t * 2.6; float dd = d - radius;
+        float ring = exp(-dd * dd * 3.5); float wave = sin(dd * 14.0);
+        return wave * ring * exp(-t * 1.05) * exp(-d * 0.12) * r.w;
+      }
+      void main() {
+        vUv = uv; vXY = position.xy; vec3 pos = position;
+        float h = sin(pos.x * 1.4 + uTime * 1.1) * 0.018 + cos(pos.y * 1.2 + uTime * 0.8) * 0.018;
+        for (int i = 0; i < 16; i++) h += ripH(pos.xy, uRipples[i]);
+        pos.z += h; vH = h;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor; uniform float uTime; varying vec2 vUv; varying vec2 vXY; varying float vH;
+      void main() {
+        float glow = smoothstep(0.0, 0.16, abs(vH)); float crest = smoothstep(0.05, 0.30, vH);
+        float grid = step(0.965, fract(vUv.x * 48.0)) + step(0.965, fract(vUv.y * 48.0));
+        float scan = 0.9 + 0.1 * sin(vXY.y * 30.0 - uTime * 2.5);
+        float fade = 1.0 - smoothstep(13.0, 17.5, length(vXY));
+        vec3 col = uColor * (0.28 + glow * 2.4 + crest * 0.8) + uColor * grid * 0.10;
+        float alpha = (0.07 + glow * 0.5 + crest * 0.25 + grid * 0.04) * scan * fade;
+        gl_FragColor = vec4(col, alpha);
+      }`,
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(36, 36, 128, 128), mat);
+  mesh.rotation.x = -Math.PI / 2; mesh.position.y = WATER_Y;
+  scene.add(mesh); mesh.updateMatrixWorld(true);
+  return {
+    mesh,
+    splash(worldPoint, amp) { const lp = mesh.worldToLocal(worldPoint.clone()); ripples[idx % MAXR].set(lp.x, lp.y, clock.elapsedTime, amp); idx++; },
+    update(t) { mat.uniforms.uTime.value = t; }
+  };
+})();
+
+// Droplets
+const Droplets = (() => {
+  const N = 34; const items = [];
+  const geo = new THREE.SphereGeometry(0.07, 8, 6);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x9ffcff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+  for (let i = 0; i < N; i++) {
+    const m = new THREE.Mesh(geo, mat); m.visible = false; scene.add(m);
+    items.push({ m, x: 0, z: 0, y: 0, v: 0, wait: rand(0.1, 3.2) });
+  }
+  return {
+    update(dt) {
+      for (const d of items) {
+        if (d.wait > 0) { d.wait -= dt; continue; }
+        if (!d.m.visible) {
+          const a = Math.random() * Math.PI * 2, r = rand(2.0, 9.2);
+          d.x = Math.cos(a) * r; d.z = Math.sin(a) * r; d.y = rand(2.0, 6.0); d.v = rand(-0.6, 0); d.m.visible = true;
+        }
+        d.v -= 6.8 * dt; d.y += d.v * dt;
+        if (d.y <= WATER_Y + 0.02) { Water.splash(new THREE.Vector3(d.x, WATER_Y, d.z), rand(0.05, 0.15)); d.m.visible = false; d.wait = rand(0.1, 1.7); }
+        else { d.m.position.set(d.x, d.y, d.z); }
+      }
+    }
+  };
+})();
+
+// Home Scene
+const homeGroup = new THREE.Group(); scene.add(homeGroup);
+const cadGroup = new THREE.Group(); homeGroup.add(cadGroup);
+const tubesGroup = new THREE.Group(); cadGroup.add(tubesGroup);
+let vessel = null, vesselWire = null, ringMesh = null;
+
+function vesselProfile(P) {
+  const pts = [new THREE.Vector2(0.001, 0)]; const N = 26;
+  for (let i = 0; i <= N; i++) {
+    const u = i / N; const y = u * P.height;
+    let r = P.base + (P.mid - P.base) * Math.sin(u * Math.PI * 0.85);
+    r += P.flare * Math.pow(u, 3) * 1.6;
+    r += 0.22 * Math.sin(u * Math.PI * P.lobes * 2) * (0.35 + u);
+    pts.push(new THREE.Vector2(Math.max(0.08, r), y));
+  }
+  return pts;
+}
+
+function buildVessel(P) {
+  if (vessel) { cadGroup.remove(vessel); cadGroup.remove(vesselWire); vessel.geometry.dispose(); }
+  tubesGroup.children.slice().forEach(t => { tubesGroup.remove(t); t.geometry.dispose(); });
+  if (ringMesh) { cadGroup.remove(ringMesh); ringMesh.geometry.dispose(); }
+  const geo = new THREE.LatheGeometry(vesselProfile(P), 72);
+  vessel = new THREE.Mesh(geo, holoMaterial); vessel.position.y = -5;
+  vesselWire = new THREE.Mesh(geo, wireMaterial); vesselWire.position.y = -5;
+  cadGroup.add(vessel); cadGroup.add(vesselWire);
+  for (let i = 0; i < P.pipes; i++) {
+    const a = (i / Math.max(P.pipes, 1)) * Math.PI * 2;
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(Math.cos(a) * (P.base + 0.4), -5, Math.sin(a) * (P.base + 0.4)),
+      new THREE.Vector3(Math.cos(a + 0.5) * (P.mid * 1.3), -5 + P.height * 0.5, Math.sin(a + 0.5) * (P.mid * 1.3)),
+      new THREE.Vector3(Math.cos(a) * (P.mid * 0.55 + 0.3), -5 + P.height, Math.sin(a) * (P.mid * 0.55 + 0.3))
+    ]);
+    tubesGroup.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.16, 8, false), holoMaterial));
+  }
+  ringMesh = new THREE.Mesh(new THREE.TorusGeometry(P.ring, 0.28, 16, 64), holoMaterial);
+  ringMesh.rotation.x = Math.PI / 2; ringMesh.position.y = -5; cadGroup.add(ringMesh);
+  let nodes = geo.attributes.position.count + 17 * 65;
+  tubesGroup.children.forEach(t => nodes += t.geometry.attributes.position.count);
+  const nEl = $('nodes'); if (nEl) nEl.textContent = nodes.toLocaleString('en-US');
+}
+
+// Arduino
+const arduinoGroup = new THREE.Group(); arduinoGroup.position.set(6.5, -4, 4); homeGroup.add(arduinoGroup);
+arduinoGroup.add(new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 2), new THREE.MeshStandardMaterial({ color: 0x053322, roughness: 0.4 })));
+const arduinoChip = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, 1), new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8 }));
+arduinoChip.position.set(0, 0.2, 0); arduinoGroup.add(arduinoChip);
+const ledMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+const arduinoLed = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 16), ledMat);
+arduinoLed.position.set(1, 0.2, 0.5); arduinoGroup.add(arduinoLed);
+let ledPulseT = 0; function flashLed() { ledPulseT = 0.18; }
+
+// Grid
+const grid = new THREE.GridHelper(46, 46, 0x00f0ff, 0x0a1a2a);
+grid.position.y = -5.5; grid.material.transparent = true; grid.material.opacity = 0.16; scene.add(grid);
+
+// Zoo
+const Zoo = {
+  defaults: { base: 0.9, mid: 2.0, height: 9.5, flare: 0.5, lobes: 3, pipes: 4, ring: 3.0 },
+  P: { base: 0.9, mid: 2.0, height: 9.5, flare: 0.5, lobes: 3, pipes: 4, ring: 3.0 },
+  log(msg) {
+    const box = $('zoo-log'); const d = document.createElement('div'); d.textContent = msg;
+    box.appendChild(d); while (box.children.length > 50) box.removeChild(box.firstChild); box.scrollTop = box.scrollHeight;
+  },
+  toKCL() {
+    const P = this.P;
+    return '// EARTH-TECH-GEO-01 · parametric revolve\n\nbase_radius = ' + P.base.toFixed(2) + '   // mm\nmid_radius  = ' + P.mid.toFixed(2) + '\nheight      = ' + P.height.toFixed(2) + '\nflare       = ' + P.flare.toFixed(2) + '\nlobes       = ' + P.lobes + '\n\nfn profile(u) {\n  r = base_radius + (mid_radius - base_radius) * sin(u * 2.67)\n  r = r + flare * pow(u, 3) * 1.6\n  r = r + 0.22 * sin(u * PI * lobes * 2) * (0.35 + u)\n  return [r, u * height]\n}\n\nsketch001 = startSketchOn(\'XY\')\nrevolve001 = revolve(angle = 360, sketch001)\nexport(\'glTF 2.0 binary\') // Draco · LOD3';
+  },
+  syncKCL() { $('kcl').value = this.toKCL(); },
+  parseKCL(text) {
+    const grab = k => { const m = text.match(new RegExp(k + '\\s*=\\s*([-0-9.]+)')); return m ? parseFloat(m[1]) : null; };
+    const P = this.P; const b = grab('base_radius'), m2 = grab('mid_radius'), h = grab('height'), f = grab('flare'), l = grab('lobes');
+    if (b !== null) P.base = clamp(b, 0.2, 2.5);
+    if (m2 !== null) P.mid = clamp(m2, 0.5, 3.4);
+    if (h !== null) P.height = clamp(h, 3, 14);
+    if (f !== null) P.flare = clamp(f, 0, 1.8);
+    if (l !== null) P.lobes = clamp(Math.round(l), 0, 7);
+    this.compile('KCL edit');
+  },
+  prompt(text) {
+    text = (text || '').trim(); if (!text) return;
+    const P = this.P; const adj = []; const hit = (re, fn, label) => { if (re.test(text)) { fn(); adj.push(label); } };
+    hit(/reset|default/, () => Object.assign(P, this.defaults), 'params reset');
+    hit(/tall|higher|height/, () => { P.height = clamp(P.height + 1.5, 4, 14); }, 'height+1.5');
+    hit(/wide|fat|broader/, () => { P.mid = clamp(P.mid + 0.4, 1, 3.4); }, 'mid+0.4');
+    hit(/slim|narrow|thin/, () => { P.mid = clamp(P.mid - 0.4, 1, 3.4); }, 'mid-0.4');
+    hit(/flare|trumpet|mouth/, () => { P.flare = clamp(P.flare + 0.25, 0, 1.8); }, 'flare+0.25');
+    hit(/wave|lobe|ripple|organic/, () => { P.lobes = clamp(P.lobes + 1, 0, 7); }, 'lobes+1');
+    hit(/pipe|conduit|tube/, () => { P.pipes = clamp(P.pipes + 1, 0, 8); }, 'pipes+1');
+    this.log('ML-ephant ▸ "' + text + '" → ' + (adj.join(', ') || 'no-op'));
+    setTimeout(() => this.compile('text-to-cad'), 450);
+  },
+  compile(src) {
+    this.log('Kernel ▸ compiling (' + src + ') → GPU …');
+    buildVessel(this.P);
+    Factory.rebuildCell(this.P);
+    this.log('File Transform ▸ .glb hot-swapped');
+    this.syncKCL();
+  }
+};
+window.Zoo = Zoo;
+
+// Factory
+const Factory = (() => {
+  const g = new THREE.Group(); g.visible = false; scene.add(g);
+  const steel = new THREE.MeshStandardMaterial({ color: 0x16303e, metalness: 0.75, roughness: 0.3 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x0c1620, metalness: 0.5, roughness: 0.6 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(46, 30), new THREE.MeshStandardMaterial({ color: 0x05090d, roughness: 0.9 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -5.56; g.add(floor);
+  
+  const conv = new THREE.Group(); conv.position.set(-10, 0, 0); g.add(conv);
+  conv.add(new THREE.Mesh(new THREE.BoxGeometry(13, 0.14, 1.7), dark));
+  conv.children[0].position.y = -5.05;
+  const drumGeo = new THREE.CylinderGeometry(0.28, 0.28, 1.9, 20);
+  const drumL = new THREE.Mesh(drumGeo, steel); drumL.rotation.x = Math.PI / 2; drumL.position.set(-6.5, -5.05, 0); conv.add(drumL);
+  const drumR = new THREE.Mesh(drumGeo, steel); drumR.rotation.x = Math.PI / 2; drumR.position.set(6.5, -5.05, 0); conv.add(drumR);
+
+  const cell = new THREE.Group(); cell.position.set(1.5, -5.5, -4.5); g.add(cell);
+  let cellVessel = null;
+  function rebuildCell(P) {
+    if (cellVessel) { cell.remove(cellVessel); cellVessel.geometry.dispose(); }
+    cellVessel = new THREE.Mesh(new THREE.LatheGeometry(vesselProfile(P), 56), holoMaterial);
+    cellVessel.scale.setScalar(0.38); cell.add(cellVessel);
+  }
+  rebuildCell(Zoo.P);
+  
+  return {
+    group: g, tracesOn: false, loopTest: false, rebuildCell,
+    showSearm() {}, showSupermini() {}, armBurst() {},
+    update(dt, T, avgMs) {
+      drumL.rotateY(dt * 4.6); drumR.rotateY(dt * 4.6);
+      if (cellVessel) cellVessel.rotation.y = T * 0.12;
+      if (this.loopTest) { const el = $('loop-ms'); if (el) el.textContent = avgMs.toFixed(1) + ' ms'; }
+    }
+  };
+})();
+
+// Telemetry
+const Telemetry = {
+  v: 0, f: 0, t: null,
+  set(o) { if (typeof o.v === 'number') this.v = o.v; if (typeof o.f === 'number') this.f = o.f; if (typeof o.t === 'number') this.t = o.t; },
+  bump() { this.v = Math.min(3.3, this.v + 0.8); },
+  walk() {
+    this.v = clamp(this.v + rand(-0.25, 0.28), 0.1, 3.3);
+    this.f = clamp(this.f + rand(-0.3, 0.32), 0, 4.2);
+    this.t = this.t === null ? rand(17, 21) : clamp(this.t + rand(-0.3, 0.3), 15, 26);
+  },
+  render() {
+    $('t-acou').textContent = this.v.toFixed(2) + ' V';
+    $('t-flow').textContent = this.f.toFixed(2) + ' L/s';
+    $('t-temp').textContent = this.t === null ? '— °C' : this.t.toFixed(1) + ' °C';
+  }
+};
+
+// Training
+const STAGES = [
+  { n: 1, name: 'Constitution Check', logs: ['CIPC ▸ ACTIVE', 'SARS ▸ CLEAR', 'B-BBEE ▸ VERIFIED'] },
+  { n: 2, name: 'SEARM-1 CAD Ingest', logs: ['Zookeeper ▸ fetch SEARM-1.kcl', 'Engine API ▸ meshing'] },
+  { n: 3, name: 'SEARM-1 Assembly', logs: ['gantry ▸ homing', 'arm ▸ pick A'], hook() { Factory.showSearm(); Factory.armBurst(); } },
+  { n: 4, name: 'C3 Supermini Assembly', logs: ['arm ▸ pick B'], hook() { Factory.showSupermini(); Factory.armBurst(); } },
+  { n: 5, name: '8-Bit Stack Build', logs: ['PCB ▸ tracing'], hook() { Factory.tracesOn = true; } },
+  { n: 6, name: 'Latency Loop Test', logs: ['loop ▸ engaged'], hook() { Factory.loopTest = true; } },
+  { n: 7, name: 'HIL Serial Handshake', logs: ['ESP32-S3 ▸ opening stream'], hook() { Serial.ensure(); } },
+  { n: 8, name: 'Telemetry Validation', logs: ['flow ▸ nominal'] },
+  { n: 9, name: 'Digital Twin Export', logs: ['OpenUSD ▸ export 8.4 MB'] },
+  { n: 10, name: 'Fault Inject & Fix', logs: ['FAULT ▸ tolerance drift', 'Zookeeper ▸ generating patch'] }
+];
+
+const Training = {
+  started: false, idx: -1, prog: 0, active: null, emitted: 0, faulted: false, patched: false,
+  log(msg) {
+    const box = $('train-log'); const d = document.createElement('div'); d.textContent = msg;
+    box.appendChild(d); while (box.children.length > 70) box.removeChild(box.firstChild); box.scrollTop = box.scrollHeight;
+  },
+  buildDOM() {
+    STAGES.forEach((s, i) => {
+      const el = document.createElement('div'); el.className = 'stg'; el.id = 'stg-' + i;
+      el.innerHTML = '<span class="stg-n">' + String(s.n).padStart(2, '0') + '</span><div class="stg-mid"><div class="stg-name">' + s.name + '</div><div class="bar"><i id="stg-bar-' + i + '"></i></div></div><span class="stg-mark" id="stg-mark-' + i + '">·</span>';
+      $('stages').appendChild(el);
+    });
+  },
+  start() { if (this.started) return; this.started = true; this.log('▲ training pipeline engaged'); setTimeout(() => this.next(), 700); },
+  next() {
+    this.idx++;
+    if (this.idx >= STAGES.length) { $('train-pct').textContent = '100%'; $('train-bar').style.width = '100%'; this.log('✔ ALL STAGES COMPLETE'); setHoloTint(0x00ff88); setTimeout(() => setHoloTint(0x00f0ff), 2400); return; }
+    const s = STAGES[this.idx]; this.prog = 0; this.active = s; this.emitted = 0;
+    const row = $('stg-' + this.idx); row.classList.add('on'); $('stg-mark-' + this.idx).textContent = '▶';
+    this.log('stage ' + s.n + ' ▸ ' + s.name);
+  },
+  tick() {
+    if (!this.active) return; const s = this.active; const i = this.idx;
+    this.prog = Math.min(100, this.prog + rand(1.3, 2.9)); $('stg-bar-' + i).style.width = this.prog.toFixed(0) + '%';
+    const pct = ((i + this.prog / 100) / STAGES.length) * 100;
+    $('train-pct').textContent = pct.toFixed(0) + '%'; $('train-bar').style.width = pct.toFixed(1) + '%';
+    if (s.logs) { while (this.emitted < s.logs.length && this.prog > (this.emitted + 1) * (95 / s.logs.length)) { this.log('  ' + s.logs[this.emitted]); this.emitted++; } }
+    if (s.n === 10) {
+      if (this.prog > 8 && !this.faulted) { this.faulted = true; setHoloTint(0xf59e0b); const t = $('tol'); t.textContent = '± 0.42 mm'; t.className = 'v bad'; }
+      if (this.prog > 62 && !this.patched) { this.patched = true; Zoo.compile('hotfix'); const t = $('tol'); t.textContent = '± 0.005 mm'; t.className = 'v hi'; setHoloTint(0x00f0ff); }
+    }
+    if (this.prog >= 100) { const row = $('stg-' + i); row.classList.remove('on'); row.classList.add('done'); $('stg-mark-' + i).textContent = '✔'; if (s.hook) s.hook(); this.active = null; setTimeout(() => this.next(), 380); }
+  }
+};
+Training.buildDOM();
+let trainAcc = 0;
+
+// Serial
+const Serial = {
+  port: null, connected: false, simTimer: null, buf: '',
+  setStatus(txt, live, dead) {
+    $('s-serial').textContent = txt;
+    const d = $('d-serial'); const c = live ? 'var(--green)' : dead ? 'var(--red)' : 'var(--amber)';
+    d.style.background = c; d.style.boxShadow = '0 0 8px ' + c;
+    const l = $('link'); l.textContent = live ? 'LIVE' : dead ? 'LOST' : 'SIMULATED'; l.className = 'v ' + (live ? 'hi' : dead ? 'bad' : 'warn');
+  },
+  ensure() { if (!this.connected && !this.simTimer) this.simulate(); },
+  simulate() {
+    if (this.simTimer) return; this.setStatus('SIMULATED', false, false); $('mcu').textContent = 'ESP32-S3 (EMULATED)';
+    this.simTimer = setInterval(() => Telemetry.walk(), 480); Training.log('serial ▸ simulated stream');
+  },
+  async connect() {
+    if (this.connected) return;
+    if (!('serial' in navigator)) { this.simulate(); return; }
+    try {
+      const port = await navigator.serial.requestPort(); await port.open({ baudRate: 115200 });
+      this.port = port; this.connected = true; this.setStatus('LIVE', true, false); $('mcu').textContent = 'ESP32-S3 (HW)';
+      if (this.simTimer) { clearInterval(this.simTimer); this.simTimer = null; }
+      this.readLoop();
+    } catch (e) { this.simulate(); }
+  },
+  async readLoop() {
+    const dec = new TextDecoder(); const reader = this.port.readable.getReader();
+    try {
+      while (this.connected) {
+        const res = await reader.read(); if (res.done) break;
+        this.buf += dec.decode(res.value, { stream: true }); let nl;
+        while ((nl = this.buf.indexOf('\n')) >= 0) {
+          const line = this.buf.slice(0, nl).trim(); this.buf = this.buf.slice(nl + 1);
+          if (!line) continue; try { Telemetry.set(JSON.parse(line)); } catch (e) {}
+        }
+      }
+    } catch (e) { this.connected = false; this.setStatus('LOST', false, true); } finally { try { reader.releaseLock(); } catch (e) {} }
+  },
+  write(line) { if (this.port && this.connected && this.port.writable) { const w = this.port.writable.getWriter(); w.write(new TextEncoder().encode(line)); w.releaseLock(); } },
+  pulse() { flashLed(); holoPulse(); Telemetry.bump(); this.write('PULSE\n'); Training.log('TX ▸ PULSE'); }
+};
+window.Serial = Serial;
+
+// View Logic
+let view = 'home'; let camTween = null;
+const HOME_CAM = { x: 0, y: 5, z: 15 }; const WS_CAM = { x: 3, y: 9.5, z: 24 };
+function tweenCam(to) { camTween = { fx: camera.position.x, fy: camera.position.y, fz: camera.position.z, tx: to.x, ty: to.y, tz: to.z, t: 0 }; controls.enabled = false; }
+function setView(v) {
+  if (v === view) return; view = v;
+  document.body.classList.toggle('ws', v === 'workspace');
+  homeGroup.visible = v === 'home'; Factory.group.visible = v === 'workspace';
+  controls.autoRotateSpeed = v === 'home' ? 1.0 : 0.35;
+  tweenCam(v === 'home' ? HOME_CAM : WS_CAM);
+  if (v === 'workspace') Training.start();
+  // Auto open train panel on mobile when entering workspace
+  if (v === 'workspace' && window.innerWidth < 1024) openTab('panel-train');
+}
+window.setView = setView;
+
+let isHolo = true, isWire = false;
+function toggleHologram() { isHolo = !isHolo; holoMaterial.uniforms.uOpacity.value = isHolo ? 1.0 : 0.2; $('btn-holo').classList.toggle('active', isHolo); }
+function toggleWireframe() { isWire = !isWire; wireMaterial.opacity = isWire ? 0.8 : 0.2; holoMaterial.uniforms.uOpacity.value = isWire ? 0.2 : (isHolo ? 1.0 : 0.2); $('btn-wire').classList.toggle('active', isWire); }
+window.toggleHologram = toggleHologram; window.toggleWireframe = toggleWireframe;
+
+const ray = new THREE.Raycaster(); const mouseV = new THREE.Vector2(); let downPos = null;
+renderer.domElement.addEventListener('pointerdown', e => { downPos = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downPos) return; const dx = e.clientX - downPos[0], dy = e.clientY - downPos[1]; downPos = null;
+  if (dx * dx + dy * dy > 25) return;
+  mouseV.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(mouseV, camera); const hit = ray.intersectObject(Water.mesh)[0];
+  if (hit) { Water.splash(hit.point, 0.32); holoPulse(); }
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+});
+
+let T = 0, fpsAcc = 0, fpsCnt = 0, avgMs = 16.7, telAcc = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05); T = clock.elapsedTime;
+  avgMs = avgMs * 0.92 + dt * 1000 * 0.08;
+  trainAcc += dt; if (trainAcc >= 0.09) { trainAcc = 0; Training.tick(); }
+  holoMaterial.uniforms.uTime.value = T; Water.update(T); Droplets.update(dt);
+  if (ledPulseT > 0) { ledPulseT -= dt; ledMat.color.setHex(0xffffff); } else ledMat.color.setHex(0x00ff88);
+  if (holoPulseT > 0) { holoPulseT -= dt; const p = Math.sin((1 - holoPulseT / 0.9) * Math.PI); holoMaterial.uniforms.uColor.value.copy(holoBase).lerp(holoHot, p * 0.5); }
+  if (homeGroup.visible) { cadGroup.rotation.y = T * 0.2; arduinoGroup.position.y = -4 + Math.sin(T * 2) * 0.1; }
+  if (Factory.group.visible) Factory.update(dt, T, avgMs);
+  if (camTween) {
+    camTween.t += dt / 1.1; const k = camTween.t >= 1 ? 1 : 1 - Math.pow(1 - camTween.t, 3);
+    camera.position.set(lerp(camTween.fx, camTween.tx, k), lerp(camTween.fy, camTween.ty, k), lerp(camTween.fz, camTween.tz, k));
+    camera.lookAt(controls.target); if (camTween.t >= 1) { camTween = null; controls.enabled = true; }
+  } else { controls.update(); }
+  telAcc += dt; if (telAcc > 0.25) { telAcc = 0; Telemetry.render(); }
+  fpsCnt++; fpsAcc += dt; if (fpsAcc >= 0.5) { $('fps').textContent = Math.round(fpsCnt / fpsAcc); fpsCnt = 0; fpsAcc = 0; }
+  renderer.render(scene, camera);
+}
+
+buildVessel(Zoo.P); Zoo.syncKCL();
+Zoo.log('Engine API ▸ session open'); Zoo.log('Kernel ▸ mesh complete');
+Telemetry.render(); Water.splash(new THREE.Vector3(0, WATER_Y, 0), 0.4);
+animate();
+</script>
+</body>
+</html>
