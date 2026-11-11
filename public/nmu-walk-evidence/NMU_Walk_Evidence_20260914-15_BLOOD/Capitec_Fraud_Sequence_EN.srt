@@ -1,0 +1,60 @@
+1
+00:00:00,000 --> 00:00:08,000
+Do you see AI as taking people's jobs?
+
+2
+00:00:08,000 --> 00:00:20,000
+IT is safe. But AI will take few jobs like communication networks, servers.
+AI makes mistakes — thousands. ChatGPT gives you 90% correct, but sometimes it gets you bad.
+
+3
+00:00:20,000 --> 00:00:32,000
+Do you trust AI for work? It depends how you use it.
+If you use it for school to do for you, it works against you.
+It's there to assist you, not to do it for you.
+
+4
+00:02:20,000 --> 00:02:35,000
+What must AI do for us to trust it fully like a phone?
+Like we know phone works, petrol in phone?
+
+5
+00:02:35,000 --> 00:02:50,000
+For South Africa it's not easy because our things are not developing like other words.
+Our crime rate is on top. So AI must help catch crime.
+
+6
+00:05:00,000 --> 00:05:20,000
+From push notifications. From transactions that are approved but fraud —
+right through how it happens. The person has the app, has the web, has bank account,
+he transfers himself. But he transfers after being scammed.
+
+7
+00:05:20,000 --> 00:05:40,000
+Our model doesn't just look at transaction like other apps.
+It looks at the sequence how you get to sending money to beneficiary.
+
+8
+00:05:40,000 --> 00:06:00,000
+You get a call 5 minutes, after call, create beneficiary, then send R20,000.
+Hold — something is wrong in that sequence.
+
+9
+00:06:00,000 --> 00:06:20,000
+Normal user: checks balance, scrolls app, uses virtual card.
+Fraud pattern: gets call, checks balance abnormally, then beneficiary enter + immediate send.
+
+10
+00:06:20,000 --> 00:06:40,000
+Even gogos — mama, gogo — they get new story, first R2,000, then R4,000, then R8,000, then R10k.
+One billion lost like that. Money exists. And even if we verify pictures before, still fraud.
+
+11
+00:10:30,000 --> 00:11:00,000
+Windows analogy: Microsoft Word, Excel, Access, Teams — different but one house — Windows OS.
+ProofBridge is same — one house (trust umbrella) that does many things.
+
+12
+00:11:00,000 --> 00:11:20,000
+ProofBridge works to close that — auditing, verifying that this thing really happened, with evidence.
+Anyone can verify themselves. System you can buy.

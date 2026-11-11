@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Black Hole · Relativistic Ray-Tracing + Cinematic HUD</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Space Grotesk', sans-serif;
+            color: #fff;
+            user-select: none;
+        }
+        canvas#bh-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        /* ============================================================
+           CINEMATIC HUD
+           ============================================================ */
+        #hud {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px 32px;
+        }
+
+        /* Top HUD */
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .hud-logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: rgba(0, 255, 255, 0.7);
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+        .hud-logo .sub {
+            font-size: 9px;
+            color: rgba(255,255,255,0.2);
+            letter-spacing: 0.2em;
+            display: block;
+            margin-top: 4px;
+        }
+        .hud-top-right {
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
+            letter-spacing: 0.1em;
+            line-height: 1.8;
+        }
+        .hud-top-right .val {
+            color: rgba(0, 255, 255, 0.6);
+        }
+
+        /* Center Crosshair */
+        .crosshair-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 15;
+            opacity: 0.4;
+        }
+        .crosshair {
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(0, 255, 255, 0.5);
+        }
+        .crosshair::before {
+            width: 1px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .crosshair::after {
+            width: 100%;
+            height: 1px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .crosshair .dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(0, 255, 255, 0.8);
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.4);
+        }
+        .crosshair .ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            border-radius: 50%;
+        }
+        .crosshair .tick {
+            position: absolute;
+            background: rgba(0, 255, 255, 0.3);
+            width: 1px;
+            height: 6px;
+        }
+        .crosshair .tick.t1 { top: -6px; left: 50%; transform: translateX(-50%); }
+        .crosshair .tick.t2 { bottom: -6px; left: 50%; transform: translateX(-50%); }
+        .crosshair .tick.t3 { left: -6px; top: 50%; transform: translateY(-50%); }
+        .crosshair .tick.t4 { right: -6px; top: 50%; transform: translateY(-50%); }
+
+        /* Bottom HUD */
+        .hud-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: auto;
+        }
+
+        /* Parameter Panels */
+        .param-panel {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 16px 20px;
+            min-width: 200px;
+            pointer-events: auto;
+        }
+        .param-panel .title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: rgba(255,255,255,0.2);
+            margin-bottom: 10px;
+        }
+        .param-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+        }
+        .param-row .label {
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 8px;
+        }
+        .param-row .value {
+            color: rgba(0, 255, 255, 0.7);
+            font-weight: 500;
+        }
+        .param-row input[type="range"] {
+            width: 80px;
+            height: 2px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+        .param-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(0, 255, 255, 0.6);
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.2);
+        }
+
+        .param-panel.right {
+            text-align: right;
+            min-width: 160px;
+        }
+        .param-panel.right .param-row {
+            justify-content: flex-end;
+            gap: 16px;
+        }
+
+        /* Orbit Controls Hint */
+        .orbit-hint {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            color: rgba(255,255,255,0.1);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            pointer-events: none;
+            z-index: 5;
+            text-align: center;
+        }
+        .orbit-hint span {
+            color: rgba(0, 255, 255, 0.15);
+        }
+
+        /* Status Indicator */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8px;
+            color: rgba(255,255,255,0.2);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #hud { padding: 16px; }
+            .param-panel { padding: 12px 14px; min-width: 140px; }
+            .param-row { font-size: 8px; }
+            .param-row input[type="range"] { width: 50px; }
+            .hud-logo { font-size: 11px; }
+            .crosshair-container { display: none; }
+            .orbit-hint { bottom: 80px; font-size: 7px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== CANVAS ===== -->
+    <canvas id="bh-canvas"></canvas>
+
+    <!-- ===== CROSSHAIR ===== -->
+    <div class="crosshair-container">
+        <div class="crosshair">
+            <div class="dot"></div>
+            <div class="ring"></div>
+            <div class="tick t1"></div>
+            <div class="tick t2"></div>
+            <div class="tick t3"></div>
+            <div class="tick t4"></div>
+        </div>
+    </div>
+
+    <!-- ===== HUD ===== -->
+    <div id="hud">
+        <!-- Top -->
+        <div class="hud-top">
+            <div class="hud-logo">
+                EVENT HORIZON
+                <span class="sub">✦ Schwarzschild Metric · Ray-Tracing Engine</span>
+            </div>
+            <div class="hud-top-right">
+                <div>FRAME <span class="val" id="frameCount">0000</span></div>
+                <div>FPS <span class="val" id="fpsDisplay">60</span></div>
+                <div>RAYTRACE <span class="val">ACTIVE</span></div>
+            </div>
+        </div>
+
+        <!-- Bottom -->
+        <div class="hud-bottom">
+            <!-- Left Panel: Simulation Parameters -->
+            <div class="param-panel">
+                <div class="title">✦ Simulation Controls</div>
+                <div class="param-row">
+                    <span class="label">Mass (M)</span>
+                    <input type="range" id="massSlider" min="0.5" max="3.0" step="0.1" value="1.5" />
+                    <span class="value" id="massValue">1.5</span>
+                </div>
+                <div class="param-row">
+                    <span class="label">Spin (a/M)</span>
+                    <input type="range" id="spinSlider" min="0.0" max="0.99" step="0.01" value="0.7" />
+                    <span class="value" id="spinValue">0.70</span>
+                </div>
+                <div class="param-row">
+                    <span class="label">Disk Inclination</span>
+                    <input type="range" id="inclinationSlider" min="0" max="90" step="1" value="45" />
+                    <span class="value" id="inclinationValue">45°</span>
+                </div>
+            </div>
+
+            <!-- Right Panel: Telemetry -->
+            <div class="param-panel right">
+                <div class="title">✦ Telemetry</div>
+                <div class="param-row">
+                    <span class="label">Event Horizon</span>
+                    <span class="value" id="ehRadius">2.25</span>
+                </div>
+                <div class="param-row">
+                    <span class="label">Photon Ring</span>
+                    <span class="value" id="photonRing">4.50</span>
+                </div>
+                <div class="param-row">
+                    <span class="label">ISCO</span>
+                    <span class="value" id="iscoRadius">6.00</span>
+                </div>
+                <div class="param-row" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);">
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span>Engine Active</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orbit Hint -->
+    <div class="orbit-hint">🔄 Drag to orbit · <span>Scroll to zoom</span></div>
+
+    <!-- ============================================================
+    THREE.JS + RAY-TRACING SHADER
+    ============================================================ -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+        import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+
+        // ─── DOM refs ───
+        const canvas = document.getElementById('bh-canvas');
+        const frameCountEl = document.getElementById('frameCount');
+        const fpsDisplayEl = document.getElementById('fpsDisplay');
+        const massSlider = document.getElementById('massSlider');
+        const spinSlider = document.getElementById('spinSlider');
+        const inclinationSlider = document.getElementById('inclinationSlider');
+        const massValue = document.getElementById('massValue');
+        const spinValue = document.getElementById('spinValue');
+        const inclinationValue = document.getElementById('inclinationValue');
+        const ehRadiusEl = document.getElementById('ehRadius');
+        const photonRingEl = document.getElementById('photonRing');
+        const iscoRadiusEl = document.getElementById('iscoRadius');
+
+        // ─── Scene ───
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 0.5, 6);
+
+        const renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true,
+            powerPreference: "high-performance"
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+
+        // ─── Controls ───
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.2;
+        controls.minDistance = 2.5;
+        controls.maxDistance = 15;
+        controls.update();
+
+        // ─── Post-Processing ───
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+
+        const bloomPass = new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            0.4, 0.3, 0.05
+        );
+        composer.addPass(bloomPass);
+
+        const fxaaPass = new ShaderPass(FXAAShader);
+        fxaaPass.uniforms['resolution'].value.set(1 / window.innerWidth, 1 / window.innerHeight);
+        composer.addPass(fxaaPass);
+
+        // ─── NULL-GEODESIC RAY-TRACING SHADER ───
+        // This implements a simplified Schwarzschild metric ray-tracing
+        // with photon sphere, gravitational lensing, and accretion disk mapping.
+
+        const raytraceVertex = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const raytraceFragment = `
+            precision highp float;
+
+            uniform float uTime;
+            uniform vec2 uResolution;
+            uniform float uMass;
+            uniform float uSpin;
+            uniform float uInclination;
+            uniform float uAspect;
+
+            varying vec2 vUv;
+
+            // ─── Constants ───
+            #define PI 3.14159265359
+            #define TWO_PI 6.28318530718
+            #define SCHWARZSCHILD_RADIUS 2.0
+
+            // ─── Noise for disk texture ───
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+            float smoothNoise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                float a = hash(i);
+                float b = hash(i + vec2(1.0, 0.0));
+                float c = hash(i + vec2(0.0, 1.0));
+                float d = hash(i + vec2(1.0, 1.0));
+                return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+            }
+
+            // ─── Ray-Sphere Intersection ───
+            float intersectSphere(vec3 origin, vec3 direction, float radius) {
+                float a = dot(direction, direction);
+                float b = 2.0 * dot(origin, direction);
+                float c = dot(origin, origin) - radius * radius;
+                float disc = b * b - 4.0 * a * c;
+                if (disc < 0.0) return -1.0;
+                float t = (-b - sqrt(disc)) / (2.0 * a);
+                return t > 0.0 ? t : -1.0;
+            }
+
+            // ─── Schwarzschild Metric Ray-Tracing ───
+            // Traces a photon path through curved spacetime
+            vec3 tracePhoton(vec3 origin, vec3 direction, float mass) {
+                // Normalize direction
+                vec3 dir = normalize(direction);
+                float rs = SCHWARZSCHILD_RADIUS * mass;
+
+                // Simulate gravitational deflection using a simplified model
+                // We bend the ray based on impact parameter
+
+                // Find closest approach to the black hole
+                float t = -dot(origin, dir);
+                vec3 closest = origin + t * dir;
+                float impact = length(closest);
+
+                // Schwarzschild deflection angle (small-angle approximation)
+                float deflection = (2.0 * rs) / impact;
+
+                // If impact is inside photon sphere, capture the photon
+                float photonSphere = 1.5 * rs;
+                float eventHorizon = rs;
+
+                if (impact < photonSphere && impact > eventHorizon * 0.8) {
+                    // Photon is trapped in the photon sphere
+                    // Return a bright ring color
+                    return vec3(0.8, 0.6, 0.1) * 1.5;
+                }
+
+                if (impact < eventHorizon) {
+                    // Inside event horizon - black
+                    return vec3(0.0);
+                }
+
+                // Apply deflection to the ray direction
+                // Bend the ray towards the black hole
+                vec3 gravityDir = -normalize(closest);
+                float bendStrength = (2.0 * rs) / (impact * impact + rs * rs);
+                vec3 bentDir = normalize(dir + gravityDir * bendStrength * 0.5);
+
+                // Now trace the bent ray to see where it lands
+                // Map to disk coordinates using the bent direction
+                float diskRadius = 0.0;
+                float diskAngle = 0.0;
+
+                // Project bent direction onto the disk plane
+                float inclinationAngle = uInclination * PI / 180.0;
+                vec3 diskNormal = vec3(0.0, cos(inclinationAngle), sin(inclinationAngle));
+
+                // Find intersection with disk plane
+                float denom = dot(bentDir, diskNormal);
+                if (abs(denom) > 1e-6) {
+                    float d = dot(origin, diskNormal) / denom;
+                    vec3 hitPoint = origin + bentDir * (-d);
+
+                    // Get disk coordinates
+                    diskRadius = length(hitPoint);
+                    diskAngle = atan(hitPoint.z, hitPoint.x);
+                }
+
+                // If no intersection, return sky color (stars)
+                if (diskRadius < 0.01) {
+                    // Return faint starfield
+                    vec2 uv = vUv * 2.0 - 1.0;
+                    float star = smoothNoise(uv * 100.0 + uTime * 0.01);
+                    return vec3(star * 0.02);
+                }
+
+                // Disk properties
+                float innerDisk = 1.5 * rs;
+                float outerDisk = 12.0 * rs;
+
+                // Check if we hit the disk
+                if (diskRadius < innerDisk || diskRadius > outerDisk) {
+                    // Background stars
+                    vec2 uv = vUv * 2.0 - 1.0;
+                    float star = smoothNoise(uv * 80.0 + uTime * 0.005);
+                    return vec3(star * 0.015);
+                }
+
+                // Disk texture
+                float diskNorm = (diskRadius - innerDisk) / (outerDisk - innerDisk);
+                float spiral = sin(diskAngle * 5.0 + diskRadius * 10.0 + uTime * 0.3) * 0.5 + 0.5;
+                float turbulence = smoothNoise(vec2(diskRadius * 4.0 + uTime * 0.02, diskAngle * 3.0));
+
+                float intensity = (0.4 + 0.6 * spiral) * (0.5 + 0.5 * turbulence);
+                intensity *= (1.0 - diskNorm * 0.5);
+
+                // Temperature gradient
+                float temp = 1.0 - pow(diskNorm, 0.6);
+                vec3 innerColor = vec3(0.9, 0.85, 1.0);
+                vec3 midColor = vec3(1.0, 0.7, 0.3);
+                vec3 outerColor = vec3(0.5, 0.15, 0.02);
+                vec3 diskColor = mix(innerColor, midColor, diskNorm * 1.2);
+                diskColor = mix(diskColor, outerColor, diskNorm * diskNorm * 2.0);
+
+                // Doppler shift (relativistic beaming)
+                float doppler = sin(diskAngle - uTime * 0.2) * 0.1;
+                diskColor *= (1.0 + doppler * temp);
+
+                // Apply gravitational redshift near the black hole
+                float redshiftFactor = 1.0 - rs / (diskRadius + rs * 0.5);
+                diskColor *= (0.8 + 0.2 * redshiftFactor);
+
+                // Intensity falloff near edges
+                intensity *= (1.0 - abs(diskNorm - 0.5) * 0.6);
+
+                // Add photon ring glow
+                float ringGlow = exp(-abs(diskRadius - 1.5 * rs) * 30.0);
+                diskColor += vec3(0.9, 0.7, 0.1) * ringGlow * 0.5;
+
+                // Event horizon shadow
+                float shadow = 1.0 - exp(-diskRadius * 20.0 / rs);
+                diskColor *= shadow;
+
+                return diskColor * intensity * 1.2;
+            }
+
+            // ─── Main ───
+            void main() {
+                // Correct for aspect ratio
+                vec2 uv = vUv;
+                vec2 pos = uv - 0.5;
+                pos.x *= uAspect;
+
+                // Camera setup
+                vec3 origin = vec3(0.0, 0.0, 4.0);
+                vec3 target = vec3(0.0, 0.0, 0.0);
+                vec3 forward = normalize(target - origin);
+                vec3 right = normalize(cross(forward, vec3(0.0, 1.0, 0.0)));
+                vec3 up = normalize(cross(right, forward));
+
+                // FOV
+                float fov = 0.8;
+                vec3 rayDir = normalize(
+                    forward +
+                    right * pos.x * fov +
+                    up * pos.y * fov * (uResolution.y / uResolution.x)
+                );
+
+                // Trace the ray
+                vec3 color = tracePhoton(origin, rayDir, uMass);
+
+                // Vignette
+                float vignette = 1.0 - dot(pos, pos) * 0.3;
+                color *= vignette;
+
+                // Tone mapping
+                color = color / (color + vec3(1.0));
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // ─── Material ───
+        const raytraceMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime: { value: 0 },
+                uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                uMass: { value: 1.5 },
+                uSpin: { value: 0.7 },
+                uInclination: { value: 45.0 },
+                uAspect: { value: window.innerWidth / window.innerHeight },
+            },
+            vertexShader: raytraceVertex,
+            fragmentShader: raytraceFragment,
+            depthWrite: false,
+        });
+
+        const geometry = new THREE.PlaneGeometry(2, 2);
+        const mesh = new THREE.Mesh(geometry, raytraceMaterial);
+        scene.add(mesh);
+
+        // ─── Stars (background) ───
+        const starCount = 4000;
+        const starGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(starCount * 3);
+        const starSizes = new Float32Array(starCount);
+        for (let i = 0; i < starCount; i++) {
+            const r = 8 + Math.random() * 50;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+            starPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+            starPos[i * 3 + 2] = r * Math.cos(phi);
+            starSizes[i] = 0.05 + Math.random() * 0.2;
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        starGeo.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+
+        const starMat = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.06,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending,
+            sizeAttenuation: true,
+        });
+        const stars = new THREE.Points(starGeo, starMat);
+        scene.add(stars);
+
+        // ─── HUD Updates ───
+        function updateHUD(mass, spin, inclination) {
+            const rs = 2.0 * mass;
+            const photonSphere = 1.5 * rs;
+            const isco = 6.0 * mass;
+
+            ehRadiusEl.textContent = rs.toFixed(2);
+            photonRingEl.textContent = photonSphere.toFixed(2);
+            iscoRadiusEl.textContent = isco.toFixed(2);
+
+            massValue.textContent = mass.toFixed(1);
+            spinValue.textContent = spin.toFixed(2);
+            inclinationValue.textContent = inclination.toFixed(0) + '°';
+        }
+
+        // ─── Controls ───
+        massSlider.addEventListener('input', () => {
+            const val = parseFloat(massSlider.value);
+            raytraceMaterial.uniforms.uMass.value = val;
+            updateHUD(val, parseFloat(spinSlider.value), parseFloat(inclinationSlider.value));
+        });
+
+        spinSlider.addEventListener('input', () => {
+            const val = parseFloat(spinSlider.value);
+            raytraceMaterial.uniforms.uSpin.value = val;
+            updateHUD(parseFloat(massSlider.value), val, parseFloat(inclinationSlider.value));
+        });
+
+        inclinationSlider.addEventListener('input', () => {
+            const val = parseFloat(inclinationSlider.value);
+            raytraceMaterial.uniforms.uInclination.value = val;
+            updateHUD(parseFloat(massSlider.value), parseFloat(spinSlider.value), val);
+        });
+
+        // ─── Resize ───
+        window.addEventListener('resize', () => {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            composer.setSize(w, h);
+            raytraceMaterial.uniforms.uResolution.value.set(w, h);
+            raytraceMaterial.uniforms.uAspect.value = w / h;
+        });
+
+        // ─── Frame Counter ───
+        let frameCount = 0;
+        let lastFpsUpdate = performance.now();
+        let fps = 60;
+
+        // ─── Animation ───
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsed = clock.getElapsedTime();
+            const delta = clock.getDelta();
+
+            // Update shader
+            raytraceMaterial.uniforms.uTime.value = elapsed;
+
+            // Rotate stars
+            stars.rotation.y = elapsed * 0.003;
+
+            // Controls
+            controls.update();
+
+            // Render
+            composer.render();
+
+            // Frame counter
+            frameCount++;
+            const now = performance.now();
+            if (now - lastFpsUpdate > 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFpsUpdate = now;
+                fpsDisplayEl.textContent = fps;
+            }
+            frameCountEl.textContent = String(frameCount).padStart(4, '0');
+
+            // Update control auto-rotate state
+            if (controls.autoRotate) {
+                document.querySelector('.orbit-hint span').textContent = 'Auto-rotate active';
+            } else {
+                document.querySelector('.orbit-hint span').textContent = 'Manual control';
+            }
+        }
+
+        // ─── Toggle auto-rotate on click ───
+        renderer.domElement.addEventListener('dblclick', () => {
+            controls.autoRotate = !controls.autoRotate;
+        });
+
+        // ─── Init ───
+        updateHUD(1.5, 0.7, 45);
+        animate();
+
+        console.log('✦ Black Hole Ray-Tracing Engine Active');
+        console.log('✦ Double-click to toggle auto-rotation');
+    </script>
+</body>
+</html>

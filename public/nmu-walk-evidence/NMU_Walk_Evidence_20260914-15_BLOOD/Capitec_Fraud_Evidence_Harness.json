@@ -1,0 +1,46 @@
+{
+  "case_id": "CAPITEC_R1B_SEQUENCE_ANOMALY_001",
+  "source": "SVID_20260914_173110_1.mp4 \u2014 Athu Zam \u2014 IT student + shuttle liaison \u2014 17:31 shuttle",
+  "attack_vector": "Social engineering call \u2192 balance check \u2192 beneficiary creation \u2192 immediate high-value transfer",
+  "normal_sequence": [
+    "check_balance",
+    "scroll_app",
+    "use_virtual_card",
+    "occasional_transfer"
+  ],
+  "fraud_sequence": [
+    {
+      "t-5min": "incoming_call_unknown"
+    },
+    {
+      "t0": "check_balance_abnormal"
+    },
+    {
+      "t+1min": "create_beneficiary_new"
+    },
+    {
+      "t+2min": "send_R20000_immediate"
+    }
+  ],
+  "escalation_pattern_gogo": [
+    "R2000",
+    "R4000",
+    "R8000",
+    "R10000"
+  ],
+  "total_loss_reference": "R1 Billion Capitec fraud via push notifications / approved-but-fraud transactions",
+  "proofbridge_mapping": {
+    "CLAIM": "user wants to send R20k to new beneficiary",
+    "PROOF_OBLIGATION": "prove sequence legitimacy",
+    "EVIDENCE": [
+      "call_5min_before",
+      "abnormal_balance_check",
+      "beneficiary_create_to_send_delta_<2min"
+    ],
+    "VERIFICATION": "sequence anomaly detection \u2014 one hash verify, microseconds",
+    "DECISION": "BLOCK + require step-up verification",
+    "RECEIPT": "tamper-evident audit chain, third-party verifiable without trusting operator"
+  },
+  "dominant_bottleneck": "evidence_capture + provenance + cost_of_verification",
+  "q3_trust_condition_student": "AI must help catch crime like we trust phone works \u2014 prove it works for SA crime rate"
+}

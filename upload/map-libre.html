@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VVU · MAP · MapLibre 3D</title>
+<script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#050505;--panel:rgba(8,10,8,.9);--lime:#c8ff00;--sage:#8fb35a;
+  --ink:#c9d4bd;--dim:#5a6a50;--rose:#e5484d;--amber:#ffaa00;
+  --mono:'SF Mono','JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:11px}
+#map3d{position:fixed;inset:0;z-index:1}
+.hud{position:fixed;z-index:10;pointer-events:none;opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s}
+.hud.visible{opacity:1;transform:translateY(0);pointer-events:auto}
+.hud .panel-box{background:var(--panel);backdrop-filter:blur(20px);border:1px solid rgba(200,255,0,.2);border-radius:6px;padding:8px 10px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.hud .title{color:var(--lime);font-size:8px;letter-spacing:.1em;font-weight:700;text-transform:uppercase;margin-bottom:5px}
+.hud .row{display:flex;justify-content:space-between;gap:10px;margin:2px 0;font-size:9px}
+.hud .lbl{color:var(--dim)}.hud .val{color:var(--lime);font-variant-numeric:tabular-nums}
+.hud .val.rose{color:var(--rose)}.hud .val.amber{color:var(--amber)}
+#sys02{top:50px;left:12px;width:200px}
+#nodes{bottom:42px;left:12px;width:200px}
+#fsm{bottom:42px;right:12px;width:190px}
+.nodeRow{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(143,179,90,.08);font-size:9px}
+.nodeRow:last-child{border-bottom:none}
+.nodeRow .id{color:var(--sage);font-weight:700}
+.nodeRow .v{color:var(--lime);font-variant-numeric:tabular-nums}
+.nodeRow .v.rose{color:var(--rose)}.nodeRow .v.amber{color:var(--amber)}
+.fsmbtn{background:rgba(255,255,255,.02);border:1px solid rgba(200,255,0,.3);color:var(--sage);padding:3px 7px;font-family:var(--mono);font-size:8px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .2s}
+.fsmbtn:hover{border-color:var(--lime);color:var(--lime);background:rgba(200,255,0,.06)}
+#leakBanner{position:absolute;top:50px;left:50%;z-index:12;background:rgba(229,72,77,.14);backdrop-filter:blur(20px);border:1px solid var(--rose);color:var(--rose);padding:6px 16px;font-size:10px;letter-spacing:.1em;font-weight:600;text-transform:uppercase;border-radius:6px;opacity:0;pointer-events:none;transform:translateX(-50%) translateY(-8px) scale(.94);transition:all .3s}
+#leakBanner.on{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+.maplibregl-map{font-family:var(--mono)!important}
+.maplibregl-ctrl-group{background:rgba(5,5,5,.82)!important;border:1px solid rgba(200,255,0,.3)!important}
+.maplibregl-ctrl-group button span{filter:invert(1) sepia(1) hue-rotate(50deg) saturate(3)}
+.maplibregl-ctrl-attrib{background:rgba(5,5,5,.82)!important;color:#5a6a50!important}
+.maplibregl-ctrl-attrib a{color:#8fb35a!important}
+</style>
+</head>
+<body>
+<div id="map3d"></div>
+
+<div class="hud" id="sys02">
+  <div class="panel-box">
+    <div class="title">SYS.02 · GIS SPATIAL TRUTH</div>
+    <div class="row"><span class="lbl">MAP_SYNC</span><span class="val">TRUE</span></div>
+    <div class="row"><span class="lbl">DATA</span><span class="val">OPENFREEMAP</span></div>
+    <div class="row"><span class="lbl">GPS</span><span class="val" id="userCoords" style="font-size:8px">LOCATING...</span></div>
+    <div class="row"><span class="lbl">ZOOM</span><span class="val" id="mapZoom">15.5</span></div>
+    <div class="row"><span class="lbl">PITCH</span><span class="val" id="mapPitch">60</span></div>
+    <div class="row"><span class="lbl">BEARING</span><span class="val" id="mapBearing">-20</span></div>
+  </div>
+</div>
+
+<div class="hud" id="nodes">
+  <div class="panel-box">
+    <div class="title">NODE ARRAY · N01–N06</div>
+    <div id="nodeList"></div>
+  </div>
+</div>
+
+<div class="hud" id="fsm">
+  <div class="panel-box">
+    <div class="title">FSM CONSOLE</div>
+    <div class="row"><span class="lbl">STATE</span><span class="val" id="fsmState">STEADY_LOCKED</span></div>
+    <div class="row"><span class="lbl">SINCE</span><span class="val" id="fsmSince">0:00</span></div>
+    <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px">
+      <button class="fsmbtn" data-cmd="CLICK">CLICK</button>
+      <button class="fsmbtn" data-cmd="CLEAR">CLEAR</button>
+      <button class="fsmbtn" data-cmd="WARN">WARN</button>
+      <button class="fsmbtn" data-cmd="RESET">RESET</button>
+    </div>
+  </div>
+</div>
+
+<div id="leakBanner">⚠ LEAK · N04 · DN300 · INTENSITY 0.67</div>
+
+<script>
+let userLng = 27.8500, userLat = -25.7500, map;
+function initMap(){
+  map = new maplibregl.Map({
+    container: 'map3d',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+    center: [userLng, userLat],
+    zoom: 15.5, pitch: 60, bearing: -20, antialias: true
+  });
+  map.on('load', () => {
+    parent.postMessage({type:'worm', event:'MAP_LOADED', details:'OpenFreeMap online'}, '*');
+    try {
+      map.addLayer({
+        id: 'buildings-3d', type: 'fill-extrusion',
+        source: 'openfreemap', 'source-layer': 'building',
+        minzoom: 14,
+        paint: {
+          'fill-extrusion-color': '#0a0e09',
+          'fill-extrusion-height': ['coalesce', ['get','render_height'], 10],
+          'fill-extrusion-base': ['coalesce', ['get','render_min_height'], 0],
+          'fill-extrusion-opacity': 0.85
+        }
+      });
+    } catch(e){}
+    const el = document.createElement('div');
+    el.innerHTML = '<div style="width:10px;height:10px;background:#c8ff00;border-radius:50%;box-shadow:0 0 16px #c8ff00;border:2px solid #000;"></div>';
+    new maplibregl.Marker(el).setLngLat([userLng, userLat]).addTo(map);
+  });
+  map.on('move', () => {
+    const c = map.getCenter();
+    document.getElementById('userCoords').textContent = `${c.lat.toFixed(4)}°, ${c.lng.toFixed(4)}°`;
+    document.getElementById('mapZoom').textContent = map.getZoom().toFixed(1);
+    document.getElementById('mapPitch').textContent = map.getPitch().toFixed(0);
+    document.getElementById('mapBearing').textContent = map.getBearing().toFixed(0);
+  });
+}
+function requestLocation(){
+  if (!navigator.geolocation){ parent.postMessage({type:'worm', event:'GEO_ERROR', details:'No geolocation'}, '*'); initMap(); return; }
+  navigator.geolocation.getCurrentPosition(
+    p => { userLat = p.coords.latitude; userLng = p.coords.longitude;
+      parent.postMessage({type:'worm', event:'GPS_LOCK', details:`${userLat.toFixed(4)}°, ${userLng.toFixed(4)}°`}, '*');
+      initMap();
+    },
+    e => { parent.postMessage({type:'worm', event:'GEO_DENIED', details:e.message}, '*'); initMap(); },
+    {enableHighAccuracy:true, timeout:5000, maximumAge:0}
+  );
+}
+
+/* FSM + node array (parented to worm chain via postMessage) */
+let fsmState = 'STEADY_LOCKED';
+let fsmSince = Date.now();
+const transitions = {
+  STEADY_LOCKED: {CLICK:'LEAK_ACTIVE', WARN:'WARN'},
+  LEAK_ACTIVE: {CLEAR:'STEADY_LOCKED', WARN:'WARN', RESET:'STEADY_LOCKED'},
+  WARN: {CLICK:'LEAK_ACTIVE', CLEAR:'STEADY_LOCKED', CRIT:'CRITICAL'},
+  CRITICAL: {RESET:'STEADY_LOCKED'},
+  FAIL_CLOSED: {RESET:'STEADY_LOCKED'}
+};
+function sendFsm(cmd){
+  const to = transitions[fsmState]?.[cmd];
+  if (!to){ parent.postMessage({type:'worm', event:'FSM_ERROR', details:'ILLEGAL δ: ' + cmd}, '*'); return; }
+  fsmState = to; fsmSince = Date.now();
+  const el = document.getElementById('fsmState');
+  el.textContent = to;
+  el.className = 'val ' + (to.includes('LOCKED')?'':to.includes('LEAK')?'rose':to.includes('WARN')?'amber':'rose');
+  document.getElementById('leakBanner').classList.toggle('on', fsmState === 'LEAK_ACTIVE');
+  parent.postMessage({type:'worm', event:'FSM_'+cmd+'_'+to.slice(0,8), details:'δ '+cmd+' → '+to}, '*');
+  renderNodeList();
+}
+document.querySelectorAll('.fsmbtn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); sendFsm(b.dataset.cmd); showHUD(); }));
+
+const NODE_BASE = {N01:42.5, N02:58.3, N03:68.1, N04:42.5, N05:47.2, N06:3.82};
+function getNodeDisplay(id){
+  const base = NODE_BASE[id] || 0;
+  if (fsmState === 'FAIL_CLOSED' || fsmState === 'CRITICAL') return {val:'--', cls:'rose'};
+  if (fsmState === 'LEAK_ACTIVE' && id === 'N04') return {val:(base*3.4).toFixed(1), cls:'rose'};
+  if (fsmState === 'WARN' && id === 'N04') return {val:(base*1.6).toFixed(1), cls:'amber'};
+  return {val:base.toFixed(1), cls:''};
+}
+function renderNodeList(){
+  document.getElementById('nodeList').innerHTML =
+    ['N01','N02','N03','N04','N05','N06'].map(id => {
+      const d = getNodeDisplay(id);
+      return `<div class="nodeRow"><span class="id">${id}</span><span class="v ${d.cls}">${d.val}</span></div>`;
+    }).join('');
+}
+renderNodeList();
+
+const hudEls = document.querySelectorAll('.hud'); let hideTimer = null;
+function showHUD(){
+  hudEls.forEach(el => el.classList.add('visible'));
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => hudEls.forEach(el => el.classList.remove('visible')), 5000);
+}
+document.getElementById('map3d').addEventListener('pointerdown', e => { if(!e.target.closest('button')) showHUD(); });
+showHUD();
+
+setInterval(() => {
+  const s = Math.floor((Date.now() - fsmSince)/1000);
+  document.getElementById('fsmSince').textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+}, 1000);
+
+requestLocation();
+parent.postMessage({type:'worm', event:'FSM_BOOT', details:'STEADY_LOCKED'}, '*');
+</script>
+</body>
+</html>

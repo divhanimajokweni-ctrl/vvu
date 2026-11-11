@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>/dev/log × AXIOMA — Where Code Meets Mathematics</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;0,9..144,900;1,9..144,400;1,9..144,600&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+/* === THEME TOKENS === */
+:root[data-theme="dark"] {
+  --bg: #0c0b09;
+  --bg-elev: #14120e;
+  --bg-elev-2: #1c1a14;
+  --fg: #f0ead6;
+  --fg-dim: #c9c1ad;
+  --muted: #8a8275;
+  --accent: #f59e0b;
+  --accent-rgb: 245, 158, 11;
+  --accent-2: #06b6d4;
+  --accent-2-rgb: 6, 182, 212;
+  --border: rgba(240, 234, 214, 0.08);
+  --border-strong: rgba(240, 234, 214, 0.18);
+  --card: #15130e;
+  --code-bg: #060503;
+  --code-fg: #f0ead6;
+  --glow: rgba(245, 158, 11, 0.15);
+  
+  /* Math specific colors */
+  --math-green: #d4ff3a;
+  --math-red: #ff5e62;
+  --math-mint: #4dd4ac;
+  --math-orange: #ffb627;
+  --math-purple: #c4a5ff;
+}
+:root[data-theme="light"] {
+  --bg: #f3ecdc;
+  --bg-elev: #faf3e1;
+  --bg-elev-2: #fffaee;
+  --fg: #1a1610;
+  --fg-dim: #3d362b;
+  --muted: #6b6358;
+  --accent: #c2410c;
+  --accent-rgb: 194, 65, 12;
+  --accent-2: #0e7490;
+  --accent-2-rgb: 14, 116, 144;
+  --border: rgba(26, 22, 16, 0.12);
+  --border-strong: rgba(26, 22, 16, 0.24);
+  --card: #fffaee;
+  --code-bg: #1a1610;
+  --code-fg: #f3ecdc;
+  --glow: rgba(194, 65, 12, 0.12);
+
+  --math-green: #65a30d;
+  --math-red: #dc2626;
+  --math-mint: #0d9488;
+  --math-orange: #d97706;
+  --math-purple: #7c3aed;
+}
+:root[data-theme="cyber"] {
+  --bg: #02060a;
+  --bg-elev: #050d10;
+  --bg-elev-2: #071318;
+  --fg: #4eff96;
+  --fg-dim: #8affb8;
+  --muted: #2a8a5e;
+  --accent: #ffea00;
+  --accent-rgb: 255, 234, 0;
+  --accent-2: #ff10f0;
+  --accent-2-rgb: 255, 16, 240;
+  --border: rgba(78, 255, 150, 0.18);
+  --border-strong: rgba(78, 255, 150, 0.4);
+  --card: #050d10;
+  --code-bg: #000;
+  --code-fg: #4eff96;
+  --glow: rgba(78, 255, 150, 0.2);
+
+  --math-green: #ffea00;
+  --math-red: #ff10f0;
+  --math-mint: #4eff96;
+  --math-orange: #ffea00;
+  --math-purple: #ff10f0;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Space Grotesk', sans-serif;
+  margin: 0;
+  overflow-x: hidden;
+  position: relative;
+  font-feature-settings: 'ss01', 'ss02';
+  line-height: 1.5;
+}
+
+/* CRT scanlines for cyber theme */
+[data-theme="cyber"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(78, 255, 150, 0.025) 2px, rgba(78, 255, 150, 0.025) 3px);
+  z-index: 200;
+  mix-blend-mode: overlay;
+}
+
+body.theme-anim, body.theme-anim *, body.theme-anim *::before, body.theme-anim *::after {
+  transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1), color 0.6s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.6s cubic-bezier(0.4, 0, 0.2, 1), fill 0.6s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.font-display { font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 144; letter-spacing: -0.02em; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+.italic-serif { font-family: 'Fraunces', serif; font-style: italic; font-variation-settings: 'opsz' 144; }
+
+/* === PROGRESS BAR === */
+.progress-bar {
+  position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  z-index: 100; box-shadow: 0 0 12px var(--accent);
+}
+
+/* === BACKGROUNDS === */
+.bg-grid {
+  background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: center center;
+}
+.bg-grid-fine {
+  background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Atmosphere (from AXIOMA) */
+.atmosphere {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+}
+.atmosphere::before {
+  content: ''; position: absolute; top: -20%; left: -10%; width: 60%; height: 60%;
+  background: radial-gradient(circle, rgba(var(--accent-rgb), 0.08) 0%, transparent 60%); filter: blur(60px);
+}
+.atmosphere::after {
+  content: ''; position: absolute; bottom: -20%; right: -10%; width: 50%; height: 50%;
+  background: radial-gradient(circle, rgba(var(--accent-2-rgb), 0.06) 0%, transparent 60%); filter: blur(60px);
+}
+
+/* Floating dots */
+.float-dot { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.25; animation: drift 16s ease-in-out infinite; pointer-events: none; }
+@keyframes drift { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(60px, -40px) scale(1.1); } 66% { transform: translate(-30px, 50px) scale(0.95); } }
+
+.mouse-glow { position: absolute; width: 700px; height: 700px; border-radius: 50%; background: radial-gradient(circle, rgba(var(--accent-rgb), 0.12) 0%, transparent 60%); pointer-events: none; transform: translate(-50%, -50%); opacity: 0; transition: opacity 0.4s ease; filter: blur(30px); z-index: 1; }
+
+/* === CURSOR & TYPEWRITER === */
+.cursor::after { content: '▌'; color: var(--accent); animation: blink 1s steps(1) infinite; margin-left: 4px; font-weight: 400; }
+@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+.logo-cursor { display: inline-block; width: 0.5em; height: 1em; background: var(--accent); margin-left: 3px; animation: blink 1.1s steps(1) infinite; vertical-align: text-bottom; }
+
+/* === LINKS === */
+.hover-link { position: relative; color: var(--fg-dim); text-decoration: none; transition: color 0.3s ease; }
+.hover-link:hover { color: var(--fg); }
+.hover-link::after { content: ''; position: absolute; left: 0; bottom: -5px; width: 0; height: 1px; background: var(--accent); transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+.hover-link:hover::after { width: 100%; }
+
+/* === THEME TOGGLE === */
+.theme-toggle { display: inline-flex; background: var(--bg-elev); border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px; gap: 2px; }
+.theme-btn { width: 32px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; background: transparent; color: var(--muted); transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); font-size: 12px; }
+.theme-btn.active { background: var(--accent); color: var(--bg); box-shadow: 0 0 14px rgba(var(--accent-rgb), 0.5); }
+.theme-btn:hover:not(.active) { color: var(--fg); transform: scale(1.08); }
+
+/* === STAT PILL === */
+.stat-pill { display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px; background: var(--bg-elev); border: 1px solid var(--border-strong); border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 12px; text-decoration: none; color: var(--fg); transition: all 0.3s ease; }
+.stat-pill:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); transform: translateY(-1px); }
+.stat-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.flash-up { animation: flashUp 0.7s ease; }
+@keyframes flashUp { 0% { transform: translateY(0); } 40% { transform: translateY(-6px); color: var(--accent-2) !important; text-shadow: 0 0 12px var(--accent-2); } 100% { transform: translateY(0); } }
+
+/* === TAGS & BADGES === */
+.tag { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); padding: 4px 9px; border: 1px solid rgba(var(--accent-rgb), 0.5); border-radius: 2px; background: rgba(var(--accent-rgb), 0.08); font-weight: 500; }
+.badge { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border: 1px solid var(--border-strong); border-radius: 100px; font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--fg-dim); letter-spacing: 0.05em; margin-bottom: 32px; }
+
+/* === BUTTONS === */
+.btn-primary { background: var(--accent); color: var(--bg); padding: 13px 22px; border: none; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; cursor: pointer; text-transform: uppercase; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: inline-flex; align-items: center; gap: 10px; text-decoration: none; position: relative; overflow: hidden; }
+.btn-primary::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent); transform: translateX(-100%); transition: transform 0.6s ease; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 30px -8px rgba(var(--accent-rgb), 0.6); }
+.btn-primary:hover::before { transform: translateX(100%); }
+.btn-secondary { background: transparent; color: var(--fg); border: 1px solid var(--border-strong); padding: 13px 22px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; cursor: pointer; text-transform: uppercase; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+
+/* === SECTION HEADERS (AXIOMA style) === */
+.section-header { max-width: 1400px; margin: 0 auto 60px; display: grid; grid-template-columns: auto 1fr auto; gap: 32px; align-items: end; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.section-num { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent); letter-spacing: 0.1em; }
+.section-title { font-family: 'Fraunces', serif; font-size: clamp(36px, 5vw, 64px); font-weight: 800; line-height: 1; letter-spacing: -0.02em; margin: 8px 0 0; }
+.section-title em { font-style: italic; font-weight: 400; color: var(--accent); }
+.section-kicker { color: var(--fg-dim); max-width: 360px; font-size: 14px; line-height: 1.5; text-align: right; }
+
+/* === CARDS & CONTAINERS === */
+.article-card { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 28px; position: relative; overflow: hidden; cursor: pointer; transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.45s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s ease; }
+.article-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transform: scaleX(0); transform-origin: left; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+.article-card:hover { transform: translateY(-8px); border-color: var(--border-strong); box-shadow: 0 24px 48px -20px rgba(0, 0, 0, 0.45); }
+.article-card:hover::before { transform: scaleX(1); }
+.article-card .arrow { display: inline-block; transform: translateX(0); transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+.article-card:hover .arrow { transform: translateX(8px); }
+.article-card .card-num { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 56px; color: var(--accent); opacity: 0.18; line-height: 0.9; letter-spacing: -0.04em; transition: opacity 0.4s ease; }
+.article-card:hover .card-num { opacity: 0.45; }
+
+.canvas-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 20px; padding: 32px; position: relative; overflow: hidden; }
+.canvas-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.4; }
+.card-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+.live-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; display: inline-block; position: relative; margin-right: 8px; }
+.live-dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid var(--accent); animation: livePulse 2s infinite; }
+@keyframes livePulse { 0% { transform: scale(0.8); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+
+/* === CODE WINDOWS === */
+.code-window { background: var(--code-bg); border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; font-family: 'JetBrains Mono', monospace; position: relative; box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.5); }
+.code-header { background: rgba(255, 255, 255, 0.04); border-bottom: 1px solid var(--border); padding: 11px 16px; display: flex; align-items: center; justify-content: space-between; }
+.copy-btn { background: transparent; border: 1px solid var(--border-strong); color: var(--muted); padding: 5px 11px; font-size: 11px; font-family: 'JetBrains Mono', monospace; border-radius: 3px; cursor: pointer; transition: all 0.25s ease; position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; }
+.copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+.copy-btn.copied { color: var(--bg) !important; background: var(--accent); border-color: var(--accent); }
+
+/* Syntax Highlighting */
+.tk-key { color: #ff7b72; } .tk-str { color: #a5d6ff; } .tk-fn { color: #d2a8ff; } .tk-com { color: #6e7681; font-style: italic; } .tk-num { color: #79c0ff; } .tk-op { color: #ffa657; } .tk-var { color: var(--code-fg); }
+[data-theme="cyber"] .tk-key { color: #ff10f0; } [data-theme="cyber"] .tk-str { color: #ffea00; } [data-theme="cyber"] .tk-fn { color: #8affb8; } [data-theme="cyber"] .tk-com { color: #2a8a5e; } [data-theme="cyber"] .tk-num { color: #ffea00; } [data-theme="cyber"] .tk-op { color: #ffea00; }
+[data-theme="light"] .tk-key { color: #c2410c; } [data-theme="light"] .tk-str { color: #0e7490; } [data-theme="light"] .tk-fn { color: #7c2d12; } [data-theme="light"] .tk-com { color: #6b6358; } [data-theme="light"] .tk-num { color: #0e7490; } [data-theme="light"] .tk-op { color: #c2410c; }
+
+/* === ARCHIVE LIST === */
+.archive-item { display: flex; align-items: center; gap: 20px; padding: 22px 0; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; }
+.archive-item::before { content: ''; position: absolute; left: -16px; top: 50%; width: 8px; height: 8px; background: var(--accent); border-radius: 50%; transform: translateY(-50%) scale(0); transition: transform 0.3s ease; }
+.archive-item:hover { padding-left: 16px; border-bottom-color: var(--accent); }
+.archive-item:hover::before { transform: translateY(-50%) scale(1); }
+.archive-item:hover .archive-title { color: var(--accent); }
+
+/* === MARQUEE === */
+.marquee-wrap { overflow: hidden; white-space: nowrap; }
+.marquee { display: inline-flex; animation: scroll 40s linear infinite; gap: 60px; padding-right: 60px; }
+@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+/* === INPUTS === */
+.input-field { background: var(--bg); border: 1px solid var(--border-strong); color: var(--fg); padding: 13px 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; border-radius: 4px; outline: none; transition: all 0.3s ease; width: 100%; }
+.input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+
+/* === QUIZ === */
+.quiz-grid { max-width: 1000px; margin: 0 auto; display: grid; gap: 24px; }
+.quiz-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: 20px; padding: 32px; position: relative; overflow: hidden; }
+.quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.quiz-option { background: var(--bg); border: 1px solid var(--border-strong); border-radius: 12px; padding: 16px 20px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 12px; font-family: 'Space Grotesk', sans-serif; font-size: 15px; text-align: left; color: var(--fg); position: relative; overflow: hidden; }
+.quiz-option:hover:not(.answered) { border-color: var(--accent); transform: translateX(4px); }
+.quiz-option .letter { width: 28px; height: 28px; border-radius: 6px; background: var(--bg-elev-2); display: inline-flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--accent); flex-shrink: 0; }
+.quiz-option.answered { cursor: default; }
+@keyframes correctPulse { 0% { background: var(--bg); border-color: var(--border-strong); transform: scale(1); } 20% { background: var(--math-mint); border-color: var(--math-mint); transform: scale(1.03); box-shadow: 0 0 60px rgba(77, 212, 172, 0.6); } 60% { background: var(--math-mint); } 100% { background: rgba(77, 212, 172, 0.18); border-color: var(--math-mint); transform: scale(1); } }
+@keyframes incorrectPulse { 0% { background: var(--bg); border-color: var(--border-strong); transform: scale(1); } 20% { background: var(--math-red); border-color: var(--math-red); transform: scale(0.98); box-shadow: 0 0 60px rgba(255, 94, 98, 0.6); } 60% { background: var(--math-red); } 100% { background: rgba(255, 94, 98, 0.18); border-color: var(--math-red); transform: scale(1); } }
+.quiz-option.correct { animation: correctPulse 1.4s forwards; } .quiz-option.correct .letter { color: var(--math-mint); }
+.quiz-option.incorrect { animation: incorrectPulse 1.4s forwards; } .quiz-option.incorrect .letter { color: var(--math-red); }
+.quiz-feedback { margin-top: 16px; padding: 14px 18px; border-radius: 10px; font-size: 14px; display: none; border: 1px solid; }
+.quiz-feedback.show { display: block; animation: fadeIn 0.4s; }
+.quiz-feedback.correct { background: rgba(77, 212, 172, 0.08); border-color: rgba(77, 212, 172, 0.3); color: var(--math-mint); }
+.quiz-feedback.incorrect { background: rgba(255, 94, 98, 0.08); border-color: rgba(255, 94, 98, 0.3); color: var(--math-red); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* === SOLUTIONS === */
+.steps-list { position: relative; padding-left: 0; }
+.steps-list::before { content: ''; position: absolute; left: 19px; top: 20px; bottom: 20px; width: 1px; background: var(--border); }
+.step { position: relative; padding-left: 56px; padding-bottom: 28px; opacity: 0; transform: translateX(-12px); max-height: 0; overflow: hidden; transition: opacity 0.6s ease, transform 0.6s ease, max-height 0.6s ease, padding 0.6s ease; }
+.step.revealed { opacity: 1; transform: translateX(0); max-height: 400px; }
+.step-num { position: absolute; left: 0; top: 0; width: 40px; height: 40px; background: var(--bg); border: 2px solid var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--accent); z-index: 1; }
+.step.final .step-num { background: var(--accent); color: var(--bg); }
+.step-title { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; margin-bottom: 6px; color: var(--fg); }
+.step-expression { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: var(--accent); background: var(--bg-elev); padding: 12px 16px; border-radius: 8px; display: inline-block; margin-bottom: 8px; border: 1px solid var(--border); }
+.step-note { font-size: 13px; color: var(--fg-dim); font-style: italic; }
+
+/* === MATH CANVAS === */
+.triangle-svg { width: 100%; aspect-ratio: 4 / 3; display: block; cursor: crosshair; touch-action: none; }
+.vertex-handle { cursor: grab; transition: r 0.15s ease, filter 0.15s ease; }
+.vertex-handle:hover { filter: drop-shadow(0 0 12px var(--math-green)); }
+.vertex-handle.dragging { cursor: grabbing; }
+.readout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+.readout { background: var(--bg-elev-2); border: 1px solid var(--border); border-radius: 12px; padding: 16px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+.readout:hover { border-color: var(--border-strong); }
+.readout-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+.readout-value { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; }
+.readout-unit { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-dim); margin-left: 4px; }
+.classification { background: linear-gradient(135deg, rgba(212, 255, 58, 0.08), rgba(255, 182, 39, 0.04)); border: 1px solid rgba(212, 255, 58, 0.2); border-radius: 12px; padding: 18px; }
+.classification-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--math-green); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+.classification-value { font-family: 'Fraunces', serif; font-style: italic; font-size: 22px; font-weight: 400; }
+
+.plot-svg { width: 100%; aspect-ratio: 4 / 3; display: block; background: var(--bg); border-radius: 12px; }
+.slider-row { margin-bottom: 24px; }
+.slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.slider-label { font-family: 'Fraunces', serif; font-style: italic; font-size: 20px; }
+.slider-label .var { color: var(--math-green); font-weight: 600; }
+.slider-value { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--fg); font-weight: 500; }
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: var(--bg-elev-2); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; background: var(--math-green); border-radius: 50%; cursor: pointer; border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--math-green), 0 0 16px rgba(212, 255, 58, 0.6); transition: transform 0.15s ease; }
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: var(--math-green); border-radius: 50%; cursor: pointer; border: 3px solid var(--bg); box-shadow: 0 0 0 1px var(--math-green), 0 0 16px rgba(212, 255, 58, 0.6); }
+.equation-display { background: var(--bg); border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center; font-family: 'Fraunces', serif; font-size: 22px; border: 1px solid var(--border); }
+.equation-display .num { color: var(--math-green); font-weight: 600; }
+.equation-display .op { color: var(--fg-dim); margin: 0 4px; }
+.equation-display .var { font-style: italic; }
+.feature-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.feature-item { display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg); border-radius: 6px; border-left: 2px solid var(--math-green); }
+.feature-item .label { color: var(--muted); }
+.feature-item .val { color: var(--fg); }
+
+/* === HERO SHAPE === */
+.hero-shape-wrap { position: relative; aspect-ratio: 1; max-width: 600px; margin-left: auto; width: 100%; }
+.hero-shape-wrap svg { width: 100%; height: 100%; display: block; }
+.shape-meta { position: absolute; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
+.shape-meta.tl { top: 8%; left: 4%; }
+.shape-meta.br { bottom: 8%; right: 4%; text-align: right; }
+.float-symbol { position: absolute; font-family: 'Fraunces', serif; font-style: italic; color: var(--accent); opacity: 0.25; pointer-events: none; user-select: none; }
+@keyframes floatY { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+
+/* === MISC === */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 5px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+::selection { background: var(--accent); color: var(--bg); }
+.reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1), transform 0.9s cubic-bezier(0.4, 0, 0.2, 1); }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* === RESPONSIVE === */
+@media (max-width: 900px) {
+  .section-header { grid-template-columns: 1fr; gap: 12px; }
+  .section-kicker { text-align: left; }
+  .hero { grid-template-columns: 1fr; padding: 120px 20px 60px; gap: 40px; }
+  .hero-shape-wrap { max-width: 400px; margin: 0 auto; }
+  .quiz-options { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+  .playground-grid, .plots-grid { grid-template-columns: 1fr !important; }
+  .article-card { padding: 22px; }
+  .card-num { font-size: 42px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Navigation -->
+<header class="fixed top-0 left-0 right-0 z-50" style="backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); background: rgba(var(--accent-rgb), 0.02); border-bottom: 1px solid var(--border);">
+  <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <a href="#hero" class="font-mono font-bold text-lg flex items-center" style="color: var(--fg); text-decoration: none;">
+      <span style="color: var(--accent);">/</span>dev<span style="color: var(--muted);">/</span>log <span style="color: var(--muted); margin: 0 6px;">×</span> <span class="font-display" style="font-weight:900; font-style:italic; color: var(--accent-2);">AXIOMA</span>
+    </a>
+    
+    <div class="hidden md:flex items-center gap-6 font-mono text-sm">
+      <a href="#playground" class="hover-link"><span style="color:var(--muted);font-size:10px;margin-right:4px;">01</span> Playground</a>
+      <a href="#plots" class="hover-link"><span style="color:var(--muted);font-size:10px;margin-right:4px;">02</span> Plots</a>
+      <a href="#snippets" class="hover-link"><span style="color:var(--muted);font-size:10px;margin-right:4px;">03</span> Snippets</a>
+      <a href="#quiz" class="hover-link"><span style="color:var(--muted);font-size:10px;margin-right:4px;">04</span> Quiz</a>
+      <a href="#solutions" class="hover-link"><span style="color:var(--muted);font-size:10px;margin-right:4px;">05</span> Solutions</a>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      <a href="https://github.com/tailwindlabs/tailwindcss" target="_blank" rel="noopener" class="stat-pill hidden lg:inline-flex" id="ghPill" title="Live from GitHub">
+        <span class="stat-dot"></span>
+        <i class="fas fa-star text-xs" style="color: var(--accent);"></i>
+        <span id="ghStars" data-raw="0">—</span>
+        <span style="color: var(--muted);">·</span>
+        <i class="fas fa-code-branch text-xs" style="color: var(--accent-2);"></i>
+        <span id="ghForks" data-raw="0">—</span>
+      </a>
+      
+      <div class="theme-toggle" role="group" aria-label="Theme selector">
+        <button class="theme-btn active" data-theme="dark" title="Dark" aria-label="Dark theme"><i class="fas fa-moon"></i></button>
+        <button class="theme-btn" data-theme="light" title="Light" aria-label="Light theme"><i class="fas fa-sun"></i></button>
+        <button class="theme-btn" data-theme="cyber" title="Cyber" aria-label="Cyber theme"><i class="fas fa-terminal"></i></button>
+      </div>
+    </div>
+  </nav>
+</header>
+
+<!-- Hero -->
+<section class="relative min-h-screen flex items-center overflow-hidden bg-grid pt-24 pb-20" id="hero">
+  <div class="atmosphere"></div>
+  <div class="float-dot" style="width: 500px; height: 500px; top: 5%; left: -150px; background: var(--accent);"></div>
+  <div class="float-dot" style="width: 600px; height: 600px; bottom: -200px; right: -200px; background: var(--accent-2); animation-delay: -5s;"></div>
+  <div class="mouse-glow" id="mouseGlow"></div>
+  
+  <div class="relative max-w-7xl mx-auto px-6 w-full grid lg:grid-cols-2 gap-12 items-center" style="z-index: 2;">
+    <div class="max-w-5xl">
+      <div class="badge">
+        <span class="live-dot" style="background:var(--math-green); box-shadow:0 0 8px var(--math-green);"></span>
+        LIVE · INTERACTIVE · MATHEMATICS
+      </div>
+      
+      <h1 class="font-mono font-bold mb-8" style="font-size: clamp(2.5rem, 5vw, 4.5rem); line-height: 1.1; letter-spacing: -0.045em;">
+        <span style="color: var(--muted);">$</span> <span id="typewriter" class="cursor"></span>
+      </h1>
+      
+      <p class="font-display text-2xl md:text-3xl mb-5" style="font-style: italic; font-weight: 400; color: var(--fg); line-height: 1.3;">
+        Notes from a programmer's desk — on <em class="italic-serif" style="color:var(--accent);">code</em>, <em class="italic-serif" style="color:var(--accent-2);">geometry</em>, and the strange joy of debugging at 2am.
+      </p>
+      
+      <p class="text-base md:text-lg mb-12 max-w-2xl" style="color: var(--muted); line-height: 1.6;">
+        A handcrafted field guide to the shapes, functions, and logic that quietly run the world. Pull a vertex. Bend a curve. Watch the numbers answer back in real time.
+      </p>
+      
+      <div class="flex flex-wrap gap-4 mb-20">
+        <a href="#playground" class="btn-primary">
+          Open the playground <i class="fas fa-arrow-right text-xs"></i>
+        </a>
+        <a href="#solutions" class="btn-secondary">
+          See a worked solution
+        </a>
+      </div>
+    </div>
+    
+    <!-- Hero SVG (AXIOMA) -->
+    <div class="hero-shape-wrap">
+      <div class="shape-meta tl">n = 12 vertices<br>ω = 0.7 rad/s</div>
+      <div class="shape-meta br">r(t) = R + Σ sin(ωt + φᵢ)<br>continuous morph</div>
+      
+      <svg viewBox="0 0 500 500" id="heroShape">
+        <defs>
+          <radialGradient id="blobGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="var(--math-green)" stop-opacity="0.35"/>
+            <stop offset="60%" stop-color="var(--math-green)" stop-opacity="0.08"/>
+            <stop offset="100%" stop-color="var(--math-green)" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="strokeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="var(--math-green)"/>
+            <stop offset="50%" stop-color="var(--math-orange)"/>
+            <stop offset="100%" stop-color="var(--math-red)"/>
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        
+        <line x1="250" y1="20" x2="250" y2="480" stroke="var(--border-strong)" stroke-dasharray="2 6"/>
+        <line x1="20" y1="250" x2="480" y2="250" stroke="var(--border-strong)" stroke-dasharray="2 6"/>
+        
+        <path id="ghost3" fill="none" stroke="var(--math-green)" stroke-opacity="0.08" stroke-width="1" stroke-dasharray="1 4"/>
+        <path id="ghost2" fill="none" stroke="var(--math-green)" stroke-opacity="0.12" stroke-width="1"/>
+        <path id="ghost1" fill="none" stroke="var(--math-green)" stroke-opacity="0.2" stroke-width="1"/>
+        
+        <path id="blobFill" fill="url(#blobGrad)"/>
+        <path id="blobStroke" fill="none" stroke="url(#strokeGrad)" stroke-width="2" filter="url(#glow)"/>
+        
+        <g id="blobVertices"></g>
+        
+        <circle cx="250" cy="250" r="3" fill="var(--math-green)"/>
+        <circle cx="250" cy="250" r="8" fill="none" stroke="var(--math-green)" stroke-opacity="0.4"/>
+      </svg>
+      
+      <span class="float-symbol" style="top: 10%; right: -5%; font-size: 42px; animation: floatY 9s ease-in-out infinite;">∫</span>
+      <span class="float-symbol" style="bottom: 20%; left: -8%; font-size: 36px; animation: floatY 7s ease-in-out infinite reverse; color: var(--math-red);">π</span>
+      <span class="float-symbol" style="top: 50%; right: -10%; font-size: 28px; animation: floatY 11s ease-in-out infinite; color: var(--math-orange);">∑</span>
+    </div>
+  </div>
+  
+  <div class="absolute bottom-6 left-1/2 -translate-x-1/2 font-mono text-xs flex flex-col items-center gap-3" style="color: var(--muted); z-index:2;">
+    <span class="tracking-widest uppercase">scroll</span>
+    <div style="width: 1px; height: 30px; background: linear-gradient(to bottom, var(--accent), transparent);"></div>
+  </div>
+</section>
+
+<!-- Marquee -->
+<div class="py-5 border-y marquee-wrap" style="border-color: var(--border); background: var(--bg-elev); position: relative; z-index: 2;">
+  <div class="marquee font-mono text-sm uppercase tracking-widest" style="color: var(--muted);">
+    <span>JavaScript</span><span>·</span><span>Geometry</span><span>·</span><span>Rust</span><span>·</span><span>Calculus</span><span>·</span><span>WebAssembly</span><span>·</span><span>Topology</span><span>·</span><span>PostgreSQL</span><span>·</span><span>Number Theory</span><span>·</span><span>Docker</span><span>·</span><span>Trigonometry</span><span>·</span><span>NeoVim</span><span>·</span>
+    <span>JavaScript</span><span>·</span><span>Geometry</span><span>·</span><span>Rust</span><span>·</span><span>Calculus</span><span>·</span><span>WebAssembly</span><span>·</span><span>Topology</span><span>·</span><span>PostgreSQL</span><span>·</span><span>Number Theory</span><span>·</span><span>Docker</span><span>·</span><span>Trigonometry</span><span>·</span><span>NeoVim</span><span>·</span>
+  </div>
+</div>
+
+<!-- Playground (AXIOMA) -->
+<section class="py-24 md:py-32 px-6" id="playground">
+  <div class="section-header reveal">
+    <div>
+      <div class="section-num">01 — PLAYGROUND</div>
+      <h2 class="section-title">Drag the <em>vertices</em>.<br>Read the triangle.</h2>
+    </div>
+    <div></div>
+    <p class="section-kicker">Every side length, every interior angle, the area — all of it recomputed the instant you move a point. Geometry as a living instrument.</p>
+  </div>
+  
+  <div class="playground-grid reveal" style="display:grid; grid-template-columns: 1.4fr 1fr; gap:32px; max-width: 1400px; margin:0 auto;">
+    <div class="canvas-card">
+      <div class="card-label">
+        <span><span class="live-dot"></span>SVG · DRAGGABLE</span>
+        <span id="dragHint">click + drag any vertex</span>
+      </div>
+      <svg class="triangle-svg" id="triangleSVG" viewBox="0 0 600 450">
+        <defs>
+          <pattern id="triGrid" width="30" height="30" patternUnits="userSpaceOnUse">
+            <path d="M 30 0 L 0 0 0 30" fill="none" stroke="var(--border)" stroke-width="1"/>
+          </pattern>
+          <linearGradient id="triFill" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="var(--math-green)" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="var(--math-green)" stop-opacity="0.04"/>
+          </linearGradient>
+        </defs>
+        <rect width="600" height="450" fill="url(#triGrid)"/>
+        
+        <path id="trianglePath" fill="url(#triFill)" stroke="var(--math-green)" stroke-width="2" stroke-linejoin="round"/>
+        
+        <g id="sideLabels"></g>
+        <g id="angleArcs"></g>
+        <circle id="centroid" r="4" fill="var(--math-red)"/>
+        <text id="centroidLabel" font-family="JetBrains Mono" font-size="10" fill="var(--math-red)" text-anchor="middle">G</text>
+        
+        <g id="vertices"></g>
+      </svg>
+    </div>
+    
+    <div>
+      <div class="card-label" style="margin-bottom: 16px;">
+        <span><span class="live-dot"></span>LIVE READOUTS</span>
+        <span>heron's formula</span>
+      </div>
+      <div class="readout-grid">
+        <div class="readout">
+          <div class="readout-label">side a</div>
+          <div class="readout-value"><span id="sideA">—</span><span class="readout-unit">px</span></div>
+        </div>
+        <div class="readout">
+          <div class="readout-label">side b</div>
+          <div class="readout-value"><span id="sideB">—</span><span class="readout-unit">px</span></div>
+        </div>
+        <div class="readout">
+          <div class="readout-label">side c</div>
+          <div class="readout-value"><span id="sideC">—</span><span class="readout-unit">px</span></div>
+        </div>
+        <div class="readout">
+          <div class="readout-label">perimeter</div>
+          <div class="readout-value"><span id="perim">—</span><span class="readout-unit">px</span></div>
+        </div>
+        <div class="readout">
+          <div class="readout-label">∠A</div>
+          <div class="readout-value"><span id="angleA">—</span><span class="readout-unit">°</span></div>
+        </div>
+        <div class="readout">
+          <div class="readout-label">∠B</div>
+          <div class="readout-value"><span id="angleB">—</span><span class="readout-unit">°</span></div>
+        </div>
+        <div class="readout">
+          <div class="readout-label">∠C</div>
+          <div class="readout-value"><span id="angleC">—</span><span class="readout-unit">°</span></div>
+        </div>
+        <div class="readout">
+          <div class="readout-label">area</div>
+          <div class="readout-value" style="color: var(--accent);"><span id="area">—</span><span class="readout-unit">px²</span></div>
+        </div>
+      </div>
+      
+      <div class="classification">
+        <div class="classification-label">classification</div>
+        <div class="classification-value" id="classification">— waiting for input —</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Plots (AXIOMA) -->
+<section class="py-24 md:py-32 px-6 bg-grid-fine" id="plots">
+  <div class="section-header reveal">
+    <div>
+      <div class="section-num">02 — PLOTS</div>
+      <h2 class="section-title">A polynomial<br><em>that obeys your fingers.</em></h2>
+    </div>
+    <div></div>
+    <p class="section-kicker">Four coefficients, four sliders. As you move them, the curve redraws, the roots migrate, and the extrema hunt for new hiding places along the x-axis.</p>
+  </div>
+  
+  <div class="plots-grid reveal" style="display:grid; grid-template-columns: 1.4fr 1fr; gap:32px; max-width: 1400px; margin:0 auto;">
+    <div class="canvas-card">
+      <div class="card-label">
+        <span><span class="live-dot"></span>f(x) = ax³ + bx² + cx + d</span>
+        <span id="plotDomain">x ∈ [-5, 5]</span>
+      </div>
+      <svg class="plot-svg" id="plotSVG" viewBox="0 0 600 450">
+        <defs>
+          <linearGradient id="curveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="var(--math-red)"/>
+            <stop offset="50%" stop-color="var(--math-orange)"/>
+            <stop offset="100%" stop-color="var(--math-green)"/>
+          </linearGradient>
+          <filter id="curveGlow">
+            <feGaussianBlur stdDeviation="2.5" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        
+        <g id="plotGrid"></g>
+        <g id="plotAxes"></g>
+        <path id="curveFill" fill="var(--math-green)" fill-opacity="0.05"/>
+        <path id="curvePath" fill="none" stroke="url(#curveGrad)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" filter="url(#curveGlow)"/>
+        
+        <g id="plotPoints"></g>
+      </svg>
+    </div>
+    
+    <div>
+      <div class="card-label" style="margin-bottom: 16px;">
+        <span><span class="live-dot"></span>PARAMETERS</span>
+        <span>range [-2, 2]</span>
+      </div>
+      
+      <div class="equation-display" id="equationDisplay">
+        <span class="num">0</span><span class="var">x</span>³ <span class="op">+</span> <span class="num">0</span><span class="var">x</span>² <span class="op">+</span> <span class="num">0</span><span class="var">x</span> <span class="op">+</span> <span class="num">0</span>
+      </div>
+      
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">cubic term <span class="var">a</span></span>
+          <span class="slider-value" id="valA">0.30</span>
+        </div>
+        <input type="range" id="sliderA" min="-1" max="1" step="0.05" value="0.3">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">quadratic term <span class="var">b</span></span>
+          <span class="slider-value" id="valB">-0.50</span>
+        </div>
+        <input type="range" id="sliderB" min="-2" max="2" step="0.05" value="-0.5">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">linear term <span class="var">c</span></span>
+          <span class="slider-value" id="valC">-1.50</span>
+        </div>
+        <input type="range" id="sliderC" min="-3" max="3" step="0.05" value="-1.5">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header">
+          <span class="slider-label">constant <span class="var">d</span></span>
+          <span class="slider-value" id="valD">1.00</span>
+        </div>
+        <input type="range" id="sliderD" min="-3" max="3" step="0.05" value="1">
+      </div>
+      
+      <div class="feature-list">
+        <div class="feature-item"><span class="label">y-intercept</span><span class="val" id="yInt">1.00</span></div>
+        <div class="feature-item"><span class="label">discriminant</span><span class="val" id="disc">—</span></div>
+        <div class="feature-item"><span class="label">real roots</span><span class="val" id="roots">—</span></div>
+        <div class="feature-item"><span class="label">critical pts</span><span class="val" id="critPts">—</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Snippets (from /dev/log) -->
+<section class="py-24 md:py-32 px-6" id="snippets" style="background: var(--bg-elev);">
+  <div class="max-w-7xl mx-auto">
+    <div class="grid lg:grid-cols-12 gap-12 items-start">
+      <div class="lg:col-span-4 lg:sticky" style="top: 120px;">
+        <div class="font-mono text-xs uppercase tracking-widest mb-4" style="color: var(--accent);">// snippet of the week</div>
+        <h2 class="font-display font-black text-4xl md:text-5xl mb-6" style="letter-spacing: -0.03em; line-height: 1.05;">
+          <span style="font-style: italic; font-weight: 400;">useTypewriter</span>() — the hook powering this hero.
+        </h2>
+        <p class="text-base mb-8" style="color: var(--muted); line-height: 1.65;">
+          The blinking greeting at the top of this page isn't a CSS animation — it's a real React hook. Type, pause, delete, advance. Click <em>copy</em> and paste it into your project.
+        </p>
+        <ul class="space-y-3 font-mono text-sm mb-8" style="color: var(--fg-dim);">
+          <li class="flex items-center gap-3"><span style="color: var(--accent);">→</span> zero dependencies</li>
+          <li class="flex items-center gap-3"><span style="color: var(--accent);">→</span> ~30 lines, fully typed</li>
+          <li class="flex items-center gap-3"><span style="color: var(--accent);">→</span> cleanup-safe on unmount</li>
+        </ul>
+        <div class="flex flex-wrap gap-2">
+          <span class="tag">React</span>
+          <span class="tag">TypeScript</span>
+          <span class="tag">Hooks</span>
+        </div>
+      </div>
+      
+      <div class="lg:col-span-8">
+        <div class="code-window">
+          <div class="code-header">
+            <div class="flex items-center gap-3">
+              <span class="flex gap-1.5">
+                <span style="width:11px;height:11px;border-radius:50%;background:#ff5f57;display:inline-block;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:#febc2e;display:inline-block;"></span>
+                <span style="width:11px;height:11px;border-radius:50%;background:#28c840;display:inline-block;"></span>
+              </span>
+              <span class="font-mono text-xs" style="color: var(--muted);">useTypewriter.ts</span>
+            </div>
+            <button class="copy-btn" data-target="snippetCode">
+              <i class="fas fa-copy"></i>
+              <span class="copy-label">copy</span>
+            </button>
+          </div>
+          <pre class="p-6 md:p-7 text-xs md:text-sm overflow-x-auto" style="background: var(--code-bg); margin: 0; line-height: 1.7;"><code id="snippetCode"><span class="tk-com">// A self-cleaning typewriter hook. No deps, ~30 lines.</span>
+<span class="tk-key">import</span> { <span class="tk-var">useState</span>, <span class="tk-var">useEffect</span> } <span class="tk-key">from</span> <span class="tk-str">'react'</span>;
+
+<span class="tk-key">export function</span> <span class="tk-fn">useTypewriter</span>(
+  <span class="tk-var">words</span>: <span class="tk-fn">string</span>[],
+  <span class="tk-var">speed</span> = <span class="tk-num">80</span>,
+  <span class="tk-var">pause</span> = <span class="tk-num">1800</span>,
+) {
+  <span class="tk-key">const</span> [<span class="tk-var">text</span>, <span class="tk-var">setText</span>] = <span class="tk-fn">useState</span>(<span class="tk-str">''</span>);
+  <span class="tk-key">const</span> [<span class="tk-var">i</span>, <span class="tk-var">setI</span>] = <span class="tk-fn">useState</span>(<span class="tk-num">0</span>);
+  <span class="tk-key">const</span> [<span class="tk-var">del</span>, <span class="tk-fn">setDel</span>] = <span class="tk-fn">useState</span>(<span class="tk-key">false</span>);
+
+  <span class="tk-fn">useEffect</span>(() <span class="tk-op">=&gt;</span> {
+    <span class="tk-key">const</span> <span class="tk-var">word</span> = <span class="tk-var">words</span>[<span class="tk-var">i</span> % <span class="tk-var">words</span>.<span class="tk-var">length</span>];
+    <span class="tk-key">const</span> <span class="tk-var">delay</span> = <span class="tk-var">del</span> ? <span class="tk-var">speed</span> / <span class="tk-num">2</span> : <span class="tk-var">speed</span>;
+
+    <span class="tk-key">const</span> <span class="tk-var">t</span> = <span class="tk-fn">setTimeout</span>(() <span class="tk-op">=&gt;</span> {
+      <span class="tk-var">setText</span>(<span class="tk-var">del</span>
+        ? <span class="tk-var">word</span>.<span class="tk-fn">slice</span>(<span class="tk-num">0</span>, <span class="tk-var">text</span>.<span class="tk-var">length</span> - <span class="tk-num">1</span>)
+        : <span class="tk-var">word</span>.<span class="tk-fn">slice</span>(<span class="tk-num">0</span>, <span class="tk-var">text</span>.<span class="tk-var">length</span> + <span class="tk-num">1</span>));
+    }, <span class="tk-var">delay</span>);
+
+    <span class="tk-key">if</span> (!<span class="tk-var">del</span> <span class="tk-op">&amp;&amp;</span> <span class="tk-var">text</span> === <span class="tk-var">word</span>) {
+      <span class="tk-key">const</span> <span class="tk-var">p</span> = <span class="tk-fn">setTimeout</span>(() <span class="tk-op">=&gt;</span> <span class="tk-fn">setDel</span>(<span class="tk-key">true</span>), <span class="tk-var">pause</span>);
+      <span class="tk-key">return</span> () <span class="tk-op">=&gt;</span> { <span class="tk-fn">clearTimeout</span>(<span class="tk-var">t</span>); <span class="tk-fn">clearTimeout</span>(<span class="tk-var">p</span>); };
+    }
+    <span class="tk-key">if</span> (<span class="tk-var">del</span> <span class="tk-op">&amp;&amp;</span> <span class="tk-var">text</span> === <span class="tk-str">''</span>) {
+      <span class="tk-fn">setDel</span>(<span class="tk-key">false</span>);
+      <span class="tk-fn">setI</span>(<span class="tk-var">i</span> + <span class="tk-num">1</span>);
+    }
+    <span class="tk-key">return</span> () <span class="tk-op">=&gt;</span> <span class="tk-fn">clearTimeout</span>(<span class="tk-var">t</span>);
+  }, [<span class="tk-var">text</span>, <span class="tk-var">del</span>, <span class="tk-var">i</span>, <span class="tk-var">words</span>, <span class="tk-var">speed</span>, <span class="tk-var">pause</span>]);
+
+  <span class="tk-key">return</span> <span class="tk-var">text</span>;
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Quiz (AXIOMA) -->
+<section class="py-24 md:py-32 px-6" id="quiz">
+  <div class="section-header reveal">
+    <div>
+      <div class="section-num">04 — QUIZ</div>
+      <h2 class="section-title">Five questions.<br><em>Immediate feedback.</em></h2>
+    </div>
+    <div></div>
+    <p class="section-kicker">Pick an answer and the card flashes mint when you're right, coral when you're not. No grades, no timers — just the quiet satisfaction of knowing.</p>
+  </div>
+  
+  <div class="quiz-progress reveal" style="max-width: 1000px; margin: 0 auto 32px; display: flex; justify-content: space-between; align-items: center; padding: 20px 28px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 16px;">
+    <div class="progress-stat" style="display:flex; flex-direction:column; gap:2px;">
+      <span class="label" style="font-family:'JetBrains Mono'; font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase;">completed</span>
+      <span class="val" style="font-family:'Fraunces'; font-size:24px; font-weight:600;"><span id="quizDone">0</span><span class="total" style="color:var(--muted); font-size:16px;">/5</span></span>
+    </div>
+    <div class="progress-stat" style="text-align: center; display:flex; flex-direction:column; gap:2px;">
+      <span class="label" style="font-family:'JetBrains Mono'; font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase;">correct</span>
+      <span class="val" style="color: var(--math-mint); font-family:'Fraunces'; font-size:24px; font-weight:600;"><span id="quizRight">0</span></span>
+    </div>
+    <div class="progress-stat" style="text-align: right; display:flex; flex-direction:column; gap:2px;">
+      <span class="label" style="font-family:'JetBrains Mono'; font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase;">accuracy</span>
+      <span class="val" style="font-family:'Fraunces'; font-size:24px; font-weight:600;"><span id="quizAcc">—</span></span>
+    </div>
+  </div>
+  
+  <div class="quiz-grid reveal" id="quizGrid">
+    <!-- Questions injected by JS -->
+  </div>
+</section>
+
+<!-- Solutions (AXIOMA) -->
+<section class="py-24 md:py-32 px-6 bg-grid-fine" id="solutions">
+  <div class="section-header reveal">
+    <div>
+      <div class="section-num">05 — SOLUTIONS</div>
+      <h2 class="section-title">One problem.<br><em>Revealed step by step.</em></h2>
+    </div>
+    <div></div>
+    <p class="section-kicker">Mathematics is mostly about the path, not the answer. Walk through the quadratic formula one move at a time — at your own pace.</p>
+  </div>
+  
+  <div class="solutions-wrap reveal" style="max-width: 900px; margin: 0 auto;">
+    <div class="problem-card" style="background: linear-gradient(135deg, var(--bg-elev), var(--bg)); border: 1px solid var(--border); border-radius: 20px; padding: 40px; margin-bottom: 32px; position: relative; overflow: hidden;">
+      <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--math-green), var(--math-orange), var(--math-red));"></div>
+      <div class="problem-label" style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 12px;">WORKED EXAMPLE · QUADRATIC FORMULA</div>
+      <div class="problem-text" style="font-family: 'Fraunces', serif; font-size: 32px; font-weight: 600; line-height: 1.2; margin-bottom: 8px;">Solve 2<span style="font-style:italic">x</span>² − 5<span style="font-style:italic">x</span> − 3 = 0</div>
+      <div class="problem-prompt" style="color: var(--fg-dim); font-size: 15px;">Find both values of <span class="italic-serif">x</span> that satisfy the equation. Tap "next step" to walk through the derivation.</div>
+    </div>
+    
+    <div class="steps-list" id="stepsList"></div>
+    
+    <div class="reveal-controls" style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+      <button class="reveal-btn" id="revealBtn" style="background: var(--accent); color: var(--bg); border: none; padding: 12px 24px; border-radius: 8px; font-family: inherit; font-weight: 600; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;">
+        <span id="revealBtnText">Reveal step 1</span>
+        <i class="fas fa-arrow-down" style="font-size: 12px;"></i>
+      </button>
+      <button class="reset-btn" id="resetBtn" style="background: transparent; color: var(--fg-dim); border: 1px solid var(--border-strong); padding: 12px 24px; border-radius: 8px; font-family: inherit; font-weight: 500; font-size: 14px; cursor: pointer; transition: all 0.2s;">
+        <i class="fas fa-rotate-left" style="font-size: 12px; margin-right: 6px;"></i> Reset
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Notes / Archive (from /dev/log) -->
+<section class="py-24 md:py-32 px-6" id="notes">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-end justify-between mb-16 flex-wrap gap-6 reveal">
+      <div>
+        <div class="font-mono text-xs uppercase tracking-widest mb-4" style="color: var(--accent);">// recent notes</div>
+        <h2 class="font-display font-black text-5xl md:text-7xl" style="letter-spacing: -0.035em; line-height: 1;">
+          Latest <span style="font-style: italic; font-weight: 400;">writing</span>
+        </h2>
+      </div>
+      <a href="#archive" class="btn-secondary">
+        all posts <i class="fas fa-arrow-right text-xs"></i>
+      </a>
+    </div>
+    
+    <div class="grid md:grid-cols-3 gap-6">
+      <article class="article-card reveal">
+        <div class="flex items-start justify-between mb-6">
+          <div class="card-num">01</div>
+          <span class="tag">JavaScript</span>
+        </div>
+        <div class="font-mono text-xs mb-4" style="color: var(--muted);">11.12.24 — 8 min read</div>
+        <h3 class="font-display font-bold text-2xl mb-4 leading-tight">On the Quiet Violence of Implicit Conversions</h3>
+        <p class="text-sm mb-8" style="color: var(--muted); line-height: 1.65;">
+          JavaScript will let you add <code class="font-mono px-1.5 py-0.5 rounded text-xs" style="background: rgba(var(--accent-rgb),0.1); color: var(--accent);">[]</code> to <code class="font-mono px-1.5 py-0.5 rounded text-xs" style="background: rgba(var(--accent-rgb),0.1); color: var(--accent);">{}</code> and thank you for it.
+        </p>
+        <div class="flex items-center gap-2 font-mono text-xs uppercase tracking-widest" style="color: var(--accent);">
+          <span>read essay</span><span class="arrow">→</span>
+        </div>
+      </article>
+      
+      <article class="article-card reveal">
+        <div class="flex items-start justify-between mb-6">
+          <div class="card-num">02</div>
+          <span class="tag">Compilers</span>
+        </div>
+        <div class="font-mono text-xs mb-4" style="color: var(--muted);">10.28.24 — 14 min read</div>
+        <h3 class="font-display font-bold text-2xl mb-4 leading-tight">A Lexer, By Hand, On a Sunday Afternoon</h3>
+        <p class="text-sm mb-8" style="color: var(--muted); line-height: 1.65;">
+          Skip the regex. Skip the generator. Two hundred lines of switch statements and you'll understand something new about every language.
+        </p>
+        <div class="flex items-center gap-2 font-mono text-xs uppercase tracking-widest" style="color: var(--accent);">
+          <span>read essay</span><span class="arrow">→</span>
+        </div>
+      </article>
+      
+      <article class="article-card reveal">
+        <div class="flex items-start justify-between mb-6">
+          <div class="card-num">03</div>
+          <span class="tag">Error Handling</span>
+        </div>
+        <div class="font-mono text-xs mb-4" style="color: var(--muted);">10.14.24 — 6 min read</div>
+        <h3 class="font-display font-bold text-2xl mb-4 leading-tight">Why I Removed Every Try/Catch From My Codebase</h3>
+        <p class="text-sm mb-8" style="color: var(--muted); line-height: 1.65;">
+          Result types, error channels, and the curious peace of letting things crash loudly in development.
+        </p>
+        <div class="flex items-center gap-2 font-mono text-xs uppercase tracking-widest" style="color: var(--accent);">
+          <span>read essay</span><span class="arrow">→</span>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- Subscribe -->
+<section class="py-24 md:py-32 px-6" id="about" style="background: var(--bg-elev);">
+  <div class="max-w-4xl mx-auto">
+    <div class="text-center mb-12 reveal">
+      <div class="font-mono text-xs uppercase tracking-widest mb-4" style="color: var(--accent);">// stay in the loop</div>
+      <h2 class="font-display font-black text-5xl md:text-6xl mb-6" style="letter-spacing: -0.035em; line-height: 1;">
+        Every other <span style="font-style: italic; font-weight: 400;">Tuesday.</span>
+      </h2>
+      <p class="text-lg max-w-2xl mx-auto" style="color: var(--muted); line-height: 1.6;">
+        One essay. No tracking, no ads, no <em>"10x"</em> anything. Unsubscribe with a single click — I won't even be offended.
+      </p>
+    </div>
+    
+    <form class="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto reveal" id="subForm">
+      <input type="email" placeholder="you@somewhere.dev" required class="input-field flex-1" id="emailInput">
+      <button type="submit" class="btn-primary justify-center">
+        subscribe <i class="fas fa-arrow-right text-xs"></i>
+      </button>
+    </form>
+    
+    <div id="subToast" class="font-mono text-sm mt-6 text-center opacity-0 transition-opacity duration-500" style="color: var(--accent);">
+      ✓ welcome aboard. confirmation pending in your inbox.
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-12 px-6 border-t" style="border-color: var(--border); background: var(--bg);">
+  <div class="max-w-7xl mx-auto">
+    <div class="grid md:grid-cols-3 gap-12 mb-12">
+      <div>
+        <div class="font-mono font-bold text-lg flex items-center mb-4" style="color: var(--fg);">
+          <span style="color: var(--accent);">/</span>dev<span style="color: var(--muted);">/</span>log <span style="color: var(--muted); margin: 0 6px;">×</span> <span class="font-display" style="font-weight:900; font-style:italic; color: var(--accent-2);">AXIOMA</span>
+        </div>
+        <p class="font-display" style="font-style: italic; font-size: 20px; line-height: 1.4; color: var(--fg-dim);">
+          "Mathematics is the art of giving the same name to different things."
+          <span style="display:block; margin-top:12px; font-style:normal; font-size:13px; font-family:'JetBrains Mono'; color:var(--muted); letter-spacing:0.05em;">— Henri Poincaré</span>
+        </p>
+      </div>
+      <div>
+        <h4 class="font-mono text-xs uppercase tracking-widest mb-4" style="color: var(--muted);">Sections</h4>
+        <a href="#playground" class="block text-sm py-1 hover-link">Playground</a>
+        <a href="#plots" class="block text-sm py-1 hover-link">Function Plots</a>
+        <a href="#quiz" class="block text-sm py-1 hover-link">Quiz</a>
+        <a href="#solutions" class="block text-sm py-1 hover-link">Solutions</a>
+      </div>
+      <div>
+        <h4 class="font-mono text-xs uppercase tracking-widest mb-4" style="color: var(--muted);">More</h4>
+        <a href="#notes" class="block text-sm py-1 hover-link">Recent Notes</a>
+        <a href="#snippets" class="block text-sm py-1 hover-link">Snippets</a>
+        <a href="#" class="block text-sm py-1 hover-link">Concept library</a>
+        <a href="#" class="block text-sm py-1 hover-link">About</a>
+      </div>
+    </div>
+    
+    <div class="flex flex-col md:flex-row items-center justify-between gap-6 pt-8" style="border-top: 1px solid var(--border);">
+      <div class="font-mono text-xs" style="color: var(--muted);">
+        © 2024 /dev/log × AXIOMA · built with care, not frameworks
+      </div>
+      <div class="flex items-center gap-5">
+        <a href="https://github.com" target="_blank" rel="noopener" class="hover-link text-lg" aria-label="GitHub"><i class="fab fa-github"></i></a>
+        <a href="https://twitter.com" target="_blank" rel="noopener" class="hover-link text-lg" aria-label="Twitter"><i class="fab fa-x-twitter"></i></a>
+        <a href="#" class="hover-link text-lg" aria-label="RSS"><i class="fas fa-rss"></i></a>
+        <a href="mailto:hi@devlog.example" class="hover-link text-lg" aria-label="Email"><i class="fas fa-envelope"></i></a>
+      </div>
+    </div>
+    <div class="text-center font-mono text-xs pt-6" style="color: var(--muted);">
+      <span style="color: var(--accent);">$</span> echo "thanks for reading" | sudo tee /dev/stdout
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast" style="position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--bg-elev); border: 1px solid var(--accent); padding: 14px 24px; border-radius: 100px; font-family: 'JetBrains Mono', monospace; font-size: 13px; z-index: 1000; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 10px 40px rgba(var(--accent-rgb), 0.2); display: flex; align-items: center; gap: 10px;">
+  <i class="fas fa-check-circle" style="color: var(--accent);"></i>
+  <span id="toastMsg">Done</span>
+</div>
+
+<script>
+/* ============================================
+   THEME & UI (from /dev/log)
+   ============================================ */
+const themeButtons = document.querySelectorAll('.theme-btn');
+const root = document.documentElement;
+
+function setTheme(theme, animate = true) {
+  if (animate) {
+    document.body.classList.add('theme-anim');
+    setTimeout(() => document.body.classList.remove('theme-anim'), 700);
+  }
+  root.setAttribute('data-theme', theme);
+  try { localStorage.setItem('devlog-theme', theme); } catch (e) {}
+  themeButtons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === theme);
+  });
+}
+
+themeButtons.forEach(btn => {
+  btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+});
+
+// Initial theme
+let initialTheme = 'dark';
+try {
+  const saved = localStorage.getItem('devlog-theme');
+  if (saved && ['dark', 'light', 'cyber'].includes(saved)) initialTheme = saved;
+} catch (e) {}
+setTheme(initialTheme, false);
+
+// Keyboard shortcut for theme
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 't' || e.key === 'T') {
+    const current = root.getAttribute('data-theme');
+    const order = ['dark', 'light', 'cyber'];
+    const next = order[(order.indexOf(current) + 1) % order.length];
+    setTheme(next);
+  }
+});
+
+// Reading Progress Bar
+const progressBar = document.getElementById('progressBar');
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+  progressBar.style.width = progress + '%';
+}
+window.addEventListener('scroll', updateProgress, { passive: true });
+updateProgress();
+
+// Mouse Glow
+const mouseGlow = document.getElementById('mouseGlow');
+const hero = document.getElementById('hero');
+if (hero && mouseGlow) {
+  hero.addEventListener('mousemove', (e) => {
+    const rect = hero.getBoundingClientRect();
+    mouseGlow.style.left = (e.clientX - rect.left) + 'px';
+    mouseGlow.style.top = (e.clientY - rect.top) + 'px';
+    mouseGlow.style.opacity = '1';
+  });
+  hero.addEventListener('mouseleave', () => { mouseGlow.style.opacity = '0'; });
+}
+
+// Typewriter
+const greetings = [
+  "hello, traveler.",
+  "mathematics, made tangible.",
+  "console.log('welcome back.');",
+  "geometry as a living instrument.",
+  "0x72656164657220313a20666f756e642e",
+];
+const typeEl = document.getElementById('typewriter');
+let gIdx = 0, cIdx = 0, deleting = false;
+
+function tick() {
+  const current = greetings[gIdx];
+  if (deleting) {
+    cIdx--;
+    typeEl.textContent = current.slice(0, cIdx);
+    if (cIdx === 0) {
+      deleting = false;
+      gIdx = (gIdx + 1) % greetings.length;
+      setTimeout(tick, 400);
+      return;
+    }
+    setTimeout(tick, 35);
+  } else {
+    cIdx++;
+    typeEl.textContent = current.slice(0, cIdx);
+    if (cIdx === current.length) {
+      deleting = true;
+      setTimeout(tick, 2200);
+      return;
+    }
+    setTimeout(tick, 75 + Math.random() * 50);
+  }
+}
+tick();
+
+// Scroll Reveal
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -80px 0px' });
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+// Copy Code
+document.querySelectorAll('.copy-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const targetId = btn.dataset.target;
+    const codeEl = document.getElementById(targetId);
+    if (!codeEl) return;
+    const text = codeEl.innerText;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e2) {}
+      document.body.removeChild(ta);
+    }
+    btn.classList.add('copied');
+    const label = btn.querySelector('.copy-label');
+    const icon = btn.querySelector('i');
+    const origLabel = label.textContent;
+    const origIcon = icon.className;
+    label.textContent = 'copied';
+    icon.className = 'fas fa-check';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      label.textContent = origLabel;
+      icon.className = origIcon;
+    }, 1800);
+  });
+});
+
+// GitHub Stats
+const starsEl = document.getElementById('ghStars');
+const forksEl = document.getElementById('ghForks');
+function formatNumber(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return n.toString();
+}
+function animateCounter(el, target, duration = 1400) {
+  const start = parseInt(el.dataset.raw) || 0;
+  const startTime = performance.now();
+  function frame(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const value = Math.floor(start + (target - start) * eased);
+    el.textContent = formatNumber(value);
+    el.dataset.raw = value;
+    if (t < 1) requestAnimationFrame(frame);
+    else { el.dataset.raw = target; el.textContent = formatNumber(target); }
+  }
+  requestAnimationFrame(frame);
+}
+async function loadGitHubStats() {
+  const fallbackStars = 82400;
+  const fallbackForks = 4180;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch('https://api.github.com/repos/tailwindlabs/tailwindcss', { signal: controller.signal, headers: { 'Accept': 'application/vnd.github.v3+json' }});
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error('Rate limited');
+    const data = await res.json();
+    animateCounter(starsEl, data.stargazers_count);
+    animateCounter(forksEl, data.forks_count);
+  } catch (e) {
+    animateCounter(starsEl, fallbackStars);
+    animateCounter(forksEl, fallbackForks);
+  }
+}
+if(starsEl) loadGitHubStats();
+setInterval(() => {
+  if (starsEl && Math.random() < 0.35) {
+    const current = parseInt(starsEl.dataset.raw) || 0;
+    const next = current + 1;
+    starsEl.dataset.raw = next;
+    starsEl.textContent = formatNumber(next);
+    starsEl.classList.remove('flash-up');
+    void starsEl.offsetWidth;
+    starsEl.classList.add('flash-up');
+  }
+}, 9000);
+
+// Subscribe form
+const subForm = document.getElementById('subForm');
+const subToast = document.getElementById('subToast');
+if(subForm) {
+  subForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('emailInput');
+    if (!input.value || !input.value.includes('@')) return;
+    subToast.style.opacity = '1';
+    input.value = '';
+    input.placeholder = 'see you Tuesday.';
+    setTimeout(() => {
+      subToast.style.opacity = '0';
+      input.placeholder = 'you@somewhere.dev';
+    }, 4000);
+  });
+}
+
+// Toast
+const toastEl = document.getElementById('toast');
+const toastMsg = document.getElementById('toastMsg');
+let toastTimer;
+function showToast(msg) {
+  if(!toastEl) return;
+  toastMsg.textContent = msg;
+  toastEl.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.style.transform = 'translateX(-50%) translateY(100px)', 3000);
+}
+
+
+/* ============================================
+   HERO MORPHING SHAPE (AXIOMA)
+   ============================================ */
+const heroSvg = document.getElementById('heroShape');
+const blobFill = document.getElementById('blobFill');
+const blobStroke = document.getElementById('blobStroke');
+const ghost1 = document.getElementById('ghost1');
+const ghost2 = document.getElementById('ghost2');
+const ghost3 = document.getElementById('ghost3');
+const verticesGroup = document.getElementById('blobVertices');
+
+if (heroSvg) {
+  const N_VERTS = 12;
+  const vertDots = [];
+  for (let i = 0; i < N_VERTS; i++) {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('r', 3);
+    c.setAttribute('fill', 'var(--math-green)');
+    c.setAttribute('opacity', '0.9');
+    verticesGroup.appendChild(c);
+    vertDots.push(c);
+  }
+
+  function catmullRomClosed(pts) {
+    const n = pts.length;
+    let d = '';
+    for (let i = 0; i < n; i++) {
+      const p0 = pts[(i - 1 + n) % n];
+      const p1 = pts[i];
+      const p2 = pts[(i + 1) % n];
+      const p3 = pts[(i + 2) % n];
+      if (i === 0) d += `M ${p1[0].toFixed(2)},${p1[1].toFixed(2)} `;
+      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += `C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2[0].toFixed(2)},${p2[1].toFixed(2)} `;
+    }
+    return d + 'Z';
+  }
+
+  let mouseFx = 0, mouseFy = 0;
+  heroSvg.addEventListener('mousemove', e => {
+    const rect = heroSvg.getBoundingClientRect();
+    mouseFx = ((e.clientX - rect.left) / rect.width - 0.5) * 30;
+    mouseFy = ((e.clientY - rect.top) / rect.height - 0.5) * 30;
+  });
+  heroSvg.addEventListener('mouseleave', () => { mouseFx = 0; mouseFy = 0; });
+
+  const heroStart = performance.now();
+  function morphLoop() {
+    const t = (performance.now() - heroStart) / 1000;
+    const cx = 250 + mouseFx;
+    const cy = 250 + mouseFy;
+    const baseR = 150;
+    const pts = [];
+    
+    for (let i = 0; i < N_VERTS; i++) {
+      const angle = (i / N_VERTS) * Math.PI * 2;
+      const r = baseR + Math.sin(t * 0.7 + i * 0.9) * 32 + Math.cos(t * 0.5 + i * 1.7) * 22 + Math.sin(t * 1.1 + i * 0.3) * 12;
+      pts.push([cx + Math.cos(angle) * r, cy + Math.sin(angle) * r]);
+    }
+    
+    const ghostPts1 = [], ghostPts2 = [], ghostPts3 = [];
+    for (let i = 0; i < N_VERTS; i++) {
+      const angle = (i / N_VERTS) * Math.PI * 2;
+      const r1 = baseR + Math.sin((t-0.3) * 0.7 + i * 0.9) * 32 + Math.cos((t-0.3) * 0.5 + i * 1.7) * 22;
+      const r2 = baseR + Math.sin((t-0.6) * 0.7 + i * 0.9) * 32 + Math.cos((t-0.6) * 0.5 + i * 1.7) * 22;
+      const r3 = baseR + Math.sin((t-0.9) * 0.7 + i * 0.9) * 32 + Math.cos((t-0.9) * 0.5 + i * 1.7) * 22;
+      ghostPts1.push([cx + Math.cos(angle) * r1, cy + Math.sin(angle) * r1]);
+      ghostPts2.push([cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2]);
+      ghostPts3.push([cx + Math.cos(angle) * r3, cy + Math.sin(angle) * r3]);
+    }
+    
+    const mainPath = catmullRomClosed(pts);
+    blobFill.setAttribute('d', mainPath);
+    blobStroke.setAttribute('d', mainPath);
+    ghost1.setAttribute('d', catmullRomClosed(ghostPts1));
+    ghost2.setAttribute('d', catmullRomClosed(ghostPts2));
+    ghost3.setAttribute('d', catmullRomClosed(ghostPts3));
+    
+    pts.forEach((p, i) => {
+      vertDots[i].setAttribute('cx', p[0]);
+      vertDots[i].setAttribute('cy', p[1]);
+      const pulse = 2 + Math.sin(t * 2 + i) * 1.5;
+      vertDots[i].setAttribute('r', Math.max(1.5, pulse));
+    });
+    requestAnimationFrame(morphLoop);
+  }
+  morphLoop();
+}
+
+
+/* ============================================
+   TRIANGLE PLAYGROUND (AXIOMA)
+   ============================================ */
+const triSVG = document.getElementById('triangleSVG');
+if (triSVG) {
+  const triPath = document.getElementById('trianglePath');
+  const verticesG = document.getElementById('vertices');
+  const sideLabelsG = document.getElementById('sideLabels');
+  const angleArcsG = document.getElementById('angleArcs');
+  const centroidEl = document.getElementById('centroid');
+  const centroidLabel = document.getElementById('centroidLabel');
+
+  const W = 600, H = 450;
+  const triangle = {
+    A: { x: 100, y: 100, label: 'A' },
+    B: { x: 500, y: 130, label: 'B' },
+    C: { x: 300, y: 400, label: 'C' }
+  };
+
+  const vertexElements = {};
+  ['A', 'B', 'C'].forEach(key => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'vertex-handle');
+    g.dataset.vertex = key;
+    
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ring.setAttribute('r', 18);
+    ring.setAttribute('fill', 'rgba(212,255,58,0.08)');
+    ring.setAttribute('stroke', 'var(--math-green)');
+    ring.setAttribute('stroke-width', '1.5');
+    
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('r', 6);
+    dot.setAttribute('fill', 'var(--math-green)');
+    
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('font-family', 'Fraunces, serif');
+    label.setAttribute('font-style', 'italic');
+    label.setAttribute('font-size', '20');
+    label.setAttribute('font-weight', '600');
+    label.setAttribute('fill', 'var(--bg)');
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('dominant-baseline', 'central');
+    label.textContent = triangle[key].label;
+    label.setAttribute('y', 1);
+    
+    g.appendChild(ring); g.appendChild(dot); g.appendChild(label);
+    verticesG.appendChild(g);
+    vertexElements[key] = { g, ring, dot, label };
+    
+    const startDrag = (e) => {
+      e.preventDefault();
+      g.classList.add('dragging');
+      const svgRect = triSVG.getBoundingClientRect();
+      const scaleX = W / svgRect.width;
+      const scaleY = H / svgRect.height;
+      
+      const onMove = (ev) => {
+        const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+        const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+        const x = (clientX - svgRect.left) * scaleX;
+        const y = (clientY - svgRect.top) * scaleY;
+        triangle[key].x = Math.max(30, Math.min(W - 30, x));
+        triangle[key].y = Math.max(30, Math.min(H - 30, y));
+        updateTriangle();
+      };
+      
+      const onUp = () => {
+        g.classList.remove('dragging');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
+      };
+      
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onUp);
+    };
+    
+    g.addEventListener('mousedown', startDrag);
+    g.addEventListener('touchstart', startDrag, { passive: false });
+  });
+
+  function dist(p1, p2) { return Math.hypot(p2.x - p1.x, p2.y - p1.y); }
+  function angleAtVertex(p, q1, q2) {
+    const v1x = q1.x - p.x, v1y = q1.y - p.y;
+    const v2x = q2.x - p.x, v2y = q2.y - p.y;
+    const dot = v1x * v2x + v1y * v2y;
+    const m1 = Math.hypot(v1x, v1y);
+    const m2 = Math.hypot(v2x, v2y);
+    if (m1 < 0.001 || m2 < 0.001) return 0;
+    return Math.acos(Math.max(-1, Math.min(1, dot / (m1 * m2)))) * 180 / Math.PI;
+  }
+  function midpoint(p1, p2) { return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }; }
+  function describeArc(cx, cy, r, startAngle, endAngle) {
+    const start = { x: cx + r * Math.cos(startAngle), y: cy + r * Math.sin(startAngle) };
+    const end = { x: cx + r * Math.cos(endAngle), y: cy + r * Math.sin(endAngle) };
+    const largeArc = Math.abs(endAngle - startAngle) > Math.PI ? 1 : 0;
+    const sweep = endAngle > startAngle ? 1 : 0;
+    return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} ${sweep} ${end.x} ${end.y}`;
+  }
+  function fmt(n, d = 1) { return n.toFixed(d); }
+
+  function updateTriangle() {
+    const { A, B, C } = triangle;
+    triPath.setAttribute('d', `M ${A.x} ${A.y} L ${B.x} ${B.y} L ${C.x} ${C.y} Z`);
+    
+    ['A', 'B', 'C'].forEach(k => {
+      vertexElements[k].g.setAttribute('transform', `translate(${triangle[k].x}, ${triangle[k].y})`);
+    });
+    
+    const a = dist(B, C); const b = dist(A, C); const c = dist(A, B);
+    const angleA = angleAtVertex(A, B, C); const angleB = angleAtVertex(B, A, C); const angleC = angleAtVertex(C, A, B);
+    const perim = a + b + c; const s = perim / 2;
+    const area = Math.sqrt(Math.max(0, s * (s - a) * (s - b) * (s - c)));
+    
+    const gx = (A.x + B.x + C.x) / 3; const gy = (A.y + B.y + C.y) / 3;
+    centroidEl.setAttribute('cx', gx); centroidEl.setAttribute('cy', gy);
+    centroidLabel.setAttribute('x', gx + 12); centroidLabel.setAttribute('y', gy + 4);
+    
+    sideLabelsG.innerHTML = '';
+    const sides = [ { p1: B, p2: C, label: 'a', val: a }, { p1: A, p2: C, label: 'b', val: b }, { p1: A, p2: B, label: 'c', val: c } ];
+    sides.forEach(s => {
+      const mid = midpoint(s.p1, s.p2);
+      const dx = s.p2.x - s.p1.x; const dy = s.p2.y - s.p1.y;
+      const len = Math.hypot(dx, dy); const nx = -dy / len; const ny = dx / len;
+      const dir = ((mid.x - gx) * nx + (mid.y - gy) * ny) >= 0 ? 1 : -1;
+      const off = 22;
+      const lx = mid.x + nx * off * dir; const ly = mid.y + ny * off * dir;
+      
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', lx); t.setAttribute('y', ly);
+      t.setAttribute('font-family', 'JetBrains Mono, monospace'); t.setAttribute('font-size', '13');
+      t.setAttribute('fill', 'var(--fg-dim)'); t.setAttribute('text-anchor', 'middle'); t.setAttribute('dominant-baseline', 'central');
+      t.textContent = `${s.label} = ${fmt(s.val)}`;
+      sideLabelsG.appendChild(t);
+    });
+    
+    angleArcsG.innerHTML = '';
+    const angles = [ { vertex: A, p1: B, p2: C, val: angleA, name: 'A' }, { vertex: B, p1: A, p2: C, val: angleB, name: 'B' }, { vertex: C, p1: A, p2: B, val: angleC, name: 'C' } ];
+    angles.forEach(ang => {
+      const a1 = Math.atan2(ang.p1.y - ang.vertex.y, ang.p1.x - ang.vertex.x);
+      const a2 = Math.atan2(ang.p2.y - ang.vertex.y, ang.p2.x - ang.vertex.x);
+      const r = 28;
+      const path = describeArc(ang.vertex.x, ang.vertex.y, r, Math.min(a1, a2), Math.max(a1, a2));
+      const arcEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      arcEl.setAttribute('d', path); arcEl.setAttribute('fill', 'none');
+      arcEl.setAttribute('stroke', 'var(--math-orange)'); arcEl.setAttribute('stroke-width', '1.5'); arcEl.setAttribute('opacity', '0.6');
+      angleArcsG.appendChild(arcEl);
+    });
+    
+    document.getElementById('sideA').textContent = fmt(a);
+    document.getElementById('sideB').textContent = fmt(b);
+    document.getElementById('sideC').textContent = fmt(c);
+    document.getElementById('perim').textContent = fmt(perim);
+    document.getElementById('angleA').textContent = fmt(angleA);
+    document.getElementById('angleB').textContent = fmt(angleB);
+    document.getElementById('angleC').textContent = fmt(angleC);
+    document.getElementById('area').textContent = fmt(area);
+    
+    const anglesArr = [angleA, angleB, angleC]; const maxAng = Math.max(...anglesArr);
+    const tolerance = (v1, v2) => Math.abs(v1 - v2) < 1.5;
+    let bySide = 'scalene';
+    if (tolerance(a, b) && tolerance(b, c)) bySide = 'equilateral';
+    else if (tolerance(a, b) || tolerance(b, c) || tolerance(a, c)) bySide = 'isosceles';
+    let byAngle = 'acute';
+    if (Math.abs(maxAng - 90) < 1.5) byAngle = 'right';
+    else if (maxAng > 90) byAngle = 'obtuse';
+    document.getElementById('classification').textContent = `${bySide} · ${byAngle} triangle`;
+  }
+  updateTriangle();
+}
+
+
+/* ============================================
+   FUNCTION PLOTTER (AXIOMA)
+   ============================================ */
+const plotSVG = document.getElementById('plotSVG');
+if (plotSVG) {
+  const plotGrid = document.getElementById('plotGrid');
+  const plotAxes = document.getElementById('plotAxes');
+  const curvePath = document.getElementById('curvePath');
+  const curveFill = document.getElementById('curveFill');
+  const plotPoints = document.getElementById('plotPoints');
+
+  const PW = 600, PH = 450;
+  const xMin = -5, xMax = 5, yMin = -5, yMax = 5;
+  const padL = 40, padR = 20, padT = 20, padB = 40;
+  const plotW = PW - padL - padR; const plotH = PH - padT - padB;
+  const sx = x => padL + ((x - xMin) / (xMax - xMin)) * plotW;
+  const sy = y => padT + (1 - (y - yMin) / (yMax - yMin)) * plotH;
+
+  function drawPlotGrid() {
+    plotGrid.innerHTML = ''; plotAxes.innerHTML = '';
+    for (let x = xMin; x <= xMax; x++) {
+      const lx = sx(x);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', lx); line.setAttribute('y1', padT); line.setAttribute('x2', lx); line.setAttribute('y2', padT + plotH);
+      line.setAttribute('stroke', x === 0 ? 'var(--fg-dim)' : 'var(--border)');
+      line.setAttribute('stroke-width', x === 0 ? 1.5 : 1);
+      plotGrid.appendChild(line);
+      if (x !== 0) {
+        const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        lbl.setAttribute('x', lx); lbl.setAttribute('y', padT + plotH + 18);
+        lbl.setAttribute('font-family', 'JetBrains Mono, monospace'); lbl.setAttribute('font-size', '10');
+        lbl.setAttribute('fill', 'var(--muted)'); lbl.setAttribute('text-anchor', 'middle');
+        lbl.textContent = x; plotAxes.appendChild(lbl);
+      }
+    }
+    for (let y = yMin; y <= yMax; y++) {
+      const ly = sy(y);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', padL); line.setAttribute('y1', ly); line.setAttribute('x2', padL + plotW); line.setAttribute('y2', ly);
+      line.setAttribute('stroke', y === 0 ? 'var(--fg-dim)' : 'var(--border)');
+      line.setAttribute('stroke-width', y === 0 ? 1.5 : 1);
+      plotGrid.appendChild(line);
+      if (y !== 0) {
+        const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        lbl.setAttribute('x', padL - 8); lbl.setAttribute('y', ly + 3);
+        lbl.setAttribute('font-family', 'JetBrains Mono, monospace'); lbl.setAttribute('font-size', '10');
+        lbl.setAttribute('fill', 'var(--muted)'); lbl.setAttribute('text-anchor', 'end');
+        lbl.textContent = y; plotAxes.appendChild(lbl);
+      }
+    }
+    const o = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    o.setAttribute('x', sx(0) - 8); o.setAttribute('y', sy(0) + 16);
+    o.setAttribute('font-family', 'JetBrains Mono, monospace'); o.setAttribute('font-size', '10');
+    o.setAttribute('fill', 'var(--muted)'); o.setAttribute('text-anchor', 'end'); o.textContent = '0';
+    plotAxes.appendChild(o);
+  }
+  drawPlotGrid();
+
+  const coeffs = { a: 0.3, b: -0.5, c: -1.5, d: 1 };
+  function f(x) { return coeffs.a * x ** 3 + coeffs.b * x ** 2 + coeffs.c * x + coeffs.d; }
+
+  function plotCurve() {
+    let path = ''; let started = false; const points = [];
+    for (let px = 0; px <= plotW; px++) {
+      const x = xMin + (px / plotW) * (xMax - xMin);
+      const y = f(x); const py = sy(y);
+      points.push({ x, y, px: sx(x), py });
+      if (py >= padT - 50 && py <= padT + plotH + 50) {
+        if (!started) { path += `M ${sx(x).toFixed(2)} ${py.toFixed(2)} `; started = true; }
+        else { path += `L ${sx(x).toFixed(2)} ${py.toFixed(2)} `; }
+      } else { started = false; }
+    }
+    curvePath.setAttribute('d', path);
+    
+    let fillD = ''; let inFill = false;
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      if (p.y >= 0 && p.y <= yMax + 2) {
+        if (!inFill) { fillD += `M ${p.px.toFixed(2)} ${sy(0).toFixed(2)} L ${p.px.toFixed(2)} ${p.py.toFixed(2)} `; inFill = true; }
+        else { fillD += `L ${p.px.toFixed(2)} ${p.py.toFixed(2)} `; }
+      } else {
+        if (inFill) { fillD += `L ${points[i-1].px.toFixed(2)} ${sy(0).toFixed(2)} Z `; inFill = false; }
+      }
+    }
+    if (inFill) { fillD += `L ${points[points.length-1].px.toFixed(2)} ${sy(0).toFixed(2)} Z`; }
+    curveFill.setAttribute('d', fillD);
+    
+    const eq = document.getElementById('equationDisplay');
+    const fmtNum = n => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(2);
+    eq.innerHTML = `
+      <span class="num">${coeffs.a.toFixed(2)}</span><span class="var">x</span>³
+      <span class="op">${fmtNum(coeffs.b)}</span><span class="var">x</span>²
+      <span class="op">${fmtNum(coeffs.c)}</span><span class="var">x</span>
+      <span class="op">${fmtNum(coeffs.d)}</span>
+    `;
+    
+    const roots = [];
+    let prevY = f(xMin);
+    for (let i = 1; i <= 200; i++) {
+      const x = xMin + (i / 200) * (xMax - xMin); const y = f(x);
+      if (prevY * y < 0) { const xr = x - (x - (x - (xMax-xMin)/200)) * y / (y - prevY); roots.push(xr); }
+      prevY = y;
+    }
+    
+    const dA = 3 * coeffs.a; const dB = 2 * coeffs.b; const dC = coeffs.c;
+    const disc = dB * dB - 4 * dA * dC;
+    let crits = [];
+    if (Math.abs(dA) < 0.001) { if (Math.abs(dB) > 0.001) crits.push(-dC / dB); }
+    else if (disc > 0) { const sqd = Math.sqrt(disc); crits.push((-dB + sqd) / (2 * dA)); crits.push((-dB - sqd) / (2 * dA)); }
+    crits = crits.filter(x => x >= xMin && x <= xMax);
+    
+    const quadDisc = coeffs.c * coeffs.c - 4 * coeffs.b * coeffs.d;
+    plotPoints.innerHTML = '';
+    
+    const yInt = coeffs.d;
+    const yIntEl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const yIntCirc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    yIntCirc.setAttribute('cx', sx(0)); yIntCirc.setAttribute('cy', sy(yInt)); yIntCirc.setAttribute('r', 5);
+    yIntCirc.setAttribute('fill', 'var(--math-orange)'); yIntCirc.setAttribute('stroke', 'var(--bg)'); yIntCirc.setAttribute('stroke-width', '2');
+    yIntEl.appendChild(yIntCirc); plotPoints.appendChild(yIntEl);
+    
+    roots.forEach(r => {
+      if (r < xMin || r > xMax) return;
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', sx(r)); c.setAttribute('cy', sy(0)); c.setAttribute('r', 5);
+      c.setAttribute('fill', 'var(--math-green)'); c.setAttribute('stroke', 'var(--bg)'); c.setAttribute('stroke-width', '2');
+      g.appendChild(c); plotPoints.appendChild(g);
+    });
+    
+    crits.forEach(cx => {
+      const cy = f(cx); if (cy < yMin || cy > yMax) return;
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', sx(cx)); c.setAttribute('cy', sy(cy)); c.setAttribute('r', 5);
+      c.setAttribute('fill', 'var(--math-red)'); c.setAttribute('stroke', 'var(--bg)'); c.setAttribute('stroke-width', '2');
+      g.appendChild(c); plotPoints.appendChild(g);
+    });
+    
+    document.getElementById('yInt').textContent = yInt.toFixed(2);
+    document.getElementById('disc').textContent = quadDisc >= 0 ? quadDisc.toFixed(2) : quadDisc.toFixed(2) + 'i';
+    document.getElementById('roots').textContent = roots.length > 0 ? roots.map(r => r.toFixed(2)).join(', ') : 'none in view';
+    document.getElementById('critPts').textContent = crits.length > 0 ? crits.map(c => c.toFixed(2)).join(', ') : 'none';
+  }
+
+  ['A', 'B', 'C', 'D'].forEach(k => {
+    const slider = document.getElementById('slider' + k);
+    const valEl = document.getElementById('val' + k);
+    const key = k.toLowerCase();
+    slider.addEventListener('input', () => {
+      coeffs[key] = parseFloat(slider.value);
+      valEl.textContent = coeffs[key].toFixed(2);
+      plotCurve();
+    });
+  });
+  plotCurve();
+}
+
+
+/* ============================================
+   QUIZ (AXIOMA)
+   ============================================ */
+const quizGrid = document.getElementById('quizGrid');
+if (quizGrid) {
+  const quizData = [
+    { q: "A triangle has interior angles of 47°, 53°, and 80°. What is it?", options: ["Right triangle", "Acute scalene", "Obtuse isosceles", "Equilateral"], correct: 1, feedback: "All three angles are under 90° (acute), and all three are different (scalene)." },
+    { q: "For f(x) = ax³ + bx² + cx + d, what does the constant d represent graphically?", options: ["The slope at x = 0", "The y-intercept", "A root of the function", "The discriminant"], correct: 1, feedback: "Since f(0) = d, the point (0, d) is where the curve meets the y-axis." },
+    { q: "In the quadratic formula, what does a negative discriminant (b² − 4ac < 0) tell you?", options: ["Two real roots", "One repeated root", "Two complex roots", "No solutions exist"], correct: 2, feedback: "A negative discriminant means the parabola never crosses the x-axis — the roots are complex conjugates." },
+    { q: "If a triangle has sides 3, 4, and 5, what is its area?", options: ["6", "7.5", "10", "12"], correct: 0, feedback: "A 3-4-5 triangle is right-angled, so area = ½ × 3 × 4 = 6." },
+    { q: "What is the derivative of f(x) = x³ with respect to x?", options: ["x²", "3x", "3x²", "x⁴/4"], correct: 2, feedback: "Using the power rule: d/dx[xⁿ] = n·xⁿ⁻¹, so d/dx[x³] = 3x²." }
+  ];
+
+  let quizAnswered = [false, false, false, false, false];
+  let quizCorrectCount = 0;
+
+  quizData.forEach((item, qIdx) => {
+    const card = document.createElement('div');
+    card.className = 'quiz-card';
+    card.innerHTML = `
+      <div class="quiz-question-num" style="font-family:'JetBrains Mono'; font-size:11px; color:var(--accent); letter-spacing:0.1em; margin-bottom:8px;">QUESTION ${String(qIdx + 1).padStart(2, '0')}</div>
+      <div class="quiz-question" style="font-family:'Fraunces'; font-size:24px; font-weight:600; line-height:1.3; margin-bottom:24px;">${item.q}</div>
+      <div class="quiz-options">
+        ${item.options.map((opt, i) => `
+          <button class="quiz-option" data-q="${qIdx}" data-i="${i}">
+            <span class="letter">${String.fromCharCode(65 + i)}</span>
+            <span>${opt}</span>
+          </button>
+        `).join('')}
+      </div>
+      <div class="quiz-feedback"></div>
+    `;
+    quizGrid.appendChild(card);
+  });
+
+  quizGrid.addEventListener('click', e => {
+    const btn = e.target.closest('.quiz-option');
+    if (!btn) return;
+    const qIdx = parseInt(btn.dataset.q);
+    const optIdx = parseInt(btn.dataset.i);
+    if (quizAnswered[qIdx]) return;
+    
+    quizAnswered[qIdx] = true;
+    const card = btn.closest('.quiz-card');
+    const allOptions = card.querySelectorAll('.quiz-option');
+    const feedback = card.querySelector('.quiz-feedback');
+    const correctIdx = quizData[qIdx].correct;
+    
+    allOptions.forEach(o => o.classList.add('answered'));
+    
+    if (optIdx === correctIdx) {
+      btn.classList.add('correct');
+      quizCorrectCount++;
+      feedback.className = 'quiz-feedback show correct';
+      feedback.innerHTML = `<strong>Correct.</strong> ${quizData[qIdx].feedback}`;
+    } else {
+      btn.classList.add('incorrect');
+      allOptions[correctIdx].classList.add('correct'); // Simple reveal
+      feedback.className = 'quiz-feedback show incorrect';
+      feedback.innerHTML = `<strong>Not quite.</strong> ${quizData[qIdx].feedback}`;
+    }
+    
+    updateQuizProgress();
+  });
+
+  function updateQuizProgress() {
+    const done = quizAnswered.filter(Boolean).length;
+    document.getElementById('quizDone').textContent = done;
+    document.getElementById('quizRight').textContent = quizCorrectCount;
+    document.getElementById('quizAcc').textContent = done > 0 ? Math.round(quizCorrectCount / done * 100) + '%' : '—';
+    if (done === quizData.length) {
+      setTimeout(() => { showToast(`Quiz complete — ${quizCorrectCount}/${quizData.length} correct`); }, 600);
+    }
+  }
+}
+
+
+/* ============================================
+   STEP-BY-STEP SOLUTION (AXIOMA)
+   ============================================ */
+const stepsList = document.getElementById('stepsList');
+if (stepsList) {
+  const stepsData = [
+    { title: "Start with the equation in standard form", expression: "2x² − 5x − 3 = 0", note: "It's already in ax² + bx + c = 0 form, so we can read coefficients directly." },
+    { title: "Identify the coefficients", expression: "a = 2,  b = −5,  c = −3", note: "These three numbers are everything we need to plug into the quadratic formula." },
+    { title: "Recall the quadratic formula", expression: "x = (−b ± √(b² − 4ac)) / 2a", note: "Derived by completing the square on the general form. Works for any quadratic." },
+    { title: "Substitute the values", expression: "x = (5 ± √(25 + 24)) / 4", note: "Notice −b = −(−5) = 5, and b² − 4ac = (−5)² − 4(2)(−3) = 25 + 24." },
+    { title: "Simplify what's under the radical", expression: "x = (5 ± √49) / 4", note: "The discriminant is 49 — a perfect square, which means both roots are rational." },
+    { title: "Take the square root", expression: "x = (5 ± 7) / 4", note: "√49 = 7. The ± gives us two parallel calculations to finish." },
+    { title: "Compute both solutions", expression: "x = 12/4 = 3   or   x = −2/4 = −½", note: "The two roots of the equation. The curve y = 2x² − 5x − 3 crosses the x-axis at these points.", final: true }
+  ];
+
+  const revealBtn = document.getElementById('revealBtn');
+  const revealBtnText = document.getElementById('revealBtnText');
+  const resetBtn = document.getElementById('resetBtn');
+
+  stepsData.forEach((s, i) => {
+    const div = document.createElement('div');
+    div.className = 'step' + (s.final ? ' final' : '');
+    div.innerHTML = `
+      <div class="step-num">${i + 1}</div>
+      <div class="step-title">${s.title}</div>
+      <div class="step-expression">${s.expression}</div>
+      ${s.note ? `<div class="step-note">${s.note}</div>` : ''}
+    `;
+    stepsList.appendChild(div);
+  });
+
+  let revealedCount = 0;
+  function revealNext() {
+    if (revealedCount >= stepsData.length) return;
+    const steps = stepsList.querySelectorAll('.step');
+    steps[revealedCount].classList.add

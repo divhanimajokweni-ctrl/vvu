@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VVU · The Ladder</title>
+<style>
+:root{--bg:#0b0e10;--panel:#12171a;--line:#28332e;--ink:#e6efe8;--dim:#8a9a90;--acc:#00ffcc;--ok:#3ddc84;--warn:#ffb224;--bad:#ff4d5e;--f:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#eef2f0;--panel:#fff;--line:#c5d0ca;--ink:#10201a;--dim:#4d5f56;--acc:#007a63;--ok:#1f7a3f;--warn:#8a5a00;--bad:#c4003f;color-scheme:light}}
+:root[data-theme="dark"]{--bg:#0b0e10;--panel:#12171a;--line:#28332e;--ink:#e6efe8;--dim:#8a9a90;--acc:#00ffcc;--ok:#3ddc84;--warn:#ffb224;--bad:#ff4d5e}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 var(--f)}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:6px 10px}
+.top{display:flex;gap:8px;align-items:center}.top b{color:var(--acc);letter-spacing:1px}.top span.sp{flex:1}
+#pips{display:flex;gap:4px;overflow-x:auto;padding:6px 0 2px}
+.pip{min-width:34px;min-height:34px;padding:0}.pip[aria-current=true]{border-color:var(--acc);color:var(--acc)}.pip.done{background:var(--ok);color:#000;border-color:var(--ok)}.pip:disabled{opacity:.35}
+main{padding:10px;max-width:760px;margin:0 auto}
+h2{margin:6px 0;color:var(--acc);font-size:16px}h3{margin:12px 0 4px;color:var(--acc);font-size:13px}
+button,select,input,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 10px;min-height:38px}
+button{cursor:pointer}button.pri{border-color:var(--acc);color:var(--acc)}button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:8px 10px;margin:8px 0}
+.card summary{cursor:pointer;font-weight:700;min-height:28px}.card.ok{border-color:var(--ok)}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}.dim{color:var(--dim)}
+.PASS,.ok{color:var(--ok)}.BLOCK,.bad{color:var(--bad)}.INCONCLUSIVE,.warn{color:var(--warn)}
+table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:3px 4px 3px 0;vertical-align:top;border-bottom:1px solid var(--line)}
+td input{width:100%;min-width:44px;padding:4px 6px;min-height:32px}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--panel);border:1px solid var(--line);padding:8px;border-radius:4px;font-size:11px}
+.tag{font-size:10px;border:1px solid var(--warn);color:var(--warn);border-radius:3px;padding:0 4px}
+.led{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:2px;border:1px solid var(--line)}.led.on{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.big{font-size:20px;font-weight:700}label.t{display:flex;gap:8px;align-items:flex-start;padding:4px 0}label.t input{min-height:20px;width:20px;margin-top:2px}
+</style>
+</head>
+<body>
+<header><div class="top"><b>VVU · LADDER</b><span class="dim" id="pt"></span><span class="sp"></span><button id="evb">Evidence</button><button id="rs">Reset</button></div><div id="pips" role="tablist" aria-label="Stages"></div></header>
+<main id="m"></main>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const E=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const f=(n,d)=>Number.isFinite(n)?n.toFixed(d==null?2:d):'–';
+/* ---- sync SHA-256 (tested against Node crypto) ---- */
+const K=[],H0=[];for(let n=2,c=0;c<64;n++){let p=1;for(let i=2;i*i<=n;i++)if(n%i===0){p=0;break}if(p){if(c<8)H0.push((Math.pow(n,.5)%1)*4294967296|0);K.push((Math.pow(n,1/3)%1)*4294967296|0);c++}}
+function sha(s){const b=new TextEncoder().encode(s),l=b.length,n=((l+9+63)>>6)<<6,w=new Uint8Array(n);w.set(b);w[l]=128;const dv=new DataView(w.buffer);dv.setUint32(n-4,(l*8)>>>0);dv.setUint32(n-8,Math.floor(l*8/4294967296));
+let h=H0.slice();const W=new Int32Array(64);const r=(x,k)=>(x>>>k)|(x<<(32-k));
+for(let o=0;o<n;o+=64){for(let i=0;i<16;i++)W[i]=dv.getUint32(o+i*4);for(let i=16;i<64;i++){const a=W[i-15],c=W[i-2];W[i]=(W[i-16]+(r(a,7)^r(a,18)^(a>>>3))+W[i-7]+(r(c,17)^r(c,19)^(c>>>10)))|0}
+let a=h[0],b2=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],hh=h[7];for(let i=0;i<64;i++){const t1=(hh+(r(e,6)^r(e,11)^r(e,25))+((e&f)^(~e&g))+K[i]+W[i])|0,t2=((r(a,2)^r(a,13)^r(a,22))+((a&b2)^(a&c)^(b2&c)))|0;hh=g;g=f;f=e;e=(d+t1)|0;d=c;c=b2;b2=a;a=(t1+t2)|0}
+h=[h[0]+a|0,h[1]+b2|0,h[2]+c|0,h[3]+d|0,h[4]+e|0,h[5]+f|0,h[6]+g|0,h[7]+hh|0]}
+return h.map(x=>(x>>>0).toString(16).padStart(8,'0')).join('')}
+
+/* ---- state + provenance chain ---- */
+const KEY='vvu.ladder.v1';let S=null;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!S||S.v!==1)S={v:1,unlocked:1,cur:1,done:{},d:{},chain:[]};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const D=(k,def)=>S.d[k]===undefined?(S.d[k]=def):S.d[k];
+const ALPHA=.2;
+function seal(c,stage,kind,data,t){const prev=c.length?c[c.length-1].h:sha('genesis'),r={n:c.length,stage,kind,data,t:t||new Date().toISOString(),prev};r.h=sha(prev+'|'+r.n+'|'+stage+'|'+kind+'|'+JSON.stringify(data)+'|'+r.t);c.push(r);return r}
+function badAt(c){let p=sha('genesis');for(let i=0;i<c.length;i++){const r=c[i];if(r.prev!==p||sha(p+'|'+r.n+'|'+r.stage+'|'+r.kind+'|'+JSON.stringify(r.data)+'|'+r.t)!==r.h)return i;p=r.h}return -1}
+function rec(stage,kind,data){seal(S.chain,stage,kind,data);save()}
+function done(n,kind,data){S.done[n]=true;rec(n,kind,data);if(S.unlocked<=n)S.unlocked=Math.min(10,n+1);save();render()}
+const lastRec=(c,n,k)=>{for(let i=c.length-1;i>=0;i--)if(c[i].stage===n&&(!k||c[i].kind===k))return c[i];return null};
+
+/* ---- Stage 1 content ---- */
+const CARDS=[
+{id:'cipc',t:'CIPC · company registry',f:['Every company and close corporation files a CIPC annual return each year, trading or not.','Beneficial ownership (BO): natural persons holding 5% or more, or effective control. Filed since 24 May 2023.','Since 1 July 2024 the annual return cannot be filed until BO is up to date. Report BO changes within 10 business days.','CIPC accepting a filing is not verification that the owners named are the true owners.'],
+ q:'Your BO filing is outstanding. What happens at annual return time?',o:['The annual return is blocked and deregistration risk grows','Nothing, BO is optional','SARS files it for you'],a:0},
+{id:'sars',t:'SARS · tax',f:['Companies file income tax returns and may pay provisional tax. VAT registration is compulsory once taxable supplies pass R1 million in 12 months.','Clients and tenders check your tax compliance status, not your CIPC annual return.','Trusts and BO declarations also appear on SARS returns. Thresholds change: confirm on sars.gov.za.'],
+ q:'A tender wants proof you are in good standing with SARS. You supply:',o:['CIPC annual return certificate','Tax compliance status','B-BBEE affidavit'],a:1},
+{id:'bbbee',t:'B-BBEE',f:['EME: turnover R10 million or less. Deemed Level 4 (100% recognition).','At least 51% black-owned EME or QSE: Level 2 (125%). 100% black-owned: Level 1 (135%).','QSE: R10 million to R50 million. Above R50 million is generic and needs a SANAS-accredited certificate.','EME proof is a sworn affidavit or a free CIPC certificate. Misrepresentation is a criminal offence. Sector codes can differ.'],
+ q:'Turnover R4 million, 100% black-owned. Your status?',o:['Level 4','Level 2','Level 1'],a:2},
+{id:'infra',t:'Infrastructure · water regulation',f:['Water services authorities (municipalities) must monitor drinking water against SANS 241 and register on the DWS IRIS system.','DWS regulates under the National Water Act and Water Services Act. Blue Drop = drinking water. Green Drop = wastewater. No Drop = water losses and non-revenue water.','Process controllers and treatment works must be registered. A technology vendor supports measurement; it does not replace the authority’s duties or a registered engineer’s sign-off.'],
+ q:'Which DWS programme tracks water losses and non-revenue water?',o:['Blue Drop','No Drop','Green Drop'],a:1},
+{id:'scada',t:'Sensors · SCADA · data',f:['IEC 62443 is the security standard family for industrial control systems: zones, conduits, security levels. Confirm the current editions.','Keep calibration records, synchronised time and tamper-evident logs. Offline devices must buffer and replay safely.','Cameras and microphones that can identify people fall under POPIA: minimise, notify, secure. Mains wiring needs a registered person and a Certificate of Compliance; keep prototypes on low-voltage USB.'],
+ q:'A camera in a pump room may capture staff. First step?',o:['Upload everything to the cloud','Minimise and notify under POPIA','Ignore it'],a:1},
+{id:'favad',t:'FAVAD · leakage vs pressure',f:['Fixed And Variable Area Discharges: L1/L0 = (P1/P0)^N1.','N1 is about 0.5 for a fixed-area hole in a rigid pipe, and higher (often 1 to 1.5 or more) for variable-area leaks, especially in plastic.','South African field studies found N1 from −0.34 to 2.20. Measure it, do not assume it.'],
+ q:'Pressure halves (40 m to 20 m) and N1 = 1.0. Leakage becomes:',o:['71% of before','50% of before','25% of before'],a:1}];
+const STAT=[['cipc','CIPC annual return current'],['bo','Beneficial ownership filed'],['sars','SARS tax compliance status active'],['bbbee','B-BBEE affidavit or certificate on file'],['ecsa','ECSA-registered engineer available for sign-off'],['popia','POPIA information officer or policy for camera/mic data'],['role','Role clarified: vendor vs water services authority duties'],['iec','IEC 62443 zones and conduits noted for the rig']];
+const BOM0=[['ESP32-C3 SuperMini',2,'Espressif datasheet · USB 5 V only'],['Small water tank or container (≈20 L)',1,'Clean, non-mains, stable'],['PVC pipe 20 mm (m)',3,'SABS/SANS mark where applicable'],['Hose and clamps',2,'Pressure-rated for the head used'],['Garden sprinkler (variable-area demand)',2,'Low-pressure use'],['Pressure transducer (0–0.5 MPa or 0–5 V)',1,'Calibrate against a reference gauge'],['Flow sensor (hall, 1–30 L/min)',1,'Calibrate by bucket test'],['PIR motion detector',1,'3.3–5 V logic'],['Camera (phone or ESP32-CAM)',1,'POPIA: avoid capturing people'],['Microphone (phone)',1,'POPIA: no speech retention'],['Phone (existing)',1,'Sensors, camera, stopwatch'],['Breadboard, jumper wires, USB cables',1,'Low-voltage only'],['Manual ball valve',1,'Isolation and fault injection']];
+const bomInit=()=>BOM0.map(r=>({n:r[0],q:r[1],p:'',ref:r[2]}));
+
+/* ---- calculations used across stages ---- */
+function n1(rows){const r=(rows||[]).filter(x=>x.h>0&&x.q>0);if(r.length<3||new Set(r.map(x=>x.h)).size<3)return NaN;
+ const xs=r.map(x=>Math.log(x.h)),ys=r.map(x=>Math.log(x.q)),mx=xs.reduce((a,b)=>a+b)/xs.length,my=ys.reduce((a,b)=>a+b)/ys.length;
+ let nu=0,de=0;xs.forEach((x,i)=>{nu+=(x-mx)*(ys[i]-my);de+=(x-mx)*(x-mx)});return de?nu/de:NaN}
+const plausible=v=>Number.isFinite(v)&&v>=-.5&&v<=2.5;
+function specText(){const b=D('bom',bomInit()),sp=D('spec',{kpa:150,min:10,tol:5,who:''}),rig=D('rig',{ticks:{},rows:[]}),cp=D('cpu',{a:20,b:5});
+ return ['MANUFACTURING SPECIFICATION · VVU water-loss test rig','1. Scope: low-voltage prototype for leakage and pressure monitoring (FAVAD).','2. Components:'].concat(b.map((x,i)=>'   '+(i+1)+'. '+x.n+' x'+x.q+' ['+x.ref+']'),
+ ['3. Leakage model: L1/L0 = (P1/P0)^N1, measured N1 = '+f(n1(rig.rows),3),'4. Logic core: LDA 14, ADD 15, OUT, HLT with A='+cp.a+', B='+cp.b+' gives '+((cp.a+cp.b)&255),
+ '5. Acceptance: hold test at '+sp.kpa+' kPa for '+sp.min+' min; calibration tolerance ±'+sp.tol+'%.','6. Regulatory references: CIPC/BO, SARS, B-BBEE, DWS (SANS 241, No Drop), IEC 62443, POPIA.','7. Signatory: '+(sp.who||'(unnamed)')]).join('\n')}
+
+/* ---- loop engine (stages 8 and 9) ---- */
+function runLoop(chain){
+ const rows=[],bad=badAt(chain);rows.push(['Chain integrity',bad<0?'PASS':'BLOCK',bad<0?chain.length+' records recompute':'break at record '+bad]);
+ const have=[1,2,3,4,5,6,7].filter(n=>chain.some(r=>r.stage===n&&r.kind!=='attempt')),cov=have.length/7;
+ rows.push(['Stage coverage',cov===1?'PASS':'INCONCLUSIVE',have.length+' of 7 stages evidenced']);
+ let m=0,t=0;const chk=(nm,okv,det)=>{t++;if(okv)m++;rows.push([nm,okv?'PASS':'INCONCLUSIVE',det])};
+ const g=n=>lastRec(chain,n),r1=g(1),r4=g(4),r5=g(5),r6=g(6),r7=g(7),r3=g(3);
+ chk('BOM recompute',!!r1&&sha(JSON.stringify(D('bom',bomInit())))===r1.data.bomHash,'sealed hash matches current BOM');
+ chk('N1 recompute',!!r4&&Math.abs(n1(D('rig',{rows:[]}).rows)-r4.data.n1)<1e-9,'N1 '+f(n1(D('rig',{rows:[]}).rows),3));
+ chk('Logic core recompute',!!r5&&((r5.data.a+r5.data.b)&255)===r5.data.out,'A+B = OUT');
+ chk('Spec recompute',!!r6&&sha(specText())===r6.data.specHash,'sealed spec hash matches');
+ chk('Fabrication yield',!!r7&&r7.data.good>=17,r7?r7.data.good+' of 20 good':'none');
+ const alpha=ALPHA,P=bad<0?.5*cov+.5*(t?m/t:0):0,anchor=bad<0&&P>=.6;
+ const F=(plausible(r4&&r4.data.n1)?1:.5)*.25+Math.min(1,(r7?r7.data.good:0)/17)*.25+(r5&&((r5.data.a+r5.data.b)&255)===r5.data.out?1:0)*.25+(r3?(r3.data.real?1:.5):0)*.25;
+ const Sc=F*(1-alpha+alpha*P);let d,why;
+ if(bad>=0){d='BLOCK';why='HASH_CHAIN_BREAK@'+bad}else if(!anchor){d='INCONCLUSIVE';why='NO_BRIDGING_ANCHOR'}else if(Sc>=.75){d='PASS';why='WITHIN_TOLERANCE_ANCHORED'}else{d='INCONCLUSIVE';why='LOW_FIDELITY'}
+ return{rows,P,F,S:Sc,d,why,anchor}}
+const loopHtml=L=>'<div class="big '+L.d+'">'+L.d+'</div><div class="dim">'+L.why+' · S '+f(L.S)+' · provenance health P '+f(L.P)+' · anchor '+(L.anchor?'held':'not held')+' · never VERIFIED · executionAuthorized: false</div>'+L.rows.map(r=>'<div><span class="'+r[1]+'">'+r[1]+'</span> <b>'+E(r[0])+'</b> <span class="dim">'+E(r[2])+'</span></div>').join('');
+
+/* ---- troubleshooting faults (stage 10) ---- */
+const FAULTS=[
+{t:'Hash mismatch',l:['verify: mismatch at record 14','records 15–40 recompute fine','sensor N2'],o:['Record 14 was edited after sealing','Device clock is wrong','Valve closed','Battery low'],a:0},
+{t:'Silent sensor',l:['N3 last record 90 s ago','chain intact','coverage 0.4'],o:['Sensor offline or dropped out','Chain tampered','N1 too high','Tank empty'],a:0},
+{t:'No downstream flow',l:['pump on, source level 9','downstream sensors read 0','valve V1 state: closed'],o:['Leak at a home','Valve left closed','Sensor drift','Replay attack'],a:1},
+{t:'Time goes backwards',l:['record 22 at 10:01:05','record 23 at 10:00:58','chain valid'],o:['Replay attack','Leak','Unsynchronised device clock','Low pressure'],a:2},
+{t:'Ten times too big',l:['tank head 2.0 m displays 20','sensor outputs kPa','spec expects metres'],o:['Pump overspeed','Unit mismatch: kPa recorded where metres expected','Sprinkler open','Chain break'],a:1},
+{t:'N1 = −3.1',l:['3 readings','pressures 2.0, 2.1, 2.0 m','flows 40, 90, 15 ml/min'],o:['Pressure barely changed: fit is ill-conditioned, widen the range and repeat','FAVAD is invalid','Sensors are independent','The pipe is rigid'],a:0},
+{t:'Anchor held but weak',l:['independence D = 0','all sensors origin A','chain valid, anchor held'],o:['Replay attack','Shared-origin sensors: add an independent origin','Valve closed','Clock drift'],a:1},
+{t:'Same record twice',l:['seq 31 appears twice','payload identical','same timestamp'],o:['Pump cavitation','Unit mismatch','Replayed message','Calibration drift'],a:2},
+{t:'Annual return rejected',l:['CIPC annual return blocked','BO filing: outstanding','company active'],o:['SARS blocked it','File beneficial ownership first','B-BBEE level too low','Wrong VAT number'],a:1},
+{t:'High flow at 02:00',l:['minimum night flow 12 L/min','registered consumers: idle','pressure 4.1 bar'],o:['Leakage: legitimate night demand is minimal','Peak demand','Sensor offline','Tank refilling by design'],a:0}];
+const LIMIT=i=>Math.round(90-i*(65/9));
+
+/* ---- 8-bit core (stage 5) ---- */
+let CPU=null;
+const cpuReset=(a,b)=>CPU={pc:0,mar:0,ir:0,A:0,B:0,out:null,bus:0,t:0,halt:false,clk:0,ram:[0x1E,0x2F,0xE0,0xF0,0,0,0,0,0,0,0,0,0,0,a&255,b&255]};
+function cpuTick(){const c=CPU;if(c.halt)return;c.clk++;const op=c.ir>>4,ad=c.ir&15;
+ if(c.t===0){c.mar=c.pc;c.bus=c.pc}else if(c.t===1){c.bus=c.ram[c.mar];c.ir=c.bus;c.pc=(c.pc+1)&15}
+ else if(c.t===2){if(op===1||op===2){c.mar=ad;c.bus=ad}else if(op===14){c.bus=c.A;c.out=c.A;c.t=5}else if(op===15){c.halt=true;return}else c.t=5}
+ else if(c.t===3){c.bus=c.ram[c.mar];if(op===1){c.A=c.bus;c.t=5}else c.B=c.bus}
+ else if(c.t===4){c.A=(c.A+c.B)&255;c.bus=c.A}
+ c.t=(c.t+1)%6}
+const leds=(v,n)=>v.toString(2).padStart(n||8,'0').split('').map(b=>'<span class="led '+(b==='1'?'on':'')+'"></span>').join('');
+
+/* ---- UI plumbing ---- */
+let T=null,TRANS={};const clr=()=>{clearInterval(T);T=null};
+const STG=['Constitution','Software','Phone sims','Hardware rig','8-bit stack','Mfg spec','Fab sim','Full loop','Timed loop','Troubleshoot'];
+function render(){clr();const m=$('#m');m.innerHTML=R[S.cur]();if(W[S.cur])W[S.cur]();
+ $('#pips').innerHTML=STG.map((n,i)=>'<button class="pip'+(S.done[i+1]?' done':'')+'" data-a="go" data-v="'+(i+1)+'"'+((i+1)>S.unlocked?' disabled':'')+' aria-current="'+(S.cur===i+1)+'" aria-label="Stage '+(i+1)+': '+n+'">'+(S.done[i+1]?'✓':i+1)+'</button>').join('');
+ $('#pt').textContent=Object.keys(S.done).length+'/10';window.scrollTo(0,0)}
+const next=n=>S.done[n]&&n<10?'<div class="row"><button class="pri" data-a="go" data-v="'+(n+1)+'">Next: stage '+(n+1)+' · '+STG[n]+' →</button></div>':'';
+const hdr=(n,t,sub)=>'<h2>Stage '+n+' · '+t+(S.done[n]?' ✅':'')+'</h2><div class="dim">'+sub+'</div>';
+const R={},W={},A={},C={};
+
+/* ---- Stage 1 ---- */
+R[1]=()=>{const q=D('q',{}),st=D('st',{}),bom=D('bom',bomInit()),nq=Object.keys(q).length,gaps=STAT.filter(s=>!st[s[0]]).length;
+ let h=hdr(1,'Constitution and workspace','Learn the regulatory conditions, then compile the workspace datatable and bill of materials. Facts were checked against sources in October 2026; always confirm thresholds with the regulator.')+'<h3>1A · Constitution ('+nq+'/6)</h3>';
+ CARDS.forEach(c=>{h+='<details class="card'+(q[c.id]?' ok':'')+'"'+(!q[c.id]&&nq===CARDS.findIndex(x=>x.id===c.id)?' open':'')+'><summary>'+(q[c.id]?'✅ ':'')+E(c.t)+'</summary><ul>'+c.f.map(x=>'<li>'+E(x)+'</li>').join('')+'</ul><b>'+E(c.q)+'</b><div class="row">'+c.o.map((o,i)=>'<button data-a="ans" data-id="'+c.id+'" data-v="'+i+'">'+E(o)+'</button>').join('')+'</div><div class="dim" id="fb-'+c.id+'">'+(q[c.id]?'Correct.':'')+'</div></details>'});
+ h+='<h3>1B · Workspace setup datatable</h3><div class="dim">Self-attested. Unticked items become recorded gaps, not blockers.</div>'+STAT.map(s=>'<label class="t"><input type="checkbox" data-c="st" data-k="'+s[0]+'"'+(st[s[0]]?' checked':'')+'>'+E(s[1])+'</label>').join('')+'<div id="gp" class="dim">'+ (STAT.length-gaps)+' of '+STAT.length+' in place · '+gaps+' gaps</div>';
+ h+='<h3>Bill of materials</h3><table><tr><th>Item</th><th>Qty</th><th>R each</th></tr>'+bom.map((b,i)=>'<tr><td><input data-c="bom" data-i="'+i+'" data-k="n" value="'+E(b.n)+'" aria-label="Item"><div class="dim">'+E(b.ref)+'</div></td><td style="width:54px"><input type="number" min="0" data-c="bom" data-i="'+i+'" data-k="q" value="'+b.q+'"></td><td style="width:74px"><input type="number" min="0" data-c="bom" data-i="'+i+'" data-k="p" value="'+E(b.p)+'" placeholder="quote"></td></tr>').join('')+'</table><div class="row"><button data-a="addline">+ Add line</button><button data-a="csv">Copy CSV</button><span id="tot" class="dim"></span></div>';
+ h+='<div class="row"><button class="pri" data-a="compile1"'+(nq<6?' disabled':'')+'>Compile workspace datatable and BOM</button></div><div id="m1" class="dim">'+(nq<6?'Answer all six constitution questions first.':'')+'</div>'+next(1);return h};
+W[1]=()=>tot();
+const tot=()=>{const b=D('bom',bomInit()),t=b.reduce((a,x)=>a+(+x.q||0)*(+x.p||0),0),el=$('#tot');if(el)el.textContent='Estimated total R '+t.toLocaleString('en-ZA')+(b.some(x=>!x.p)?' · some quotes pending':'')};
+A.ans=el=>{const c=CARDS.find(x=>x.id===el.dataset.id),fb=$('#fb-'+c.id);if(+el.dataset.v===c.a){D('q',{})[c.id]=true;save();render()}else fb.textContent='Not quite. Re-read the card above and try again.'};
+A.addline=()=>{D('bom',bomInit()).push({n:'New item',q:1,p:'',ref:'Add standard or note'});save();render()};
+A.csv=()=>{const t='item,qty,unit_price_zar,reference\n'+D('bom',[]).map(b=>[b.n,b.q,b.p,b.ref].map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');copy(t,'#m1')};
+function copy(t,sel){const ok=()=>{$(sel).textContent='Copied to clipboard.'};if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,()=>{$(sel).textContent='Copy blocked on this device.'});else $(sel).textContent='Copy not supported here.'}
+A.compile1=()=>{const b=D('bom',[]),st=D('st',{});if(b.length<8||b.some(x=>!(+x.q>=1)||!String(x.ref).trim())){$('#m1').textContent='Need at least 8 lines, each with quantity ≥ 1 and a reference.';return}
+ done(1,'workspace-datatable',{gaps:STAT.filter(s=>!st[s[0]]).length,lines:b.length,bomHash:sha(JSON.stringify(b)),pending:b.filter(x=>!x.p).length})};
+C.st=el=>{D('st',{})[el.dataset.k]=el.checked;save();const g=STAT.filter(s=>!S.d.st[s[0]]).length;$('#gp').textContent=(STAT.length-g)+' of '+STAT.length+' in place · '+g+' gaps'};
+C.bom=el=>{const b=D('bom',[])[+el.dataset.i],k=el.dataset.k;b[k]=el.type==='number'?(el.value===''?'':+el.value):el.value;save();tot()};
+
+/* ---- Stage 2 ---- */
+const PROBES=()=>{let ls=false;try{localStorage.setItem('_p','1');localStorage.removeItem('_p');ls=true}catch(e){}return[['WebCrypto SHA-256',!!(window.crypto&&crypto.subtle),1],['Local storage',ls,1],['Camera and mic API',!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia),0],['Motion sensors',typeof DeviceMotionEvent!=='undefined',0],['Web Serial (flash/monitor ESP32 in Chrome)',!!navigator.serial,0],['Service worker (PWA)',!!navigator.serviceWorker,0],['BroadcastChannel (PiP sync)',typeof BroadcastChannel!=='undefined',0],['Clipboard',!!(navigator.clipboard&&navigator.clipboard.writeText),0]]};
+const TOOLS=['Arduino IDE 2 or PlatformIO installed','ESP32 board package (Espressif) installed','USB data cable tested with the C3 SuperMini','Git and the VVU repo cloned','Node 20+ installed'];
+R[2]=()=>{const p=PROBES(),tk=D('tools',{}),ok=p.filter(x=>x[2]).every(x=>x[1])&&TOOLS.every((_,i)=>tk[i]);
+ return hdr(2,'Software setup environment','Probe this device, then confirm your toolchain. Required probes block; optional ones are recorded.')+'<h3>Device capabilities</h3>'+p.map(x=>'<div>'+(x[1]?'✅':(x[2]?'❌':'⚠️'))+' '+E(x[0])+(x[2]?' <span class="tag">required</span>':'')+'</div>').join('')+'<h3>Toolchain (self-attested)</h3>'+TOOLS.map((t,i)=>'<label class="t"><input type="checkbox" data-c="tool" data-k="'+i+'"'+(tk[i]?' checked':'')+'>'+E(t)+'</label>').join('')+'<div class="row"><button class="pri" data-a="env"'+(ok?'':' disabled')+'>Seal environment record</button></div>'+next(2)};
+C.tool=el=>{D('tools',{})[el.dataset.k]=el.checked;save();render()};
+A.env=()=>{const p=PROBES();done(2,'environment',{probes:p.map(x=>x[1]?1:0).join(''),hash:sha(JSON.stringify(p.map(x=>x[1])))})};
+
+/* ---- Stage 3 ---- */
+async function capture(sec){const o={mic:0,cam:0,mot:0,src:[]};let st=null,ac=null;
+ try{st=await navigator.mediaDevices.getUserMedia({audio:true,video:{width:64,height:48}})}catch(e){try{st=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e2){}}
+ const tr=[];let an=null,vid=null,cv=null,prev=null;const mic=[],cam=[],mot=[];
+ if(st){if(st.getAudioTracks().length){try{ac=new (window.AudioContext||window.webkitAudioContext)();an=ac.createAnalyser();an.fftSize=512;ac.createMediaStreamSource(st).connect(an);if(ac.resume)ac.resume();o.src.push('mic')}catch(e){}}
+  if(st.getVideoTracks().length){vid=document.createElement('video');vid.muted=true;vid.playsInline=true;vid.srcObject=st;try{await vid.play();cv=document.createElement('canvas');cv.width=32;cv.height=24;o.src.push('camera')}catch(e){vid=null}}}
+ const hm=e=>{const a=e.accelerationIncludingGravity;if(a)mot.push(Math.hypot(a.x||0,a.y||0,a.z||0))};
+ try{if(window.DeviceMotionEvent&&DeviceMotionEvent.requestPermission)await DeviceMotionEvent.requestPermission();window.addEventListener('devicemotion',hm)}catch(e){}
+ const buf=an?new Uint8Array(an.fftSize):null;
+ await new Promise(r=>{const t0=Date.now(),iv=setInterval(()=>{
+  if(an){an.getByteTimeDomainData(buf);let s=0;buf.forEach(v=>{const x=(v-128)/128;s+=x*x});mic.push(Math.sqrt(s/buf.length))}
+  if(vid&&cv){const g=cv.getContext('2d');g.drawImage(vid,0,0,32,24);const d=g.getImageData(0,0,32,24).data;if(prev){let s=0;for(let i=0;i<d.length;i+=4)s+=Math.abs(d[i]-prev[i]);cam.push(s/(d.length/4))}prev=d.slice()}
+  if(Date.now()-t0>=sec*1000){clearInterval(iv);r()}},100)});
+ window.removeEventListener('devicemotion',hm);if(st)st.getTracks().forEach(x=>x.stop());if(ac)try{ac.close()}catch(e){}
+ const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+ if(mot.length>3){o.src.push('motion');const m=mean(mot);o.mot=Math.sqrt(mean(mot.map(v=>(v-m)*(v-m))))}
+ o.mic=mean(mic);o.cam=mean(cam);return o}
+R[3]=()=>{const s=D('sim',{});const det=s.base&&s.event;let r='';
+ if(det){const real=s.base.src.length>0&&s.event.src.length>0,ratio=(s.event.mic+1e-3)/(s.base.mic+1e-3),camR=(s.event.cam+.5)/(s.base.cam+.5),mR=(s.event.mot+.05)/(s.base.mot+.05),hit=ratio>2||camR>2||mR>2;
+  r='<div class="card"><div>Channels: '+(real?E(s.event.src.join(', ')):'<span class="tag">SIM</span>')+'</div><div>Mic ×'+f(ratio)+' · Camera ×'+f(camR)+' · Motion ×'+f(mR)+'</div><div class="big '+(hit?'PASS':'INCONCLUSIVE')+'">'+(hit?'Event signature detected':'No event above 2× baseline')+'</div></div><div class="row"><button class="pri" data-a="sim3"'+(hit?'':' disabled')+'>Seal simulation record</button></div>'}
+ return hdr(3,'Validated phone simulations','Use the phone as a sensor node: mic = acoustic leak noise, camera = motion detector, motion sensor = vibration. Capture a quiet baseline, then create an event near the phone (tap a pipe, run a tap, shake it).')+'<div class="row"><button data-a="cap" data-v="base" id="b1">1 · Capture baseline (5 s)</button><button data-a="cap" data-v="event" id="b2"'+(s.base?'':' disabled')+'>2 · Capture event (5 s)</button><button data-a="capsim">Use simulated input (SIM)</button></div><div id="m3" class="dim">'+(s.base?'Baseline captured: '+(s.base.src.join(', ')||'no sensors')+'.':'Permissions are requested when you press capture. Nothing leaves the device.')+'</div>'+r+next(3)};
+A.cap=async el=>{const k=el.dataset.v,m=$('#m3');m.textContent='Capturing 5 s…';try{const o=await capture(5);D('sim',{})[k]=o;save();render()}catch(e){m.textContent='Capture failed: '+e.message}};
+A.capsim=()=>{D('sim',{}).base={mic:.02,cam:1,mot:.1,src:[]};S.d.sim.event={mic:.09,cam:4,mot:.8,src:[]};save();render()};
+A.sim3=()=>{const s=S.d.sim,real=s.base.src.length>0&&s.event.src.length>0;done(3,'phone-simulation',{real,src:s.event.src,micRatio:+((s.event.mic+1e-3)/(s.base.mic+1e-3)).toFixed(3)})};
+
+/* ---- Stage 4 ---- */
+const RIG=['Tank on a stable stand, outlet low','PVC pipe and hose joined, leak-free at rest','Sprinkler or small drilled hole as the leak path','Pressure transducer or ruler-marked head level','ESP32-C3 SuperMini on USB 5 V, away from water','PIR and camera positioned, no people captured','Bucket and phone stopwatch for flow checks'];
+const SKETCH='// ESP32-C3 SuperMini: print head and flow as JSON lines (adjust pins)\nconst int PRESS=2;            // ADC pin from pressure sensor\nconst int PIR=6;              // PIR digital pin\nvoid setup(){Serial.begin(115200);pinMode(PIR,INPUT);}\nvoid loop(){\n  int raw=analogRead(PRESS);           // 0..4095\n  float head_m=raw*(3.3/4095.0)*SCALE; // set SCALE from calibration\n  Serial.printf("{\\"t\\":%lu,\\"h\\":%.3f,\\"pir\\":%d}\\n",millis(),head_m,digitalRead(PIR));\n  delay(1000);\n}';
+R[4]=()=>{const g=D('rig',{ticks:{},rows:[]}),v=n1(g.rows),tk=RIG.every((_,i)=>g.ticks[i]);
+ return hdr(4,'Hardware rig · ESP32-C3 SuperMini + tank','Build the rig, then measure leakage at three or more heads. FAVAD says flow follows head^N1. Low-voltage USB only; keep electronics away from water.')+'<h3>Rig checklist</h3>'+RIG.map((t,i)=>'<label class="t"><input type="checkbox" data-c="rig" data-k="'+i+'"'+(g.ticks[i]?' checked':'')+'>'+E(t)+'</label>').join('')+
+ '<h3>Readings</h3><table><tr><th>Head h (m)</th><th>Leak flow Q (ml/min)</th></tr>'+g.rows.map((r,i)=>'<tr><td><input type="number" step="0.01" data-c="row" data-i="'+i+'" data-k="h" value="'+r.h+'"></td><td><input type="number" step="0.1" data-c="row" data-i="'+i+'" data-k="q" value="'+r.q+'"></td></tr>').join('')+'</table><div class="row"><button data-a="addrow">+ Reading</button><button data-a="demorows">Load example data</button></div>'+
+ '<div class="card"><div>Fitted N1 = <b>'+f(v,3)+'</b> '+(Number.isFinite(v)?'<span class="'+(plausible(v)?'PASS':'INCONCLUSIVE')+'">'+(plausible(v)?'plausible':'anomalous (outside −0.5 to 2.5)')+'</span>':'<span class="dim">needs 3 readings at 3 different heads</span>')+'</div><div class="dim">Fixed-area rigid leak ≈ 0.5. Variable-area or plastic: higher. Field range seen in South Africa: −0.34 to 2.20.</div></div><details class="card"><summary>Sample firmware</summary><pre>'+E(SKETCH)+'</pre></details>'+
+ '<div class="row"><button class="pri" data-a="seal4"'+(tk&&Number.isFinite(v)?'':' disabled')+'>Seal hardware record</button></div>'+next(4)};
+C.rig=el=>{D('rig',{}).ticks[el.dataset.k]=el.checked;save();render()};
+C.row=el=>{D('rig',{}).rows[+el.dataset.i][el.dataset.k]=+el.value;save();render()};
+A.addrow=()=>{D('rig',{rows:[]}).rows.push({h:'',q:''});save();render()};
+A.demorows=()=>{D('rig',{}).rows=[{h:.5,q:60},{h:1,q:95},{h:1.5,q:132},{h:2,q:170}];save();render()};
+A.seal4=()=>{const r=S.d.rig.rows,v=n1(r);done(4,'hardware-rig',{n1:v,plausible:plausible(v),points:r.length})};
+
+/* ---- Stage 5 ---- */
+R[5]=()=>{const cp=D('cpu',{a:20,b:5});if(!CPU)cpuReset(cp.a,cp.b);const c=CPU,ok=c.halt&&c.out===((cp.a+cp.b)&255);
+ return hdr(5,'Simulated 8-bit stack','Feed the logic core your stage 4 data and run it by hand: fetch, decode, add, output. Program: LDA 14, ADD 15, OUT, HLT.')+'<div class="row"><label>A <input type="number" min="0" max="255" id="ca" value="'+cp.a+'" style="width:84px"></label><label>B <input type="number" min="0" max="255" id="cb" value="'+cp.b+'" style="width:84px"></label><button data-a="cpuset">Load</button></div>'+
+ [['PC',c.pc,4],['MAR',c.mar,4],['IR',c.ir,8],['A',c.A,8],['B',c.B,8],['BUS',c.bus,8],['OUT',c.out||0,8]].map(x=>'<div><span class="dim" style="display:inline-block;width:42px">'+x[0]+'</span>'+leds(x[1],x[2])+' <span class="dim">'+x[1]+'</span></div>').join('')+
+ '<div class="dim">T-state '+c.t+' · clock '+c.clk+(c.halt?' · HALTED':'')+' · expected OUT '+((cp.a+cp.b)&255)+'</div><div class="row"><button data-a="cpustep">Clock tick</button><button data-a="cpurun">Run to HLT</button></div><div class="row"><button class="pri" data-a="seal5"'+(ok?'':' disabled')+'>Seal logic-core record</button></div>'+next(5)};
+A.cpuset=()=>{const a=Math.max(0,Math.min(255,+$('#ca').value|0)),b=Math.max(0,Math.min(255,+$('#cb').value|0));D('cpu',{}).a=a;S.d.cpu.b=b;save();cpuReset(a,b);render()};
+A.cpustep=()=>{cpuTick();render()};A.cpurun=()=>{for(let i=0;i<60&&!CPU.halt;i++)cpuTick();render()};
+A.seal5=()=>done(5,'logic-core',{a:S.d.cpu.a,b:S.d.cpu.b,out:CPU.out,clk:CPU.clk});
+
+/* ---- Stage 6 ---- */
+R[6]=()=>{const sp=D('spec',{kpa:150,min:10,tol:5,who:''});
+ return hdr(6,'Manufacturing specification','Generated from your BOM, N1 and logic core. Set the acceptance values and name the signatory (an ECSA-registered engineer for real sign-off).')+'<div class="row"><label>Hold kPa <input type="number" data-c="sp" data-k="kpa" value="'+sp.kpa+'" style="width:84px"></label><label>Minutes <input type="number" data-c="sp" data-k="min" value="'+sp.min+'" style="width:70px"></label><label>Tol ± % <input type="number" data-c="sp" data-k="tol" value="'+sp.tol+'" style="width:70px"></label></div><div class="row"><label>Signatory <input data-c="sp" data-k="who" value="'+E(sp.who)+'" placeholder="Name, registration no."></label></div><pre>'+E(specText())+'</pre><div class="row"><button class="pri" data-a="seal6"'+(sp.who.trim()?'':' disabled')+'>Seal specification</button><button data-a="copyspec">Copy spec</button></div><div id="m6" class="dim"></div>'+next(6)};
+C.sp=el=>{const sp=D('spec',{});sp[el.dataset.k]=el.dataset.k==='who'?el.value:+el.value;save();render()};
+A.copyspec=()=>copy(specText(),'#m6');A.seal6=()=>done(6,'mfg-spec',{specHash:sha(specText()),who:S.d.spec.who});
+
+/* ---- Stage 7 ---- */
+const FSTEPS=[['Cut PVC',.04],['Deburr and dry-fit',.05],['Solvent weld and cure',.10],['Flash firmware',.04],['Wire sensors',.07],['Calibrate',.08],['Pressure hold test',.06]];
+function fab(ins,seed){let s=seed>>>0;const rnd=()=>{s=(s+0x6D2B79F5)|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+ let good=0,time=0;for(let u=0;u<20;u++){let ok=true;FSTEPS.forEach((st,i)=>{time+=2;if(rnd()<st[1]){if(ins[i]&&rnd()<.9){time+=4}else ok=false}if(ins[i])time+=1});if(ok)good++}return{good,time}}
+R[7]=()=>{const fb=D('fab',{ins:{},tries:0}),sp=lastRec(S.chain,6),seed=sp?parseInt(sp.data.specHash.slice(0,8),16)+fb.tries:1,r=fab(fb.ins,seed),ok=r.good>=17&&r.time<=480;
+ return hdr(7,'Simulated fabrication environment','Build 20 units. Each step can hide a defect. Inspection catches 90% of defects (reworked) but costs time. Target: at least 17 good units within 480 minutes.')+FSTEPS.map((s,i)=>'<label class="t"><input type="checkbox" data-c="ins" data-k="'+i+'"'+(fb.ins[i]?' checked':'')+'>Inspect after: '+E(s[0])+' <span class="dim">(defect '+Math.round(s[1]*100)+'%)</span></label>').join('')+'<div class="card"><div class="big '+(ok?'PASS':'INCONCLUSIVE')+'">'+r.good+' of 20 good · '+r.time+' min</div><div class="dim">Batch seed from your sealed spec hash. Try another batch for a different run.</div></div><div class="row"><button data-a="batch">Run another batch</button><button class="pri" data-a="seal7"'+(ok?'':' disabled')+'>Seal fabrication record</button></div>'+next(7)};
+C.ins=el=>{D('fab',{}).ins[el.dataset.k]=el.checked;save();render()};A.batch=()=>{D('fab',{}).tries++;save();render()};
+A.seal7=()=>{const fb=S.d.fab,sp=lastRec(S.chain,6),r=fab(fb.ins,parseInt(sp.data.specHash.slice(0,8),16)+fb.tries);done(7,'fabrication',{good:r.good,time:r.time,inspected:Object.keys(fb.ins).filter(k=>fb.ins[k]).length})};
+
+/* ---- Stage 8 ---- */
+R[8]=()=>{const L=runLoop(S.chain),t=TRANS.tamper;
+ return hdr(8,'Run the entire loop','The loop recomputes every earlier stage from your data and checks it against what you sealed. Provenance health is the bridging anchor: without it the outcome is withheld, with it the score moves only slightly.')+'<div class="card">'+loopHtml(L)+'</div><div class="row"><button data-a="tamper">Tamper test (copy only)</button><button class="pri" data-a="seal8"'+(L.d==='PASS'?'':' disabled')+'>Seal loop run</button></div>'+(t?'<div class="card"><b>Tampered copy:</b>'+loopHtml(t)+'</div>':'')+next(8)};
+A.tamper=()=>{const c=JSON.parse(JSON.stringify(S.chain));if(c.length>2)c[2].data.tampered=1;TRANS.tamper=runLoop(c);render()};
+A.seal8=()=>{const L=runLoop(S.chain);done(8,'full-loop',{d:L.d,S:+L.S.toFixed(3),P:+L.P.toFixed(3)})};
+
+/* ---- Stage 9 ---- */
+R[9]=()=>{const t=TRANS.t9||(TRANS.t9={step:0,t0:0,best:(S.d.t9||{}).best}),goal=60;let b='';
+ if(t.step===0)b='<button class="pri" data-a="t9go">Start the clock</button>';
+ else if(t.step===1)b='<div class="big">Enter head: '+t.h+' m</div><div class="row"><input id="t9i" type="number" step="0.1" inputmode="decimal"><button class="pri" data-a="t9a">OK</button></div>';
+ else if(t.step===2)b='<div class="big">Set valve to '+t.v+'</div><div class="row"><button data-a="t9b" data-v="OPEN">OPEN</button><button data-a="t9b" data-v="CLOSED">CLOSED</button></div>';
+ else if(t.step===3)b='<button class="pri" data-a="t9c">Run the loop</button>';
+ else{const L=t.L,el=(t.t1-t.t0)/1000,ok=L.d==='PASS'&&el<=goal;b='<div class="card">'+loopHtml(L)+'</div><div class="big '+(ok?'PASS':'INCONCLUSIVE')+'">'+f(el,1)+' s (goal '+goal+' s)</div><div class="row"><button data-a="t9r">Try again</button><button class="pri" data-a="t9s"'+(ok?'':' disabled')+'>Seal timed loop</button></div>'}
+ return hdr(9,'Timed loop','Five checkpoints against the clock. Goal: finish under '+goal+' seconds with a PASS loop.')+'<div class="card"><div class="dim" id="clk">'+(t.step&&t.step<4?'running…':'')+'</div>'+b+'</div>'+(t.best?'<div class="dim">Best so far: '+f(t.best,1)+' s</div>':'')+next(9)};
+W[9]=()=>{const t=TRANS.t9;if(t&&t.step>0&&t.step<4)T=setInterval(()=>{const e=$('#clk');if(e)e.textContent=f((Date.now()-t.t0)/1000,1)+' s'},100)};
+A.t9go=()=>{const t=TRANS.t9;t.t0=Date.now();t.step=1;t.h=(Math.round((1+Math.random()*3)*10)/10);t.v=Math.random()<.5?'OPEN':'CLOSED';render()};
+A.t9a=()=>{const t=TRANS.t9;if(+$('#t9i').value===t.h){t.step=2;render()}else $('#t9i').style.borderColor='var(--bad)'};
+A.t9b=el=>{const t=TRANS.t9;if(el.dataset.v===t.v){t.step=3;render()}};
+A.t9c=()=>{const t=TRANS.t9;t.L=runLoop(S.chain);t.t1=Date.now();t.step=4;render()};
+A.t9r=()=>{TRANS.t9={step:0,t0:0,best:(S.d.t9||{}).best};render()};
+A.t9s=()=>{const t=TRANS.t9,el=(t.t1-t.t0)/1000;D('t9',{}).best=Math.min(S.d.t9.best||1e9,el);done(9,'timed-loop',{seconds:+el.toFixed(2),d:t.L.d})};
+
+/* ---- Stage 10 ---- */
+R[10]=()=>{const ts=D('ts',[]),i=ts.length;if(i>=10){const ok=ts.filter(x=>x.ok).length,mean=ts.reduce((a,x)=>a+x.t,0)/10;
+  return hdr(10,'Troubleshoot','Ten faults, harder and faster each round.')+'<div class="card"><div class="big '+(ok>=7?'PASS':'INCONCLUSIVE')+'">'+ok+' of 10 correct</div><div class="dim">mean time '+f(mean,1)+' s</div>'+ts.map((x,j)=>'<div>'+(x.ok?'✅':'❌')+' Round '+(j+1)+' · '+E(FAULTS[j].t)+' · '+f(x.t,1)+' s of '+LIMIT(j)+' s</div>').join('')+'</div><div class="row"><button class="pri" data-a="seal10"'+(S.done[10]?' disabled':'')+'>Seal ladder complete</button><button data-a="redo10">Run the ten again</button></div>'+(S.done[10]?'<div class="card ok"><b>Ladder complete.</b> Every stage is sealed in one hash-chained provenance record.</div>':'')}
+ const F=FAULTS[i];if(!TRANS.r||TRANS.r.i!==i){const idx=F.o.map((_,k)=>k);for(let k=idx.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[idx[k],idx[j]]=[idx[j],idx[k]]}TRANS.r={i,idx,t0:Date.now()}}
+ return hdr(10,'Troubleshoot','Diagnose the root cause. Ten rounds: difficulty up, time down.')+'<div class="card"><b>Round '+(i+1)+' of 10</b> · <span id="tl" class="warn">'+LIMIT(i)+' s</span><pre>'+F.l.map(E).join('\n')+'</pre><div class="row" style="flex-direction:column;align-items:stretch">'+TRANS.r.idx.map(k=>'<button data-a="pick" data-v="'+k+'">'+E(F.o[k])+'</button>').join('')+'</div></div>'};
+W[10]=()=>{const ts=D('ts',[]);if(ts.length>=10)return;const r=TRANS.r,lim=LIMIT(r.i);T=setInterval(()=>{const left=lim-(Date.now()-r.t0)/1000,e=$('#tl');if(e)e.textContent=Math.max(0,Math.ceil(left))+' s';if(left<=0){clr();ans10(-1)}},200)};
+function ans10(k){const r=TRANS.r,F=FAULTS[r.i],t=(Date.now()-r.t0)/1000;D('ts',[]).push({ok:k===F.a,t:Math.min(t,LIMIT(r.i))});rec(10,'attempt',{round:r.i+1,ok:k===F.a,t:+t.toFixed(2),limit:LIMIT(r.i)});save();render()}
+A.pick=el=>{clr();ans10(+el.dataset.v)};
+A.redo10=()=>{S.d.ts=[];TRANS.r=null;save();render()};
+A.seal10=()=>{const ts=S.d.ts;done(10,'troubleshoot',{correct:ts.filter(x=>x.ok).length,meanT:+(ts.reduce((a,x)=>a+x.t,0)/10).toFixed(2)})};
+
+/* ---- shell ---- */
+A.go=el=>{S.cur=+el.dataset.v;save();render()};
+let rsArm=false;$('#rs').onclick=()=>{if(!rsArm){rsArm=true;$('#rs').textContent='Tap again';setTimeout(()=>{rsArm=false;$('#rs').textContent='Reset'},3000);return}try{localStorage.removeItem(KEY)}catch(e){}S={v:1,unlocked:1,cur:1,done:{},d:{},chain:[]};CPU=null;TRANS={};rsArm=false;$('#rs').textContent='Reset';render()};
+$('#evb').onclick=()=>{const bad=badAt(S.chain);S.cur=S.cur;const el=$('#m');const h='<div class="card"><h3>Evidence chain</h3><div class="'+(bad<0?'PASS':'BLOCK')+'">'+(bad<0?'Intact: '+S.chain.length+' records':'Break at record '+bad)+'</div>'+S.chain.slice(-8).map(r=>'<div class="dim">#'+r.n+' stage '+r.stage+' · '+E(r.kind)+' · '+r.h.slice(0,10)+'</div>').join('')+'<div class="row"><button data-a="back">Close</button></div></div>';el.insertAdjacentHTML('afterbegin',h)};
+A.back=()=>render();
+document.addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(a&&A[a.dataset.a])A[a.dataset.a](a)});
+document.addEventListener('change',e=>{const c=e.target.closest('[data-c]');if(c&&C[c.dataset.c])C[c.dataset.c](c)});
+window.VVULadder={S:()=>S,runLoop,badAt,sha,n1,fab,specText,render,A,C,get CPU(){return CPU},seal,FAULTS};
+if(S.cur>S.unlocked)S.cur=S.unlocked;render();
+})();
+</script>
+</body>
+</html>

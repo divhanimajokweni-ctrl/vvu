@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>VVU — Venture Vision Ubuntu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,400;1,9..144,600&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================
+   PALETTE — DARK SLIME + OLIVE
+   ============================================ */
+:root[data-theme="dark"] {
+  --bg-0: #060a04;
+  --bg-1: #0a1307;
+  --bg-2: #111d0d;
+  --bg-3: #192a13;
+  --panel: #0d1709;
+  --panel-raised: #142010;
+  --border: #243420;
+  --border-mid: #3a5228;
+  --border-bright: #5a7d3a;
+
+  --slime-100: #e2f5c0;
+  --slime-200: #cbea9c;
+  --slime-300: #b0dd72;
+  --slime-400: #97cc55;
+  --slime-500: #7cb342;
+  --slime-600: #639a30;
+
+  --olive-100: #d6e0b8;
+  --olive-200: #b3c28c;
+  --olive-300: #8a9a5b;
+  --olive-400: #6b7a3d;
+  --olive-500: #4d5d2a;
+
+  --gold: #d4c24a;
+  --rust: #c9784a;
+  --danger: #e55353;
+
+  --fg: var(--olive-100);
+  --fg-dim: var(--olive-200);
+  --muted: var(--olive-300);
+  --accent: var(--slime-400);
+  --accent-hot: var(--slime-300);
+  --glow: rgba(151, 204, 85, 0.15);
+}
+
+:root[data-theme="light"] {
+  --bg-0: #f5f9ea;
+  --bg-1: #eef5d8;
+  --bg-2: #e0ebb8;
+  --bg-3: #cfdf9a;
+  --panel: #fbfdf2;
+  --panel-raised: #eef5d8;
+  --border: #c3d2a0;
+  --border-mid: #94a468;
+  --border-bright: #5a6b35;
+  
+  --fg: #2a3714;
+  --fg-dim: #4d5d2a;
+  --muted: #6b7a3d;
+  --accent: #4d7a1f;
+  --accent-hot: #3a5c16;
+  --gold: #8a6b1a;
+  --rust: #a04a20;
+  --glow: rgba(77, 122, 31, 0.15);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg-0);
+  color: var(--fg);
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.5s ease, color 0.5s ease;
+}
+
+/* Ambient Layers */
+.grid-bg {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(124, 179, 66, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 179, 66, 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at 50% 40%, #000 30%, transparent 90%);
+  -webkit-mask-image: radial-gradient(circle at 50% 40%, #000 30%, transparent 90%);
+}
+.glow-1 {
+  position: fixed; top: -15%; left: -12%; width: 520px; height: 520px;
+  background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
+  filter: blur(110px); pointer-events: none; z-index: 0;
+}
+.glow-2 {
+  position: fixed; bottom: -18%; right: -12%; width: 620px; height: 620px;
+  background: radial-gradient(circle, rgba(107, 122, 61, 0.22) 0%, transparent 70%);
+  filter: blur(110px); pointer-events: none; z-index: 0;
+}
+.scanlines {
+  position: fixed; inset: 0; pointer-events: none; z-index: 100;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(151, 204, 85, 0.022) 2px, rgba(151, 204, 85, 0.022) 4px);
+  mix-blend-mode: overlay;
+}
+
+main, nav, section, footer { position: relative; z-index: 2; }
+
+/* Typography */
+.font-display { font-family: 'Fraunces', serif; font-variation-settings: 'opsz' 144; letter-spacing: -0.02em; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ============================================
+   NAVIGATION
+   ============================================ */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
+  background: rgba(6, 10, 4, 0.8); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="light"] nav { background: rgba(245, 249, 234, 0.85); }
+.logo { display: flex; align-items: center; gap: 10px; font-family: 'Fraunces', serif; font-size: 20px; font-weight: 900; color: var(--fg); text-decoration: none; }
+.logo-mark {
+  width: 24px; height: 24px; background: var(--accent); color: var(--bg-0);
+  border-radius: 4px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; transform: rotate(-8deg);
+}
+.theme-btn {
+  background: transparent; border: 1px solid var(--border-mid); color: var(--fg-dim);
+  padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: var(--mono); font-size: 11px;
+  transition: all 0.2s;
+}
+.theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ============================================
+   HERO SECTION
+   ============================================ */
+.hero {
+  min-height: 100vh; padding: 120px 24px 60px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
+  max-width: 1200px; margin: 0 auto;
+}
+.badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px; border: 1px solid var(--border-mid); border-radius: 100px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--fg-dim);
+  margin-bottom: 24px;
+}
+.live-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
+
+.hero h1 { font-family: 'Fraunces', serif; font-size: clamp(40px, 6vw, 72px); line-height: 1.05; margin-bottom: 20px; color: var(--fg); }
+.hero h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
+.hero p { font-size: 16px; color: var(--fg-dim); max-width: 460px; margin-bottom: 32px; line-height: 1.7; }
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: var(--accent); color: var(--bg-0); font-weight: 700;
+  padding: 14px 28px; border-radius: 4px; border: none; cursor: pointer;
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-decoration: none;
+  transition: all 0.2s;
+}
+.btn-primary:hover { background: var(--accent-hot); transform: translateY(-2px); box-shadow: 0 10px 30px -10px var(--accent); }
+
+.hero-shape-wrap { position: relative; aspect-ratio: 1; max-width: 480px; margin: 0 auto; }
+.hero-shape-wrap svg { width: 100%; height: 100%; display: block; }
+.shape-meta { position: absolute; font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
+.shape-meta.tl { top: 10%; left: 5%; }
+.shape-meta.br { bottom: 10%; right: 5%; text-align: right; }
+
+/* ============================================
+   CONSENT GATES
+   ============================================ */
+.consent-section { padding: 80px 24px; max-width: 800px; margin: 0 auto; text-align: center; }
+.section-header { margin-bottom: 40px; }
+.section-num { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.15em; margin-bottom: 8px; }
+.section-title { font-family: 'Fraunces', serif; font-size: clamp(28px, 4vw, 42px); font-weight: 800; color: var(--fg); margin-bottom: 12px; }
+.section-desc { font-size: 14px; color: var(--fg-dim); max-width: 500px; margin: 0 auto; line-height: 1.6; }
+
+.consent-grid { display: flex; flex-direction: column; gap: 16px; margin-bottom: 32px; text-align: left; }
+.consent-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+  padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  transition: border-color 0.2s;
+}
+.consent-card:hover { border-color: var(--border-mid); }
+.consent-info h4 { font-size: 16px; color: var(--fg); margin-bottom: 6px; font-family: 'Space Grotesk', sans-serif; }
+.consent-info p { font-size: 12px; color: var(--fg-dim); line-height: 1.5; max-width: 400px; }
+.consent-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.consent-btn {
+  padding: 8px 16px; border-radius: 4px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+  cursor: pointer; transition: all 0.2s; border: 1px solid var(--border-mid); background: transparent; color: var(--fg-dim);
+}
+.consent-btn.grant:hover { border-color: var(--accent); color: var(--accent); }
+.consent-btn.deny:hover { border-color: var(--danger); color: var(--danger); }
+.consent-btn.selected.grant { background: var(--accent); color: var(--bg-0); border-color: var(--accent); font-weight: 700; }
+.consent-btn.selected.deny { background: var(--danger); color: #fff; border-color: var(--danger); font-weight: 700; }
+.consent-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+#unlockBtn { opacity: 0.4; pointer-events: none; margin: 0 auto; display: flex; }
+#unlockBtn.ready { opacity: 1; pointer-events: auto; animation: glowPulse 2s infinite alternate; }
+@keyframes glowPulse { from { box-shadow: 0 0 10px var(--accent); } to { box-shadow: 0 0 25px var(--accent); } }
+
+/* ============================================
+   ONBOARDING TERMINAL (FLIP CARDS)
+   ============================================ */
+.onboard-section { padding: 60px 24px 100px; max-width: 920px; margin: 0 auto; display: none; opacity: 0; transition: opacity 0.6s ease; }
+.onboard-section.visible { display: block; opacity: 1; }
+
+.terminal { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+
+.term-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; background: var(--panel); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent); border-radius: 4px; font-size: 11px; letter-spacing: 0.12em; color: var(--fg-dim);
+}
+.term-id { display: flex; align-items: center; gap: 10px; color: var(--fg); }
+.term-id .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 1.8s infinite; }
+
+.phase-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
+.phase-tabs::-webkit-scrollbar { display: none; }
+.phase-tab {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--muted); font-family: inherit; font-size: 10px; letter-spacing: 0.12em;
+  cursor: pointer; transition: all 0.22s; white-space: nowrap;
+}
+.phase-tab .tab-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; background: var(--bg-2); color: var(--muted);
+  font-size: 9px; font-weight: 700; transition: all 0.22s;
+}
+.phase-tab:hover { color: var(--fg); border-color: var(--border-mid); }
+.phase-tab.active { color: var(--accent); border-color: var(--accent); background: var(--bg-2); }
+.phase-tab.active .tab-num { background: var(--accent); color: var(--bg-0); }
+.phase-tab.done { color: var(--fg-dim); border-color: var(--border-mid); }
+.phase-tab.done .tab-num { background: var(--border-mid); color: var(--fg); }
+
+/* FLIP CARD CORE */
+.flip-wrap { perspective: 1800px; height: clamp(480px, 60vh, 560px); position: relative; }
+.flip-card { width: 100%; height: 100%; position: relative; cursor: pointer; outline: none; }
+.flip-inner { position: relative; width: 100%; height: 100%; transition: transform 0.75s cubic-bezier(0.45, 0.05, 0.25, 1); transform-style: preserve-3d; }
+.flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+
+.flip-face {
+  position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  padding: 28px 32px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+  overflow-y: auto; display: flex; flex-direction: column; scrollbar-width: thin;
+}
+.flip-face::-webkit-scrollbar { width: 4px; }
+.flip-face::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+
+.flip-front { border-left: 3px solid var(--phase-accent, var(--accent)); box-shadow: inset 0 0 80px rgba(0,0,0,0.35), 0 20px 60px -20px rgba(0,0,0,0.8); }
+.flip-back { transform: rotateY(180deg); border-left: 3px solid var(--gold); box-shadow: inset 0 0 80px rgba(0,0,0,0.35), 0 20px 60px -20px rgba(0,0,0,0.8); background: linear-gradient(180deg, var(--panel) 0%, var(--panel-raised) 100%); }
+
+/* Corner brackets */
+.flip-face::before, .flip-face::after { content: ""; position: absolute; width: 18px; height: 18px; pointer-events: none; opacity: 0.5; }
+.flip-face::before { top: 8px; left: 8px; border-top: 1px solid var(--border-bright); border-left: 1px solid var(--border-bright); }
+.flip-face::after { bottom: 8px; right: 8px; border-bottom: 1px solid var(--border-bright); border-right: 1px solid var(--border-bright); }
+
+/* FACE CONTENT */
+.face-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px dashed var(--border-mid); }
+.face-tag { font-size: 9px; letter-spacing: 0.2em; padding: 4px 10px; background: rgba(151, 204, 85, 0.08); border: 1px solid var(--phase-accent, var(--accent)); color: var(--phase-accent, var(--accent)); border-radius: 3px; }
+.face-tag.back { background: rgba(212, 194, 74, 0.06); border-color: var(--gold); color: var(--gold); }
+.face-num { font-size: 10px; letter-spacing: 0.15em; color: var(--muted); }
+
+.face-title { font-family: 'Fraunces', serif; font-size: clamp(22px, 3.4vw, 32px); font-weight: 700; line-height: 1.15; color: var(--fg); margin-bottom: 14px; }
+.face-title em { font-style: italic; font-weight: 400; color: var(--phase-accent, var(--accent)); }
+.face-use { font-size: 13px; line-height: 1.75; color: var(--fg-dim); margin-bottom: 22px; max-width: 60ch; }
+
+.face-cap-label { font-size: 9px; letter-spacing: 0.2em; color: var(--muted); margin-bottom: 10px; }
+.face-caps { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 20px; }
+.cap { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; font-size: 11px; letter-spacing: 0.04em; color: var(--fg-dim); transition: all 0.2s; }
+.cap:hover { border-color: var(--phase-accent, var(--accent)); color: var(--fg); transform: translateY(-1px); }
+.cap-icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: var(--bg-3); border-radius: 3px; color: var(--phase-accent, var(--accent)); font-size: 12px; font-weight: 700; }
+
+.face-hint { margin-top: auto; padding-top: 14px; display: flex; align-items: center; gap: 10px; font-size: 10px; letter-spacing: 0.18em; color: var(--muted); border-top: 1px dashed var(--border); }
+.hint-pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--phase-accent, var(--accent)); box-shadow: 0 0 8px var(--phase-accent, var(--accent)); animation: pulse 1.6s infinite; }
+
+/* BACK DOSSIER */
+.back-title { font-family: 'Fraunces', serif; font-size: clamp(18px, 2.4vw, 24px); font-weight: 600; color: var(--fg); margin-bottom: 18px; }
+.back-title em { font-style: italic; font-weight: 400; color: var(--gold); }
+.back-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.back-row { display: grid; grid-template-columns: 140px 1fr; gap: 12px; padding: 10px 12px; background: var(--bg-2); border-left: 2px solid var(--border-mid); border-radius: 3px; transition: all 0.18s; }
+.back-row:hover { border-left-color: var(--gold); background: var(--bg-3); }
+.row-label { font-size: 9px; letter-spacing: 0.16em; color: var(--muted); align-self: center; }
+.row-main { display: flex; flex-direction: column; gap: 2px; }
+.row-value { font-size: 12px; color: var(--fg); font-weight: 600; letter-spacing: 0.02em; }
+.row-note { font-size: 10px; color: var(--fg-dim); letter-spacing: 0.02em; }
+
+.back-note { margin-top: auto; padding: 12px 14px; background: rgba(212, 194, 74, 0.05); border: 1px dashed var(--gold); border-radius: 4px; font-size: 11px; line-height: 1.6; color: var(--fg-dim); letter-spacing: 0.03em; }
+.back-note strong { color: var(--gold); }
+
+/* FOOTER (Terminal) */
+.term-foot { display: flex; align-items: center; gap: 16px; padding: 14px 18px; background: var(--panel); border: 1px solid var(--border); border-radius: 4px; flex-wrap: wrap; }
+.progress { flex: 1 1 140px; height: 4px; background: var(--bg-2); border-radius: 2px; overflow: hidden; position: relative; }
+.progress-fill { height: 100%; width: 16.6%; background: linear-gradient(90deg, var(--accent), var(--gold)); transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px var(--accent); }
+.foot-meta { display: flex; gap: 14px; font-size: 9px; letter-spacing: 0.16em; color: var(--muted); white-space: nowrap; }
+.foot-meta #flipState { color: var(--accent); transition: color 0.3s; }
+.foot-meta #flipState.back { color: var(--gold); }
+
+.controls { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; padding: 9px 16px; border-radius: 3px; cursor: pointer; transition: all 0.2s; background: transparent; white-space: nowrap; }
+.btn-ghost { color: var(--fg-dim); border: 1px solid var(--border-mid); }
+.btn-ghost:hover:not(:disabled) { color: var(--fg); border-color: var(--fg-dim); }
+.btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-flip { color: var(--gold); border: 1px solid var(--gold); background: rgba(212, 194, 74, 0.06); }
+.btn-flip:hover { background: var(--gold); color: var(--bg-0); }
+.btn-primary { color: var(--bg-0); background: var(--accent); border: 1px solid var(--accent); font-weight: 700; }
+.btn-primary:hover { background: var(--accent-hot); border-color: var(--accent-hot); box-shadow: 0 0 20px -5px var(--accent); }
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; background: var(--bg-3); border-color: var(--border-mid); color: var(--muted); box-shadow: none; }
+
+/* FLIP HINT overlay */
+.flip-wrap::after { content: ""; position: absolute; inset: 0; border-radius: 6px; pointer-events: none; box-shadow: inset 0 0 0 1px transparent; transition: box-shadow 0.3s; }
+.flip-card:hover .flip-wrap::after { box-shadow: inset 0 0 0 1px var(--border-bright); }
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; padding: 100px 20px 40px; text-align: center; }
+  .hero p { margin: 0 auto 32px; }
+  .hero-shape-wrap { max-width: 320px; margin-top: 20px; }
+  .consent-card { flex-direction: column; align-items: flex-start; }
+  .consent-actions { width: 100%; }
+  .consent-btn { flex: 1; text-align: center; }
+}
+@media (max-width: 640px) {
+  .flip-wrap { height: clamp(520px, 70vh, 640px); }
+  .flip-face { padding: 20px 18px; }
+  .back-row { grid-template-columns: 1fr; gap: 4px; }
+  .term-foot { gap: 10px; }
+  .controls { width: 100%; }
+  .controls .btn { flex: 1; }
+}
+
+/* REDUCED MOTION */
+@media (prefers-reduced-motion: reduce) {
+  .flip-inner { transition: none; transform: none !important; }
+  .flip-face { backface-visibility: visible; transition: opacity 0.3s ease; }
+  .flip-back { transform: none; opacity: 0; pointer-events: none; }
+  .flip-card.flipped .flip-front { opacity: 0; pointer-events: none; }
+  .flip-card.flipped .flip-back { opacity: 1; pointer-events: auto; }
+  .pulse, .hint-pulse, .live-dot { animation: none; }
+  .progress-fill { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="glow-1"></div>
+<div class="glow-2"></div>
+<div class="scanlines"></div>
+
+<nav>
+  <a href="#" class="logo">
+    <span class="logo-mark">V</span> VVU
+  </a>
+  <button class="theme-btn" id="themeToggle">◐ theme</button>
+</nav>
+
+<!-- 01 HERO -->
+<section class="hero">
+  <div>
+    <div class="badge">
+      <span class="live-dot"></span> LIVE · FAIL-CLOSED · POPIA COMPLIANT
+    </div>
+    <h1>Provable<br><em>Digital Twins.</em></h1>
+    <p>One world. One StateVector bus. One WORM chain. Every pixel on your screen is cryptographically bound to a physical sensor reading. If the sensor drops, the twin tells the truth.</p>
+    <a href="#consent" class="btn-primary">Get Started →</a>
+  </div>
+  <div class="hero-shape-wrap">
+    <div class="shape-meta tl">entity: H01 (Life Twin)<br>sensor: YOLOv8 + IMU</div>
+    <div class="shape-meta br">StateVector → Mesh<br>Chain: VERIFIED</div>
+    <svg viewBox="0 0 500 500" id="heroShape">
+      <defs>
+        <radialGradient id="blobGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.35"/>
+          <stop offset="60%" stop-color="var(--accent)" stop-opacity="0.08"/>
+          <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="strokeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="var(--accent)"/>
+          <stop offset="100%" stop-color="var(--slime-600)"/>
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <line x1="250" y1="20" x2="250" y2="480" stroke="var(--border-mid)" stroke-dasharray="2 6"/>
+      <line x1="20" y1="250" x2="480" y2="250" stroke="var(--border-mid)" stroke-dasharray="2 6"/>
+      <path id="ghost3" fill="none" stroke="var(--accent)" stroke-opacity="0.08" stroke-width="1" stroke-dasharray="1 4"/>
+      <path id="ghost2" fill="none" stroke="var(--accent)" stroke-opacity="0.12" stroke-width="1"/>
+      <path id="ghost1" fill="none" stroke="var(--accent)" stroke-opacity="0.2" stroke-width="1"/>
+      <path id="blobFill" fill="url(#blobGrad)"/>
+      <path id="blobStroke" fill="none" stroke="url(#strokeGrad)" stroke-width="2" filter="url(#glow)"/>
+      <g id="blobVertices"></g>
+      <circle cx="250" cy="250" r="3" fill="var(--accent)"/>
+      <circle cx="250" cy="250" r="8" fill="none" stroke="var(--accent)" stroke-opacity="0.4"/>
+    </svg>
+  </div>
+</section>
+
+<!-- 02 CONSENT GATES -->
+<section class="consent-section" id="consent">
+  <div class="section-header">
+    <div class="section-num">01 — POPIA GATE</div>
+    <h2 class="section-title">Unbundled Consent.</h2>
+    <p class="section-desc">You cannot force a user to give up their voice to use their face. The device onboarding requires explicit, revocable consent for every hardware pipeline.</p>
+  </div>
+  
+  <div class="consent-grid">
+    <!-- Pipeline 1 -->
+    <div class="consent-card" data-pipeline="0">
+      <div class="consent-info">
+        <h4>Camera Consent (Avatar)</h4>
+        <p>We use your camera to build your 3D face and body. Raw images are processed on-device and destroyed in 60 minutes. We store only the mathematical geometry.</p>
+      </div>
+      <div class="consent-actions">
+        <button class="consent-btn grant" onclick="handleConsent(0, 'grant')">GRANT</button>
+        <button class="consent-btn deny" onclick="handleConsent(0, 'deny')">DENY</button>
+      </div>
+    </div>
+    <!-- Pipeline 2 -->
+    <div class="consent-card" data-pipeline="1">
+      <div class="consent-info">
+        <h4>Microphone Consent (Voice & Motion)</h4>
+        <p>We use your mic to calibrate your voice and detect walking cadence. Raw audio never leaves your phone. We store only the acoustic fingerprint.</p>
+      </div>
+      <div class="consent-actions">
+        <button class="consent-btn grant" onclick="handleConsent(1, 'grant')">GRANT</button>
+        <button class="consent-btn deny" onclick="handleConsent(1, 'deny')">DENY</button>
+      </div>
+    </div>
+    <!-- Pipeline 3 -->
+    <div class="consent-card" data-pipeline="2">
+      <div class="consent-info">
+        <h4>IMU Consent (Motion)</h4>
+        <p>We use your phone's accelerometer and gyroscope to drive your avatar's walk cycle in Free City and the Digital Twin.</p>
+      </div>
+      <div class="consent-actions">
+        <button class="consent-btn grant" onclick="handleConsent(2, 'grant')">GRANT</button>
+        <button class="consent-btn deny" onclick="handleConsent(2, 'deny')">DENY</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-primary" id="unlockBtn" onclick="unlockOnboarding()">Authorize & Begin Sequence →</button>
+</section>
+
+<!-- 03 ONBOARDING TERMINAL -->
+<section class="onboard-section" id="onboarding">
+  <div class="terminal">
+    <header class="term-head">
+      <div class="term-id">
+        <span class="pulse"></span> VVU // ONBOARDING
+      </div>
+      <div style="color: var(--muted);">SESSION · 0x03A7</div>
+    </header>
+
+    <nav class="phase-tabs" id="phaseTabs" aria-label="Phases"></nav>
+
+    <div class="flip-wrap">
+      <div class="flip-card" id="flipCard" role="button" tabindex="0" aria-label="Flip dossier">
+        <div class="flip-inner" id="flipInner"></div>
+      </div>
+    </div>
+
+    <footer class="term-foot">
+      <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="foot-meta">
+        <span id="phaseLabel">PHASE 01 / 06</span>
+        <span id="flipState">FRONT</span>
+      </div>
+      <div class="controls">
+        <button class="btn btn-ghost" id="prevBtn">← PREV</button>
+        <button class="btn btn-flip" id="flipBtn">FLIP DOSSIER</button>
+        <button class="btn btn-primary" id="nextBtn">NEXT →</button>
+      </div>
+    </footer>
+  </div>
+</section>
+
+<script>
+/* ============================================
+   THEME TOGGLE
+   ============================================ */
+const themeToggle = document.getElementById('themeToggle');
+const root = document.documentElement;
+
+function setTheme(t) {
+  root.setAttribute('data-theme', t);
+  try { localStorage.setItem('vvu-theme', t); } catch(e){}
+  themeToggle.textContent = t === 'light' ? '◑ light' : '◐ dark';
+}
+themeToggle.addEventListener('click', () => {
+  const cur = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  setTheme(cur);
+});
+let savedTheme = 'dark';
+try { const s = localStorage.getItem('vvu-theme'); if(s) savedTheme = s; } catch(e){}
+setTheme(savedTheme);
+
+/* ============================================
+   HERO SHAPE ANIMATION
+   ============================================ */
+const heroSvg = document.getElementById('heroShape');
+const blobFill = document.getElementById('blobFill');
+const blobStroke = document.getElementById('blobStroke');
+const ghost1 = document.getElementById('ghost1'), ghost2 = document.getElementById('ghost2'), ghost3 = document.getElementById('ghost3');
+const verticesGroup = document.getElementById('blobVertices');
+const N_VERTS = 12;
+const vertDots = [];
+for (let i = 0; i < N_VERTS; i++) {
+  const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  c.setAttribute('r', 3); c.setAttribute('fill', 'var(--accent)'); c.setAttribute('opacity', '0.9');
+  verticesGroup.appendChild(c); vertDots.push(c);
+}
+function catmullRomClosed(pts) {
+  const n = pts.length; let d = '';
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+    if (i === 0) d += `M ${p1[0].toFixed(2)},${p1[1].toFixed(2)} `;
+    const cp1x = p1[0] + (p2[0] - p0[0]) / 6, cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const cp2x = p2[0] - (p3[0] - p1[0]) / 6, cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += `C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2[0].toFixed(2)},${p2[1].toFixed(2)} `;
+  }
+  return d + 'Z';
+}
+let mouseFx = 0, mouseFy = 0;
+heroSvg.addEventListener('mousemove', e => {
+  const rect = heroSvg.getBoundingClientRect();
+  mouseFx = ((e.clientX - rect.left) / rect.width - 0.5) * 30;
+  mouseFy = ((e.clientY - rect.top) / rect.height - 0.5) * 30;
+});
+heroSvg.addEventListener('mouseleave', () => { mouseFx = 0; mouseFy = 0; });
+const heroStart = performance.now();
+function morphLoop() {
+  const t = (performance.now() - heroStart) / 1000;
+  const cx = 250 + mouseFx, cy = 250 + mouseFy, baseR = 140;
+  const pts = [];
+  for (let i = 0; i < N_VERTS; i++) {
+    const angle = (i / N_VERTS) * Math.PI * 2;
+    const r = baseR + Math.sin(t * 0.7 + i * 0.9) * 30 + Math.cos(t * 0.5 + i * 1.7) * 20 + Math.sin(t * 1.1 + i * 0.3) * 10;
+    pts.push([cx + Math.cos(angle) * r, cy + Math.sin(angle) * r]);
+  }
+  const g1 = [], g2 = [], g3 = [];
+  for (let i = 0; i < N_VERTS; i++) {
+    const angle = (i / N_VERTS) * Math.PI * 2;
+    const r1 = baseR + Math.sin((t-0.3) * 0.7 + i * 0.9) * 30 + Math.cos((t-0.3) * 0.5 + i * 1.7) * 20;
+    const r2 = baseR + Math.sin((t-0.6) * 0.7 + i * 0.9) * 30 + Math.cos((t-0.6) * 0.5 + i * 1.7) * 20;
+    const r3 = baseR + Math.sin((t-0.9) * 0.7 + i * 0.9) * 30 + Math.cos((t-0.9) * 0.5 + i * 1.7) * 20;
+    g1.push([cx + Math.cos(angle) * r1, cy + Math.sin(angle) * r1]);
+    g2.push([cx + Math.cos(angle) * r2, cy + Math.sin(angle) * r2]);
+    g3.push([cx + Math.cos(angle) * r3, cy + Math.sin(angle) * r3]);
+  }
+  blobFill.setAttribute('d', catmullRomClosed(pts)); blobStroke.setAttribute('d', catmullRomClosed(pts));
+  ghost1.setAttribute('d', catmullRomClosed(g1)); ghost2.setAttribute('d', catmullRomClosed(g2)); ghost3.setAttribute('d', catmullRomClosed(g3));
+  pts.forEach((p, i) => {
+    vertDots[i].setAttribute('cx', p[0]); vertDots[i].setAttribute('cy', p[1]);
+    vertDots[i].setAttribute('r', Math.max(1.5, 2 + Math.sin(t * 2 + i) * 1.5));
+  });
+  requestAnimationFrame(morphLoop);
+}
+morphLoop();
+
+/* ============================================
+   CONSENT GATE LOGIC
+   ============================================ */
+const consentState = [null, null, null];
+const unlockBtn = document.getElementById('unlockBtn');
+
+function handleConsent(index, action) {
+  consentState[index] = action;
+  
+  // Update UI
+  const cards = document.querySelectorAll('.consent-card');
+  const card = cards[index];
+  const grantBtn = card.querySelector('.grant');
+  const denyBtn = card.querySelector('.deny');
+  
+  grantBtn.classList.remove('selected');
+  denyBtn.classList.remove('selected');
+  
+  if (action === 'grant') {
+    grantBtn.classList.add('selected');
+  } else {
+    denyBtn.classList.add('selected');
+  }
+  
+  grantBtn.disabled = true;
+  denyBtn.disabled = true;
+  
+  // Check if all are answered
+  if (consentState.every(s => s !== null)) {
+    unlockBtn.classList.add('ready');
+  }
+}
+
+function unlockOnboarding() {
+  const onboard = document.getElementById('onboarding');
+  onboard.classList.add('visible');
+  
+  // Smooth scroll to onboarding
+  setTimeout(() => {
+    onboard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+/* ============================================
+   ONBOARDING FLIP CARDS
+   ============================================ */
+const PHASES = [
+  {
+    code:"CONTACT", label:"CONTACT TARGETING", accent:"var(--slime-400)",
+    front:{
+      title:'Who signs at <em>HOSTAFRICA</em>',
+      useCase:'Identify decision-makers by signing authority before any pitch touches the inbox — so the message lands on a desk that can actually approve.',
+      capabilities:[
+        {icon:'◎',label:'Signatory mapping'},
+        {icon:'⬡',label:'Route optimization'},
+        {icon:'◇',label:'Warm-path discovery'},
+        {icon:'◈',label:'Role classification'}
+      ]
+    },
+    back:{
+      clearance:'PUB-2', title:'Ranked by <em>signing authority</em>',
+      rows:[
+        {label:'PRIMARY',value:'Michael Osterloh',note:'Founder · MD · CEO · sole commercial signatory'},
+        {label:'GATEKEEPER',value:'Ethan McPherson',note:'Channel Account Manager · warm route into Michael'},
+        {label:'TECHNICAL',value:'Goodness Kayode',note:'Head of Product & Engineering · validates the build'},
+        {label:'INFRA',value:'Johan‑Murray Muller',note:'COO · owns capacity & rack allocation'},
+        {label:'FINANCE',value:'Constant Varley',note:'Financial Controller · contract stage only'}
+      ],
+      note:'<strong>Route:</strong> Ethan → Goodness → Michael. Do not open with finance.'
+    }
+  },
+  {
+    code:"LICENSE", label:"LEGAL FIREWALL", accent:"var(--olive-300)",
+    front:{
+      title:'The <em>AMASS</em> wall',
+      useCase:'Flag license blockers before they enter the codebase. A motion model that cannot ship commercially is a zero‑revenue asset.',
+      capabilities:[
+        {icon:'⚖',label:'License classification'},
+        {icon:'◇',label:'Commercial-use check'},
+        {icon:'⬡',label:'Replacement sourcing'},
+        {icon:'◉',label:'Fallback ladder'}
+      ]
+    },
+    back:{
+      clearance:'LEG-4', title:'AMASS is <em>not</em> open-source',
+      rows:[
+        {label:'STATUS',value:'Academic-only license',note:'Explicitly prohibits commercial use'},
+        {label:'OPTION 1',value:'MuJoCo / procedural',note:'No human data · cleanest legal path'},
+        {label:'OPTION 2',value:'CMU MoCap',note:'Commercial-friendly · free to ship'},
+        {label:'OPTION 3',value:'Commercial mocap',note:'Expensive but clean'},
+        {label:'OPTION 4',value:'Consented pilot data',note:'No pre-trained model until consent'}
+      ],
+      note:'<strong>MVP truth:</strong> you do not need any motion model. A 3D capsule is enough to prove the pipeline.'
+    }
+  },
+  {
+    code:"PERCEPTION", label:"PERCEPTION LAYER", accent:"var(--slime-500)",
+    front:{
+      title:'Integrity <em>≠</em> accuracy',
+      useCase:'A hash chain proves the pipeline was not tampered with. It does not prove the sensor saw the truth. Separate those claims, or the receipt lies.',
+      capabilities:[
+        {icon:'◉',label:'Confidence gating'},
+        {icon:'◈',label:'False-positive flagging'},
+        {icon:'◎',label:'Truth receipts'},
+        {icon:'◇',label:'Perception report'}
+      ]
+    },
+    back:{
+      clearance:'OPS-5', title:'Carry the <em>confidence</em> in the StateVector',
+      rows:[
+        {label:'YOLO FP RATE',value:'4.2 % per 1 000 frames',note:'≈42 false positives per 1k'},
+        {label:'30-DAY PILOT',value:'≈3.2 M valid-hash / false-physics events',note:'At 30 FPS'},
+        {label:'GREEN',value:'confidence ≥ 0.85',note:'rules fire'},
+        {label:'YELLOW',value:'0.60 – 0.84',note:'rules suppressed · wireframe'},
+        {label:'RED',value:'< 0.60',note:'OBSERVATION_MISSING'}
+      ],
+      note:'<strong>Receipt must include a perception report</strong> — not just “CHAIN_VERIFIED”.'
+    }
+  },
+  {
+    code:"ONTOLOGY", label:"ONTOLOGY AUDIT", accent:"var(--olive-200)",
+    front:{
+      title:'Terms with <em>no definition</em>',
+      useCase:'A load-bearing word with no fixed meaning is a bug in the architecture. Force every concept to earn a definition or leave the spec.',
+      capabilities:[
+        {icon:'⌗',label:'Glossary gate'},
+        {icon:'◇',label:'Ambiguity scoring'},
+        {icon:'⬡',label:'Rewrite proposals'},
+        {icon:'◉',label:'Scope pruning'}
+      ]
+    },
+    back:{
+      clearance:'LEX-3', title:'Every term gets <em>one</em> paragraph',
+      rows:[
+        {label:'CUBOT',value:'Motion-synthesis model',note:'Never specified · remove from MVP'},
+        {label:'SOULBOUND',value:'Ed25519 attestation',note:'Not a blockchain token'},
+        {label:'PROOFBRIDGE',value:'Verification layer',note:'Never defined · pick what it is'},
+        {label:'UBUNTU BUS',value:'Normalisation transport',note:'Never specified'},
+        {label:'GRAFT',value:'Spatial-layer geometry',note:'Never defined'},
+        {label:'ZOOKEEPER',value:'Zoo.dev CAD agent',note:'Not Apache ZooKeeper'}
+      ],
+      note:'<strong>Rule:</strong> define in one paragraph, or remove entirely.'
+    }
+  },
+  {
+    code:"EXECUTION", label:"EXECUTION REALITY", accent:"var(--slime-300)",
+    front:{
+      title:'The <em>solo-dev</em> math',
+      useCase:'Expose the gap between the architecture slide and the code volume a single developer can ship. Effort is a feature.',
+      capabilities:[
+        {icon:'◈',label:'Effort estimation'},
+        {icon:'◎',label:'Subsystem costing'},
+        {icon:'◇',label:'MVP cutting'},
+        {icon:'⬡',label:'Risk pricing'}
+      ]
+    },
+    back:{
+      clearance:'ENG-6', title:'Scope is a <em>number</em>',
+      rows:[
+        {label:'FULL BUILD',value:'11 subsystems',note:'≈2 200 – 5 500 lines of production code'},
+        {label:'MVP',value:'~800 – 1 200 lines',note:'1 camera · 1 room · 1 YOLO · 1 geofence · 1 hash chain'},
+        {label:'FULL TEAM',value:'3 people · 6 months',note:'Second 80 % requires the first 20 % in production'},
+        {label:'SHIPPABLE',value:'MVP alone is enough',note:'Revenue proves the concept'}
+      ],
+      note:'<strong>Do not</strong> build the full architecture and then hunt for clients.'
+    }
+  },
+  {
+    code:"SEQUENCE", label:"BUILD SEQUENCE", accent:"var(--olive-400)",
+    front:{
+      title:'The <em>non-negotiable</em> order',
+      useCase:'Each layer is funded by the traction of the layer below it. Skip a step and the architecture starves before revenue arrives.',
+      capabilities:[
+        {icon:'◉',label:'Milestone gating'},
+        {icon:'◇',label:'Revenue triggers'},
+        {icon:'◎',label:'Architecture staging'},
+        {icon:'⬡',label:'Client thresholds'}
+      ]
+    },
+    back:{
+      clearance:'OPS-9', title:'Growth <em>around</em> revenue',
+      rows:[
+        {label:'STEP 1',value:'Build the MVP',note:'~800 lines · one camera · one room'},
+        {label:'STEP 2',value:'2 – 3 pilot clients',note:'Prove the MVP in production'},
+        {label:'STEP 3',value:'Matter adapter',note:'Funded by pilot revenue'},
+        {label:'STEP 4',value:'5 – 10 clients → L2 anchoring',note:'Traction justifies the chain'},
+        {label:'STEP 5',value:'20+ clients → MCP layer',note:'Interop demand triggers the bridge'},
+        {label:'STEP 6',value:'50+ clients → full WORM + consent platform',note:'Only at scale'}
+      ],
+      note:'<strong>Traction gates scope.</strong> The architecture grows around revenue, not the reverse.'
+    }
+  }
+];
+
+let currentPhase = 0;
+let isFlipped = false;
+
+const tabsEl = document.getElementById('phaseTabs');
+const flipInner = document.getElementById('flipInner');
+const flipCard = document.getElementById('flipCard');
+const flipStateEl = document.getElementById('flipState');
+const flipBtn = document.getElementById('flipBtn');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const progressFill = document.getElementById('progressFill');
+const phaseLabel = document.getElementById('phaseLabel');
+
+function renderTabs() {
+  tabsEl.innerHTML = PHASES.map((p, i) => {
+    let cls = 'phase-tab';
+    if (i === currentPhase) cls += ' active';
+    else if (i < currentPhase) cls += ' done';
+    return `<button class="${cls}" data-i="${i}">
+      <span class="tab-num">${(i+1).toString().padStart(2,'0')}</span>
+      <span>${p.label}</span>
+    </button>`;
+  }).join('');
+}
+
+function renderCard() {
+  const p = PHASES[currentPhase];
+  const num = (currentPhase + 1).toString().padStart(2, '0');
+  const total = PHASES.length.toString().padStart(2, '0');
+
+  flipInner.innerHTML = `
+    <!-- FRONT -->
+    <div class="flip-face flip-front" style="--phase-accent:${p.accent}">
+      <div class="face-header">
+        <span class="face-tag">USE CASE · ${p.label}</span>
+        <span class="face-num">${num} / ${total}</span>
+      </div>
+      <h2 class="face-title">${p.front.title}</h2>
+      <p class="face-use">${p.front.useCase}</p>
+      <div class="face-cap-label">CAPABILITIES UNLOCKED</div>
+      <div class="face-caps">
+        ${p.front.capabilities.map(c => `
+          <div class="cap">
+            <span class="cap-icon">${c.icon}</span>
+            <span>${c.label}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="face-hint">
+        <span class="hint-pulse"></span>
+        TAP TO FLIP DOSSIER · CLEARANCE ${p.back.clearance}
+      </div>
+    </div>
+
+    <!-- BACK -->
+    <div class="flip-face flip-back">
+      <div class="face-header">
+        <span class="face-tag back">DOSSIER · ${p.back.clearance}</span>
+        <span class="face-num">${num} / ${total}</span>
+      </div>
+      <h3 class="back-title">${p.back.title}</h3>
+      <div class="back-rows">
+        ${p.back.rows.map(r => `
+          <div class="back-row">
+            <span class="row-label">${r.label}</span>
+            <div class="row-main">
+              <span class="row-value">${r.value}</span>
+              ${r.note ? `<span class="row-note">${r.note}</span>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="back-note">${p.back.note}</div>
+    </div>
+  `;
+}
+
+function toggleFlip(force) {
+  const target = (typeof force === 'boolean') ? force : !isFlipped;
+  if (target === isFlipped) return;
+  isFlipped = target;
+  flipCard.classList.toggle('flipped', isFlipped);
+  flipStateEl.textContent = isFlipped ? 'DOSSIER' : 'FRONT';
+  flipStateEl.classList.toggle('back', isFlipped);
+  flipBtn.textContent = isFlipped ? 'CLOSE DOSSIER' : 'FLIP DOSSIER';
+}
+
+function goToPhase(i) {
+  if (i < 0 || i >= PHASES.length) return;
+  currentPhase = i;
+  
+  if (isFlipped) {
+    flipCard.classList.remove('flipped');
+    isFlipped = false;
+    flipStateEl.textContent = 'FRONT';
+    flipStateEl.classList.remove('back');
+    flipBtn.textContent = 'FLIP DOSSIER';
+  }
+  
+  renderTabs();
+  renderCard();
+  updateChrome();
+}
+
+function updateChrome() {
+  const pct = ((currentPhase + 1) / PHASES.length) * 100;
+  progressFill.style.width = pct + '%';
+  phaseLabel.textContent = `PHASE ${(currentPhase + 1).toString().padStart(2, '0')} / ${PHASES.length.toString().padStart(2, '0')}`;
+  prevBtn.disabled = currentPhase === 0;
+  nextBtn.disabled = currentPhase === PHASES.length - 1;
+}
+
+// Event Listeners
+tabsEl.addEventListener('click', e => {
+  const btn = e.target.closest('.phase-tab');
+  if (!btn) return;
+  const i = parseInt(btn.dataset.i, 10);
+  if (i === currentPhase) return;
+  goToPhase(i);
+});
+
+flipCard.addEventListener('click', () => toggleFlip());
+flipCard.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFlip(); }
+});
+flipBtn.addEventListener('click', e => { e.stopPropagation(); toggleFlip(); });
+prevBtn.addEventListener('click', () => goToPhase(currentPhase - 1));
+nextBtn.addEventListener('click', () => goToPhase(currentPhase + 1));
+
+// Initialize Terminal
+renderTabs();
+renderCard();
+updateChrome();
+
+</script>
+</body>
+</html>

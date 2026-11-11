@@ -1,0 +1,10 @@
+{
+  "id": "proofbridge-qr-bridge",
+  "name": "ProofBridge QR Bridge \u2014 Runner Discovers via Obsidian Link",
+  "version": "1.2.0",
+  "minAppVersion": "0.15.0",
+  "description": "Runner discovers via obsidian:// link only \u2014 QR ephemeral single-use token \u2014 links to 2 other Obsidian plugins via cargo \u2014 fixes hollow view \u2014 existing runner, no new runner, no vault upload",
+  "author": "VVU / ProofBridge",
+  "authorUrl": "https://vvu.africa",
+  "isDesktopOnly": false
+}

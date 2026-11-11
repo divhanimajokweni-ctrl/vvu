@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Kit — ProofBridge Campus Walk</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 720px; margin: 0 auto; padding: 20px; line-height: 1.6; background: #fafafa; color: #111; }
+h1 { font-size: 22px; border-bottom: 2px solid #000; padding-bottom: 8px; }
+h2 { font-size: 18px; margin-top: 32px; background: #111; color: #fff; padding: 6px 10px; }
+h3 { font-size: 16px; margin-top: 20px; }
+.card { background: #fff; border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin: 12px 0; }
+.leave-behind { border-left: 4px solid #000; padding-left: 16px; font-style: italic; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+th { background: #eee; }
+.q { background: #ffffe0; padding: 10px; border: 1px dashed #999; margin: 8px 0; }
+pre { background: #f4f4f4; padding: 12px; overflow-x: auto; font-size: 13px; border: 1px solid #ddd; }
+.small { font-size: 12px; color: #666; }
+</style>
+</head>
+<body>
+<h1>Field Kit — ProofBridge Campus Walk</h1>
+<p class="small">You're walking a campus today. Save this as fieldkit.html, open it, screenshot each section as needed.</p>
+
+<h2>PART 1 — The Leave-Behind</h2>
+<div class="card leave-behind">
+<p><strong>Show this. Don't explain it. Let them read it.</strong></p>
+<p>ProofBridge is a provenance-and-audit layer.</p>
+<p>It records what happened in a system — a payment, a reading, a decision — as a cryptographic chain that any third party can verify without trusting the operator.</p>
+<p>It does not detect lies. It makes it impossible to change the record after the fact. The bottleneck it removes is: "we can't prove what happened cheaply, portably, and across institutions that don't trust each other."</p>
+</div>
+
+<h2>PART 2 — The Four Trust Bottlenecks</h2>
+<table>
+<tr><th>Bottleneck</th><th>Plain meaning</th><th>Does ProofBridge help?</th></tr>
+<tr><td><strong>Provenance</strong></td><td>Where did this come from, and has it changed?</td><td>Yes — core strength.</td></tr>
+<tr><td><strong>Evidence capture</strong></td><td>Was the ground truth recorded honestly?</td><td>Partially — catches tampering after the fact, can't stop a lying sensor</td></tr>
+<tr><td><strong>Institutional trust</strong></td><td>Do we trust who runs the system?</td><td>No — governance problem, not math</td></tr>
+<tr><td><strong>Cost of verification</strong></td><td>The check costs more than trusting</td><td>Yes — one hash verify, microseconds</td></tr>
+</table>
+
+<h2>PART 3 — The Three Questions</h2>
+<div class="card">
+<div class="q"><strong>Q1.</strong> "In your field, what's the single biggest thing people cannot verify that they wish they could?"</div>
+<div class="q"><strong>Q2.</strong> "When something goes wrong — a bad decision, a falsified record, a failure — how is it caught today, and who pays for that check?"</div>
+<div class="q"><strong>Q3.</strong> "If you had a system that made every step of that record tamper-evident and cheap to check — what would it have to prove to you, personally, before you'd trust it?"<br><em>That third question is the whole trip. Write down every word.</em></div>
+</div>
+
+<h2>PART 4 — The Capture Template</h2>
+<pre>
+LECTURER: ________________________
+FACULTY: _________________________
+FIELD: ___________________________
+DATE: ____________________________
+
+Q1 — Biggest unverifiable thing:
+
+Q2 — How failures are caught today / who pays:
+
+Q3 — Their trust condition:
+       "I would trust this if _______________________"
+
+DOMINANT BOTTLENECK (circle one):
+   provenance / evidence capture / institutional trust / cost of verification
+
+WOULD THEY USE IT? (yes / no / maybe)
+
+WHAT THEY OFFERED (lecture invite, intro, data, collaboration):
+
+FOLLOW-UP ACTION:
+</pre>
+
+<h2>PART 5 — The Faculty Map</h2>
+<table>
+<tr><th>Faculty</th><th>Likely dominant bottleneck</th><th>What they'll probably say</th></tr>
+<tr><td>Law</td><td>Institutional trust</td><td>Chain of custody, evidence admissibility, "who signs the first link"</td></tr>
+<tr><td>Medicine / Health Sciences</td><td>Evidence capture</td><td>Clinical trials, adverse events, "the sensor may lie"</td></tr>
+<tr><td>Engineering</td><td>Provenance</td><td>Supply chains, component traceability, sensor calibration</td></tr>
+<tr><td>Business / Commerce</td><td>Cost of verification</td><td>Audit fees, reconciliation overhead</td></tr>
+<tr><td>Humanities / Social Sciences</td><td>Institutional trust</td><td>Archival authenticity, contested narratives</td></tr>
+<tr><td>Computer Science</td><td>Provenance + cost</td><td>Distributed systems, trust assumptions, "why not X?"</td></tr>
+<tr><td>Journalism / Media</td><td>Institutional trust</td><td>Source verification</td></tr>
+<tr><td>Library / Information Science</td><td>Provenance</td><td>Archival integrity, chain of custody</td></tr>
+<tr><td>Environmental Science</td><td>Evidence capture</td><td>Sensor networks, water quality, calibration drift</td></tr>
+<tr><td>Public Policy / Governance</td><td>Institutional trust + cost</td><td>Procurement, audit trails, "the check has to be affordable"</td></tr>
+</table>
+
+<div class="card">
+<h3>On the horse itself</h3>
+<p>You're not carrying the academic record, or the krypte rebuild, or the codebase, or the Mk 0. You're carrying one paragraph (the leave-behind), one map (the taxonomy), and three questions.</p>
+<p>Everything else — the fraud harness, the substrate, the audit chain, the dashboard, the R490 node — is what you say if asked. It's not what you lead with. Leading with it would make you a vendor. Leading with the questions makes you a researcher.</p>
+<p><strong>The single most valuable thing you can come back with is a stack of filled-in Q3 answers — the trust conditions lecturers name.</strong></p>
+</div>
+
+<p class="small">One thing to do before you walk: Photograph the faculty directory board. When you get back, you'll know which faculties you hit and which you missed.</p>
+</body>
+</html>

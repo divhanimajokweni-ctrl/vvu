@@ -1,0 +1,164 @@
+{
+  "title": "VVU Studi Full Business \u2014 Complete Knowledge Base",
+  "version": "1.0.0",
+  "registration": "Reg 2026/259053/07",
+  "compliance": "B-BBEE Level 1 (135%)",
+  "contact": "divh@venturevisionubuntu.co.za",
+  "domains": [
+    "vvu-enterprise.space-z.ai",
+    "vvu-study.space-z.ai"
+  ],
+  "modules": [
+    {
+      "id": 1,
+      "title": "VVU Foundation Manifesto",
+      "philosophy": "Umuntu Ngumuntu Ngabantu (I am because we are)",
+      "details": {
+        "reg": "2026/259053/07",
+        "bbbee": "Level 1 (135% procurement recognition)",
+        "contact": "divh@venturevisionubuntu.co.za",
+        "domains": [
+          "vvu-enterprise.space-z.ai",
+          "vvu-study.space-z.ai"
+        ]
+      },
+      "evidence_tier": "T1",
+      "exercise": "Draft local governance manifesto aligning Ubuntu ethics with zero-trust cryptographic audit chains."
+    },
+    {
+      "id": 2,
+      "title": "Day-One Depot Observation \u2014 ONE INSTRUMENT",
+      "recording_format": "[date] [depot] [role] cost = R___ [T1/T2/T3/T4] owner = [name]",
+      "gate": "PASS >R20k T1/T2 -> Build kit #1 Mk 0.5 R1,671",
+      "hashes": {
+        "contentHash": "998ca700...",
+        "receiptHash": "a31f82..."
+      },
+      "documents": [
+        "ONE-PAGER (Student View)",
+        "THREE-PAGER (Internal Keep)",
+        "TRAVEL SCOPE E2E"
+      ],
+      "evidence_tier": "T1/T2",
+      "exercise": "Execute depot observation exercise using depot_observation.py and generate compliant observation records."
+    },
+    {
+      "id": 3,
+      "title": "THE LYNX \u2014 Conceded Ledger",
+      "claimed": "10 links claimed same ledger / same buyer",
+      "concessions": [
+        "Link 3 depot != mine [UNVERIFIED]",
+        "Link 4 SMR removed",
+        "Link 7 read-only no write",
+        "Link 2 R195k multiplier [UNDEFINED]",
+        "Meta shared code != shared business (only chain.js / verify.js + 11-field payload retained)"
+      ],
+      "evidence_tier": "T3",
+      "exercise": "Audit concession logs to isolate verified links from unverified assumptions in ledger claims."
+    },
+    {
+      "id": 4,
+      "title": "IVE \u2014 Integrated Verification Environment",
+      "canonical_fields": [
+        "sensor_id",
+        "firmware",
+        "calib_epoch",
+        "utc_ts",
+        "geo",
+        "proc_type",
+        "evidence_status",
+        "channel",
+        "merchantId",
+        "hour",
+        "gapDraw"
+      ],
+      "pipeline": "Sorted JSON -> SHA-256 -> contentHash + receiptHash -> WORM Log",
+      "ui_footer": "computed gates \u00b7 stubbed gates flagged \u00b7 strong = suspicious",
+      "mbd_spine_hash": "084a52ac...",
+      "evidence_tier": "T1",
+      "exercise": "Construct deterministic 11-field canonical payload and verify local SHA-256 contentHash."
+    },
+    {
+      "id": 5,
+      "title": "Unified Server \u2014 Servers Are One",
+      "architecture": "enterprise + study + venturevisionubuntu.co.za -> cname.space-z.ai -> ONE Next.js instance",
+      "routing": "middleware.ts host-based routing -> POST /api/propagate -> write once, appear both",
+      "files": [
+        "middleware.ts",
+        "route.ts",
+        "ive.ts",
+        "DEPLOY_FOR_IRENA.md"
+      ],
+      "evidence_tier": "T1",
+      "exercise": "Test host header routing locally and verify API propagation payloads."
+    },
+    {
+      "id": 6,
+      "title": "ProofBridge + Hardware",
+      "hardware_specs": {
+        "Mk_0_5": "Raspberry Pi 5 (R1,671) with zero-fee 5-day trial, billable only if >R1k discrepancy",
+        "MK_II": "AMD Kria SOM with 99% bandwidth compression",
+        "Local_LLM": "R0/token air-gapped Llama 3.1 8B in read-only mode",
+        "Status": "Mineral ESG/SGS [UNDEFINED]"
+      },
+      "evidence_tier": "T2",
+      "exercise": "Configure air-gapped inference parameters and verify bandwidth reduction ratios."
+    },
+    {
+      "id": 7,
+      "title": "Governance + Political Economy",
+      "academic_leadership": "Prof Giovanni Poggi (Mandela University / Stellenbosch)",
+      "key_concepts": [
+        "Developmental Political Economy",
+        "Trust Tax (cost of believing an unverified figure)",
+        "In-country Decolonized Audit Data Sovereignty"
+      ],
+      "evidence_tier": "T1",
+      "exercise": "Calculate the trust tax for unverified vendor claims in resource logistics."
+    },
+    {
+      "id": 8,
+      "title": "Funding + GTC Berlin",
+      "funding_portal": "/support interim vvu-enterprise.space-z.ai/support (100% to Mk-I fabrication)",
+      "gtc_pricing": {
+        "general": "\u20ac1,755",
+        "academic": "\u20ac1,053",
+        "exhibit_hall": "\u20ac357 / \u20ac215"
+      },
+      "promo_codes": [
+        "GTC-NVY16C1I",
+        "GTCB26INCP"
+      ],
+      "travel_timeline": "DHA Passport (10-14 days) + Schengen Visa (15 days)",
+      "evidence_tier": "T1",
+      "exercise": "Verify funding flow SHA-256 receipt generation and passport milestone gates."
+    },
+    {
+      "id": 9,
+      "title": "Lessons From Failures",
+      "post_mortems": [
+        "Placeholder [Recipient Name] -> Replace with real name (e.g. Adam Henryk Grzywaczewski)",
+        "Raw HTML <table> dumps -> Copy Rendered HTML in Gmail Settings",
+        "API key leakage in Excel file4026010665615496067.xlsx -> Revoke immediately, enforce env vars"
+      ],
+      "evidence_tier": "T1",
+      "exercise": "Audit sample code and configuration files for exposed secrets and placeholder strings."
+    },
+    {
+      "id": 10,
+      "title": "Student Practical Exercises Suite",
+      "tasks": [
+        "Run depot_observation.py script",
+        "Build canonical 11-field payload + SHA-256 verification",
+        "Author One-Pager vs Three-Pager documentation",
+        "Test Next.js middleware host header routing",
+        "Propagate data across endpoints via /api/propagate",
+        "Assign T1-T4 evidence tiers to telemetry",
+        "Map fuel cost anomalies to mineral ESG metrics",
+        "Draft communication emails with strictly zero unpopulated placeholders"
+      ],
+      "evidence_tier": "T1-T4",
+      "exercise": "Complete end-to-end audit simulation across all 9 prior modules."
+    }
+  ]
+}
