@@ -65,6 +65,7 @@ export type VvuView =
   | 'governance'
   | 'firstprinciples'
   | 'safegrid'
+  | 'cctv'
   | 'skylantern';
 
 /** hash (WITHOUT leading '#') → view. Canonical + spec aliases together. */
@@ -106,6 +107,7 @@ const HASH_TO_VIEW: Readonly<Record<string, VvuView>> = {
   '/firstprinciples': 'firstprinciples',
   '/fp': 'firstprinciples',
   '/safegrid': 'safegrid',
+  '/cctv': 'cctv',
   '/skylantern': 'skylantern',
   '/lantern': 'skylantern',
 };
@@ -144,6 +146,7 @@ const VIEW_TO_HASH: Readonly<Record<VvuView, string>> = {
   governance: '#/governance',
   firstprinciples: '#/firstprinciples',
   safegrid: '#/safegrid',
+  cctv: '#/cctv',
   skylantern: '#/skylantern',
 };
 

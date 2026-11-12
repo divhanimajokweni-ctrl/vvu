@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeGrid Relay - Universal Camera Ingest</title>
+    
+    <!-- Libraries for WebRTC (PeerJS), QR Codes, and HLS (RTSP web conversion) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <style>
+        :root {
+            --bg: #0a0b0e;
+            --panel: #121419;
+            --border: #2a2e38;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --live: #10b981;
+            --offline: #ef4444;
+            --accent: #f59e0b;
+            --accent-hover: #d97706;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        header {
+            background-color: var(--panel);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex: 0 0 auto;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 1px;
+        }
+
+        .brand-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--live);
+            background: rgba(16, 185, 129, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            text-transform: uppercase;
+            font-family: monospace;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--live);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        /* Grid */
+        main {
+            flex: 1 1 auto;
+            padding: 16px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .camera-feed {
+            background-color: #000;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: 
+                repeating-linear-gradient(45deg, #111 25%, transparent 25%, transparent 75%, #111 75%, #111), 
+                repeating-linear-gradient(45deg, #111 25%, #0a0b0e 25%, #0a0b0e 75%, #111 75%, #111);
+            background-position: 0 0, 10px 10px;
+            background-size: 20px 20px;
+        }
+
+        .camera-feed video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            background: #000;
+            display: none; /* Hidden until a stream connects */
+        }
+
+        /* UI Overlays */
+        .feed-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px;
+        }
+
+        .feed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .channel-label {
+            background: rgba(0, 0, 0, 0.7);
+            border-left: 3px solid var(--accent);
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: monospace;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--muted);
+            font-family: monospace;
+        }
+
+        .camera-feed.active .live-indicator {
+            color: var(--live);
+        }
+        .camera-feed.active .live-indicator .status-dot {
+            background-color: var(--live);
+        }
+
+        .feed-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-family: monospace;
+            font-size: 11px;
+            color: #ddd;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        /* Connection Menu (Shown when empty) */
+        .connect-menu {
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: auto;
+            background: rgba(10, 11, 14, 0.85);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .connect-menu h4 {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn {
+            background: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: #1a1d24;
+            border-color: var(--muted);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        /* Modals */
+        .modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .modal h3 {
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 4px;
+        }
+
+        #qr-container {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 16px;
+        }
+
+        /* Sender Mode (Fullscreen when phone scans QR) */
+        #sender-mode {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000;
+            z-index: 999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #sender-mode video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #sender-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-family: monospace;
+        }
+
+        @media (max-width: 1200px) { main { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 900px) { main { grid-template-columns: repeat(2, 1fr); grid-template-rows: auto; } }
+        @media (max-width: 600px) { main { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <!-- Main Dashboard View -->
+    <div id="dashboard-view">
+        <header>
+            <div class="brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                SAFEGRID RELAY <span style="color:var(--muted);font-size:12px;margin-left:8px;">// INGEST HUB</span>
+            </div>
+            <div class="brand-status">
+                <div class="status-dot"></div>
+                <span id="global-status">Waiting for feeds</span>
+            </div>
+        </header>
+
+        <main id="cctv-grid">
+            <!-- Channels injected by JS -->
+        </main>
+    </div>
+
+    <!-- Modal for RTSP/HLS input -->
+    <div class="modal-backdrop" id="url-modal">
+        <div class="modal">
+            <h3>Connect CCTV Stream</h3>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Paste an HLS (.m3u8) URL from your NVR or Camera.</p>
+            <input type="text" id="stream-url-input" placeholder="http://camera-ip/stream.m3u8">
+            <div style="display:flex;gap:8px;">
+                <button class="btn" style="flex:1" onclick="closeModals()">Cancel</button>
+                <button class="btn btn-primary" style="flex:1" onclick="submitUrl()">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for QR Code sharing -->
+    <div class="modal-backdrop" id="qr-modal">
+        <div class="modal">
+            <h3>Connect Remote Camera</h3>
+            <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Scan this QR code with another phone to use its camera as a live feed.</p>
+            <div id="qr-container"></div>
+            <p style="font-size:11px;color:var(--accent);margin-bottom:16px;" id="qr-status">Waiting for connection...</p>
+            <button class="btn" style="width:100%" onclick="closeModals()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Sender Mode (Runs when a phone scans the QR) -->
+    <div id="sender-mode">
+        <video id="sender-video" autoplay playsinline muted></video>
+        <div id="sender-overlay">Connecting to SafeGrid...</div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const NUM_CHANNELS = 8;
+        const grid = document.getElementById('cctv-grid');
+        const peers = {}; // Store PeerJS instances per channel
+        const currentPeerId = Math.random().toString(36).substring(2, 8); // Unique ID for this hub
+        let activeModalChannel = null;
+
+        // --- CHECK IF THIS IS A SENDER DEVICE ---
+        // If the URL has #sender, this device is acting as a camera broadcaster
+        if (window.location.hash.startsWith('#sender')) {
+            initSenderMode();
+        } else {
+            initDashboard();
+        }
+
+        // ==========================================
+        // DASHBOARD MODE (The 8-Channel Grid)
+        // ==========================================
+        function initDashboard() {
+            document.getElementById('dashboard-view').style.display = 'flex';
+
+            for (let i = 1; i <= NUM_CHANNELS; i++) {
+                createChannel(i);
+            }
+            startClock();
+        }
+
+        function createChannel(id) {
+            const feedDiv = document.createElement('div');
+            feedDiv.className = 'camera-feed';
+            feedDiv.id = `channel-${id}`;
+            
+            feedDiv.innerHTML = `
+                <video id="video-${id}" autoplay muted playsinline></video>
+                <div class="no-signal" style="position:absolute; color:var(--muted); font-family:monospace;">AWAITING SOURCE</div>
+                <div class="feed-overlay">
+                    <div class="feed-header">
+                        <div class="channel-label">CH ${String(id).padStart(2, '0')}</div>
+                        <div class="live-indicator">
+                            <div class="status-dot" style="background:var(--muted)"></div>
+                            <span id="status-text-${id}">STANDBY</span>
+                        </div>
+                    </div>
+                    <div class="feed-footer">
+                        <div class="timestamp" id="time-${id}">--:--:--</div>
+                        <div class="resolution" id="res-${id}">--</div>
+                    </div>
+                </div>
+                <div class="connect-menu" id="menu-${id}">
+                    <h4>Select Source</h4>
+                    <button class="btn" onclick="openUrlModal(${id})">🌐 CCTV / RTSP</button>
+                    <button class="btn" onclick="startLocalCamera(${id})">📱 This Device</button>
+                    <button class="btn btn-primary" onclick="startRemoteCamera(${id})">📷 Remote QR</button>
+                </div>
+            `;
+            grid.appendChild(feedDiv);
+        }
+
+        // --- 1. CCTV / HLS STREAM ---
+        function openUrlModal(id) {
+            activeModalChannel = id;
+            document.getElementById('url-modal').style.display = 'flex';
+            document.getElementById('stream-url-input').focus();
+        }
+
+        function submitUrl() {
+            const url = document.getElementById('stream-url-input').value;
+            if (!url) return;
+            
+            const video = document.getElementById(`video-${activeModalChannel}`);
+            if (Hls.isSupported() && url.includes('.m3u8')) {
+                const hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } else {
+                // Fallback for MP4 or WebRTC streams
+                video.src = url;
+                video.play();
+            }
+            
+            activateFeed(activeModalChannel, 'CCTV / IP');
+            closeModals();
+        }
+
+        // --- 2. LOCAL DEVICE CAMERA ---
+        async function startLocalCamera(id) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                const video = document.getElementById(`video-${id}`);
+                video.srcObject = stream;
+                video.play();
+                activateFeed(id, 'LOCAL CAM');
+            } catch (err) {
+                alert("Camera access denied or unavailable. Make sure you are on HTTPS or localhost.");
+                console.error(err);
+            }
+        }
+
+        // --- 3. REMOTE CAMERA (QR CODE + WEBRTC) ---
+        function startRemoteCamera(id) {
+            activeModalChannel = id;
+            document.getElementById('qr-modal').style.display = 'flex';
+            
+            const peerId = `safegrid-${currentPeerId}-ch${id}`;
+            const qrContainer = document.getElementById('qr-container');
+            qrContainer.innerHTML = ''; // Clear previous
+            
+            // Generate URL with specific Peer ID for this channel
+            const senderUrl = window.location.origin + window.location.pathname + `#sender?peer=${peerId}`;
+            
+            // Render QR Code
+            new QRCode(qrContainer, {
+                text: senderUrl,
+                width: 200,
+                height: 200,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
+            // Initialize PeerJS Host (Receiver)
+            if (peers[id]) peers[id].destroy();
+            peers[id] = new Peer(peerId);
+
+            peers[id].on('open', () => {
+                document.getElementById('qr-status').textContent = "Waiting for scan...";
+            });
+
+            // Handle incoming video call
+            peers[id].on('call', (call) => {
+                document.getElementById('qr-status').textContent = "Device connected! Establishing stream...";
+                
+                call.answer(); // Accept the call
+                call.on('stream', (remoteStream) => {
+                    const video = document.getElementById(`video-${id}`);
+                    video.srcObject = remoteStream;
+                    video.play();
+                    activateFeed(id, 'REMOTE WEBCAM');
+                    closeModals();
+                });
+            });
+        }
+
+        // --- HELPER FUNCTIONS ---
+        function activateFeed(id, sourceType) {
+            document.getElementById(`menu-${id}`).style.display = 'none';
+            document.getElementById(`video-${id}`).style.display = 'block';
+            
+            const feedDiv = document.getElementById(`channel-${id}`);
+            feedDiv.classList.add('active');
+            
+            document.getElementById(`status-text-${id}`).textContent = 'LIVE';
+            document.getElementById(`status-text-${id}`).style.color = 'var(--live)';
+            document.getElementById(`res-${id}`).textContent = sourceType;
+            
+            // Remove the "AWAITING SOURCE" text
+            const noSignal = feedDiv.querySelector('.no-signal');
+            if(noSignal) noSignal.style.display = 'none';
+
+            updateGlobalStatus();
+        }
+
+        function updateGlobalStatus() {
+            const activeCount = document.querySelectorAll('.camera-feed.active').length;
+            const globalStatus = document.getElementById('global-status');
+            if (activeCount > 0) {
+                globalStatus.textContent = `${activeCount} FEEDS ACTIVE`;
+                globalStatus.parentElement.style.color = 'var(--live)';
+            } else {
+                globalStatus.textContent = "WAITING FOR FEEDS";
+                globalStatus.parentElement.style.color = 'var(--muted)';
+            }
+        }
+
+        function closeModals() {
+            document.getElementById('url-modal').style.display = 'none';
+            document.getElementById('qr-modal').style.display = 'none';
+            document.getElementById('stream-url-input').value = '';
+            
+            // If we close the QR modal without connecting, destroy the peer to clean up
+            if (activeModalChannel && peers[activeModalChannel]) {
+                // Only destroy if not connected (check if video element has srcObject)
+                const video = document.getElementById(`video-${activeModalChannel}`);
+                if (!video.srcObject) {
+                    peers[activeModalChannel].destroy();
+                    delete peers[activeModalChannel];
+                }
+            }
+            activeModalChannel = null;
+        }
+
+        function startClock() {
+            setInterval(() => {
+                const timeStr = new Date().toLocaleTimeString('en-GB', { hour12: false });
+                for (let i = 1; i <= NUM_CHANNELS; i++) {
+                    const el = document.getElementById(`time-${i}`);
+                    if (el) el.textContent = timeStr;
+                }
+            }, 1000);
+        }
+
+        // ==========================================
+        // SENDER MODE (The Phone that scans the QR)
+        // ==========================================
+        async function initSenderMode() {
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('sender-mode').style.display = 'flex';
+            
+            const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
+            const targetPeerId = urlParams.get('peer');
+            const overlay = document.getElementById('sender-overlay');
+            const video = document.getElementById('sender-video');
+
+            if (!targetPeerId) {
+                overlay.textContent = "Error: No target Peer ID found.";
+                return;
+            }
+
+            try {
+                // Request phone camera
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' }, // Use back camera if possible
+                    audio: false 
+                });
+                video.srcObject = stream;
+                overlay.textContent = "Camera ready. Connecting to Hub...";
+
+                // Initialize PeerJS Client (Caller)
+                const peer = new Peer(); // Random ID for the phone
+                
+                peer.on('open', (id) => {
+                    // Call the Host (Dashboard)
+                    const call = peer.call(targetPeerId, stream);
+                    overlay.textContent = "Connected! Streaming live to SafeGrid.";
+                    
+                    // Hide overlay after 3 seconds
+                    setTimeout(() => { overlay.style.opacity = '0'; }, 3000);
+
+                    call.on('close', () => {
+                        overlay.style.opacity = '1';
+                        overlay.textContent = "Connection closed by Hub.";
+                    });
+                });
+
+                peer.on('error', (err) => {
+                    overlay.textContent = "Connection error: " + err.type;
+                });
+
+            } catch (err) {
+                overlay.textContent = "Camera Error: " + err.message;
+            }
+        }
+    </script>
+</body>
+</html>

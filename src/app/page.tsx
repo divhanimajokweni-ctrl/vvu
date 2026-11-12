@@ -210,6 +210,14 @@ const SafeGridWorkspace = dynamic(
   { ssr: false, loading: () => <ViewLoader label="INITIALIZING SAFEGRID ▸ EVIDENCE_RELAY…" /> }
 );
 
+/* SafeGrid Relay — Universal Camera Ingestion Hub. 8 channels supporting
+   CCTV/RTSP (HLS), local device cameras (getUserMedia), and remote phone
+   cameras via QR + WebRTC (PeerJS). Access at #/cctv. */
+const CctvWorkspace = dynamic(
+  () => import('@/components/cctv/CctvWorkspace').then((m) => m.CctvWorkspace),
+  { ssr: false, loading: () => <ViewLoader label="INITIALIZING SAFEGRID RELAY · CAMERA INGEST…" /> }
+);
+
 /* Skylantern — the evidence architecture digital twin with a fullscreen
    maplibre-gl 3D map. The map takes the ENTIRE viewport; panels are
    overlays, not sidebars. Access at #/skylantern or #/lantern. */
@@ -375,6 +383,8 @@ export default function Home() {
       <FirstPrinciplesWorkspace />
     ) : view === 'safegrid' ? (
       <SafeGridWorkspace />
+    ) : view === 'cctv' ? (
+      <CctvWorkspace />
     ) : view === 'skylantern' ? (
       <SkylanternDashboard />
     ) : (
