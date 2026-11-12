@@ -1,0 +1,141 @@
+Only in /home/z/my-project: .env
+Only in proofbridge-vvu/.github: CODEOWNERS
+Only in proofbridge-vvu/.github: PULL_REQUEST_TEMPLATE.md
+Only in proofbridge-vvu/.github: dependabot.yml
+Only in proofbridge-vvu/.github/workflows: ci.yml
+Files proofbridge-vvu/.github/workflows/deploy.yml and /home/z/my-project/.github/workflows/deploy.yml differ
+Only in proofbridge-vvu/.github/workflows: license-regen.yml
+Only in proofbridge-vvu/.github/workflows: security-audit.yml
+Files proofbridge-vvu/.gitignore and /home/z/my-project/.gitignore differ
+Files proofbridge-vvu/.zscripts/build.sh and /home/z/my-project/.zscripts/build.sh differ
+Only in /home/z/my-project/.zscripts: database-runtime-build.sh
+Files proofbridge-vvu/.zscripts/dev.pid and /home/z/my-project/.zscripts/dev.pid differ
+Only in /home/z/my-project/.zscripts: mini-service-mesh-demo.log
+Only in /home/z/my-project/.zscripts: mini-service-safegrid.log
+Only in /home/z/my-project/.zscripts: mini-service-telemetry-service.log
+Only in /home/z/my-project/.zscripts: mini-service-vault-bridge.log
+Only in /home/z/my-project/.zscripts: mini-service-vvu-field-onboard.log
+Only in /home/z/my-project/.zscripts: mini-service-wildfire-mesh.log
+Only in /home/z/my-project/.zscripts: python-runtime-build.sh
+Files proofbridge-vvu/.zscripts/start.sh and /home/z/my-project/.zscripts/start.sh differ
+Only in /home/z/my-project/.zscripts: watchdog.sh
+Only in proofbridge-vvu: COMMERCIAL_LICENSE.md
+Only in proofbridge-vvu: LICENSE
+Only in proofbridge-vvu: agent-ctx
+Only in /home/z/my-project: cloudflare-workers
+Only in proofbridge-vvu: commercial
+Only in proofbridge-vvu: dashboards
+Only in proofbridge-vvu: docs
+Files proofbridge-vvu/eslint.config.mjs and /home/z/my-project/eslint.config.mjs differ
+Only in proofbridge-vvu/mini-services: .gitkeep
+Only in proofbridge-vvu/mini-services: debugger
+Only in proofbridge-vvu/mini-services: epd-cli
+Only in proofbridge-vvu/mini-services: event-bus
+Only in /home/z/my-project/mini-services: mesh-demo
+Only in proofbridge-vvu/mini-services: rea
+Only in /home/z/my-project/mini-services: safegrid
+Only in /home/z/my-project/mini-services: telemetry-service
+Only in /home/z/my-project/mini-services: vault-bridge
+Only in /home/z/my-project/mini-services: vvu-field-onboard
+Only in /home/z/my-project/mini-services: wildfire-mesh
+Only in proofbridge-vvu/mini-services: worm-nest
+Only in /home/z/my-project: mini-services-control-center
+Only in /home/z/my-project: next-env.d.ts
+Files proofbridge-vvu/next.config.ts and /home/z/my-project/next.config.ts differ
+Only in proofbridge-vvu: open-source
+Files proofbridge-vvu/package.json and /home/z/my-project/package.json differ
+Files proofbridge-vvu/prisma/schema.prisma and /home/z/my-project/prisma/schema.prisma differ
+Only in /home/z/my-project/prisma: seed.ts
+Only in proofbridge-vvu/public: canonical.html
+Only in proofbridge-vvu/public: epistemic-runtime.html
+Only in proofbridge-vvu/public: icons
+Only in proofbridge-vvu/public: manifest.webmanifest
+Only in proofbridge-vvu/public: maplibre-gl-worker.mjs
+Only in proofbridge-vvu/public: maplibre-gl-worker.mjs.map
+Only in /home/z/my-project/public: skylantern-pilot-ready-pack.zip
+Only in /home/z/my-project/public: vvu-dashboard.zip
+Only in proofbridge-vvu: scripts
+Only in proofbridge-vvu: shared
+Only in proofbridge-vvu/src: adapters
+Only in proofbridge-vvu/src/app/api: account
+Only in /home/z/my-project/src/app/api: architecture
+Only in proofbridge-vvu/src/app/api: audit
+Only in /home/z/my-project/src/app/api: configs
+Only in proofbridge-vvu/src/app/api: coverage
+Only in /home/z/my-project/src/app/api: daemon
+Files proofbridge-vvu/src/app/api/debugger/route.ts and /home/z/my-project/src/app/api/debugger/route.ts differ
+Only in proofbridge-vvu/src/app/api: dependencies
+Only in /home/z/my-project/src/app/api: deployments
+Only in proofbridge-vvu/src/app/api: dev
+Only in proofbridge-vvu/src/app/api: devices
+Only in proofbridge-vvu/src/app/api: federation
+Only in proofbridge-vvu/src/app/api: geo
+Only in proofbridge-vvu/src/app/api: golden-rule
+Only in proofbridge-vvu/src/app/api: license
+Only in proofbridge-vvu/src/app/api: merges
+Only in proofbridge-vvu/src/app/api: metrics
+Only in proofbridge-vvu/src/app/api: miner
+Only in /home/z/my-project/src/app/api: pipeline
+Only in proofbridge-vvu/src/app/api: policies
+Only in /home/z/my-project/src/app/api: product-status
+Only in /home/z/my-project/src/app/api: product-sync
+Only in proofbridge-vvu/src/app/api: proofs
+Only in proofbridge-vvu/src/app/api: rea
+Only in proofbridge-vvu/src/app/api: search
+Only in /home/z/my-project/src/app/api: secrets
+Only in /home/z/my-project/src/app/api: services
+Only in proofbridge-vvu/src/app/api: settings
+Only in proofbridge-vvu/src/app/api: shadow-bridge
+Only in proofbridge-vvu/src/app/api: shards
+Only in proofbridge-vvu/src/app/api: skylantern
+Only in proofbridge-vvu/src/app/api: stats
+Only in proofbridge-vvu/src/app/api: subscriptions
+Only in /home/z/my-project/src/app/api: summary
+Only in proofbridge-vvu/src/app/api: test-suite
+Only in proofbridge-vvu/src/app/api: timeline
+Files proofbridge-vvu/src/app/globals.css and /home/z/my-project/src/app/globals.css differ
+Files proofbridge-vvu/src/app/layout.tsx and /home/z/my-project/src/app/layout.tsx differ
+Files proofbridge-vvu/src/app/page.tsx and /home/z/my-project/src/app/page.tsx differ
+Only in /home/z/my-project/src/components: dashboard
+Only in proofbridge-vvu/src/components: epistemic
+Only in /home/z/my-project/src/components: theme-provider.tsx
+Only in /home/z/my-project/src/components/ui: avatar.tsx
+Files proofbridge-vvu/src/components/ui/badge.tsx and /home/z/my-project/src/components/ui/badge.tsx differ
+Files proofbridge-vvu/src/components/ui/button.tsx and /home/z/my-project/src/components/ui/button.tsx differ
+Only in /home/z/my-project/src/components/ui: dropdown-menu.tsx
+Only in /home/z/my-project/src/components/ui: slider.tsx
+Files proofbridge-vvu/src/components/ui/toast.tsx and /home/z/my-project/src/components/ui/toast.tsx differ
+Only in proofbridge-vvu/src/components: workspace
+Only in proofbridge-vvu/src: contracts
+Only in /home/z/my-project/src/hooks: use-fleet-sla.ts
+Only in /home/z/my-project/src/hooks: use-metric-history.ts
+Only in /home/z/my-project/src/hooks: use-persisted-state.ts
+Only in proofbridge-vvu/src/hooks: use-pinned-sections.ts
+Only in /home/z/my-project/src/hooks: use-poll.ts
+Only in proofbridge-vvu/src: instrumentation.ts
+Only in /home/z/my-project/src/lib: api.ts
+Only in /home/z/my-project/src/lib: config-files.ts
+Only in proofbridge-vvu/src/lib: crypto
+Files proofbridge-vvu/src/lib/db.ts and /home/z/my-project/src/lib/db.ts differ
+Only in proofbridge-vvu/src/lib: debugger
+Only in proofbridge-vvu/src/lib: epd
+Only in proofbridge-vvu/src/lib: format.tsx
+Only in proofbridge-vvu/src/lib: hbk
+Only in /home/z/my-project/src/lib: proofbridge
+Only in proofbridge-vvu/src/lib: runtime
+Only in proofbridge-vvu/src/lib: seed.ts
+Only in /home/z/my-project/src/lib: services.ts
+Only in proofbridge-vvu/src/lib: spatial.ts
+Only in proofbridge-vvu/src/lib: types.ts
+Files proofbridge-vvu/src/lib/utils.ts and /home/z/my-project/src/lib/utils.ts differ
+Only in proofbridge-vvu/src/lib: vvu
+Only in /home/z/my-project/src/lib: wildfire-fsm.ts
+Only in proofbridge-vvu/src/lib: workspace
+Only in proofbridge-vvu/src: skylantern
+Only in /home/z/my-project: tests
+Only in proofbridge-vvu: tsconfig.base.json
+Only in proofbridge-vvu: tsconfig.commercial.json
+Only in proofbridge-vvu: tsconfig.oss.json
+Only in /home/z/my-project: vercel.json
+Files proofbridge-vvu/worklog.md and /home/z/my-project/worklog.md differ
+Only in /home/z/my-project: wrangler.toml

@@ -1,0 +1,76 @@
+{
+  "logId": "LOG_1",
+  "payload": {
+    "type": "log.baseline",
+    "logId": "LOG_1",
+    "devId": "dev_6977e62cbbff4fa4",
+    "ts": 1789523245529,
+    "authority": "operator brief — E2E Runner Brief: Log 1 Clean Build + Rule Wiring + Automatic DH (this session, this runner)",
+    "regime": "ledger-enforced governance — supersedes all prior governance prose",
+    "tree": {
+      "gitHead": "7e52b6f4fe74c269b20040664aa4a4920913bef4",
+      "gitTree": "770e7d50aa4ba8fad993aa86f7740d4c539727f4",
+      "clean": false,
+      "dirtyFileCount": 3,
+      "dirtyFiles": [
+        "M db/custom.db",
+        " M tests/e2e-log1/run-e2e.ts",
+        "?? output/task42_e2elog1_report.json"
+      ],
+      "fingerprints": {
+        "src/app/page.tsx": "1c12fbd6c4563c9024706efc0009204e947dc4f9ec95a6015b354ace90b2dfa0",
+        "src/app/layout.tsx": "0fc927b9113196ce58ee23c88cdd0319825ac70a5498fce831e2bdf19d2ea323",
+        "src/lib/proofbridge/jcs.ts": "885410cbb4895bc5f5cf8f5d34f14e844387720c5c6a058b5438b5d30cd83ae2",
+        "src/lib/proofbridge/governance.ts": "cd4b1db8d84c972adb85c711862c92d78dde5a367931efc4bdfa497e72ebddb9",
+        "src/lib/proofbridge/merkle.ts": "e065e6a41fe6c79272e5c94da3f587fca0c6c9fa7bba58fcbcd91690bdafc2fc",
+        "src/lib/proofbridge/tier.ts": "ab0dcfb6bb79f068d8196f883c5ade653f16bebc4ff7cdf53c49205454c4653d",
+        "src/app/api/bridge/take/route.ts": "62255406e8039227402217c1ca11c4ce8cc21b2fbc48d62171c3fe1973057dcf",
+        "src/app/api/bridge/dev/route.ts": "20b3cf66e018d4c21294cf8cad97f0bdae78deca211084957f52a76cacd6c9f5",
+        "src/app/api/bridge/governance/route.ts": "047495e3b5d36098f3e8c91b26da09762f0ca8f61378804c93915d1679b2f69c",
+        "mini-services/vault-bridge/index.ts": "3e45354a8da57436b889bea89efad6b5ec163ee99b44c964261c3c1ebd57e003",
+        "runner.sh": "bb07b8d3f21ddb58bf60f469e8f29830c1077bdd384367d1c236b039cdafbb48",
+        "tests/e2e-log1/run-e2e.ts": "477ddbcadaaf2b1f6dda7cc972943893e3ee3f0ba0932c86e4e0dd77b0fe5cf0"
+      }
+    },
+    "chainState": {
+      "bridge": {
+        "receipts": 133,
+        "root": "7e1b55c27b91604289f94e0c0d48e850b659eef65948d0119c9b67c77461bab6",
+        "merkleRoot": "7c75d79b501e3bb27c4d744e97f2f951e3c97e1e48a625151e2ee82e73a1279b",
+        "valid": true
+      },
+      "field": {
+        "receipts": 99,
+        "root": "1eee2721d7d26a7ab9e7d986abc0d2a9184f69822447c1b245968d24b407c4ca",
+        "merkleRoot": "637326ac135c6d1245ae98346593f245b19a442ad378fb02810fc06b8e293a13",
+        "valid": true
+      }
+    },
+    "integrity": {
+      "nextMatch": true,
+      "runningHash": "0f8d26bf5364aaf796819d5fbab424cfec57ad719ae256101466b58ba2ac9343"
+    },
+    "honestStatus": {
+      "android_bridge": "BLOCKED — no real-phone verification in this sandbox (operator gate)",
+      "anchor_target": "STUBBED — relay self-declares stub:* (real chain write is the operator decision)",
+      "regulatory_file": "REVIEW REQUIRED — no FSCA/FIC documentary evidence in the repo",
+      "public_deployment": "BLOCKED — domain unregistered"
+    }
+  },
+  "jcs": "{\"authority\":\"operator brief — E2E Runner Brief: Log 1 Clean Build + Rule Wiring + Automatic DH (this session, this runner)\",\"chainState\":{\"bridge\":{\"merkleRoot\":\"7c75d79b501e3bb27c4d744e97f2f951e3c97e1e48a625151e2ee82e73a1279b\",\"receipts\":133,\"root\":\"7e1b55c27b91604289f94e0c0d48e850b659eef65948d0119c9b67c77461bab6\",\"valid\":true},\"field\":{\"merkleRoot\":\"637326ac135c6d1245ae98346593f245b19a442ad378fb02810fc06b8e293a13\",\"receipts\":99,\"root\":\"1eee2721d7d26a7ab9e7d986abc0d2a9184f69822447c1b245968d24b407c4ca\",\"valid\":true}},\"devId\":\"dev_6977e62cbbff4fa4\",\"honestStatus\":{\"anchor_target\":\"STUBBED — relay self-declares stub:* (real chain write is the operator decision)\",\"android_bridge\":\"BLOCKED — no real-phone verification in this sandbox (operator gate)\",\"public_deployment\":\"BLOCKED — domain unregistered\",\"regulatory_file\":\"REVIEW REQUIRED — no FSCA/FIC documentary evidence in the repo\"},\"integrity\":{\"nextMatch\":true,\"runningHash\":\"0f8d26bf5364aaf796819d5fbab424cfec57ad719ae256101466b58ba2ac9343\"},\"logId\":\"LOG_1\",\"regime\":\"ledger-enforced governance — supersedes all prior governance prose\",\"tree\":{\"clean\":false,\"dirtyFileCount\":3,\"dirtyFiles\":[\"M db/custom.db\",\" M tests/e2e-log1/run-e2e.ts\",\"?? output/task42_e2elog1_report.json\"],\"fingerprints\":{\"mini-services/vault-bridge/index.ts\":\"3e45354a8da57436b889bea89efad6b5ec163ee99b44c964261c3c1ebd57e003\",\"runner.sh\":\"bb07b8d3f21ddb58bf60f469e8f29830c1077bdd384367d1c236b039cdafbb48\",\"src/app/api/bridge/dev/route.ts\":\"20b3cf66e018d4c21294cf8cad97f0bdae78deca211084957f52a76cacd6c9f5\",\"src/app/api/bridge/governance/route.ts\":\"047495e3b5d36098f3e8c91b26da09762f0ca8f61378804c93915d1679b2f69c\",\"src/app/api/bridge/take/route.ts\":\"62255406e8039227402217c1ca11c4ce8cc21b2fbc48d62171c3fe1973057dcf\",\"src/app/layout.tsx\":\"0fc927b9113196ce58ee23c88cdd0319825ac70a5498fce831e2bdf19d2ea323\",\"src/app/page.tsx\":\"1c12fbd6c4563c9024706efc0009204e947dc4f9ec95a6015b354ace90b2dfa0\",\"src/lib/proofbridge/governance.ts\":\"cd4b1db8d84c972adb85c711862c92d78dde5a367931efc4bdfa497e72ebddb9\",\"src/lib/proofbridge/jcs.ts\":\"885410cbb4895bc5f5cf8f5d34f14e844387720c5c6a058b5438b5d30cd83ae2\",\"src/lib/proofbridge/merkle.ts\":\"e065e6a41fe6c79272e5c94da3f587fca0c6c9fa7bba58fcbcd91690bdafc2fc\",\"src/lib/proofbridge/tier.ts\":\"ab0dcfb6bb79f068d8196f883c5ade653f16bebc4ff7cdf53c49205454c4653d\",\"tests/e2e-log1/run-e2e.ts\":\"477ddbcadaaf2b1f6dda7cc972943893e3ee3f0ba0932c86e4e0dd77b0fe5cf0\"},\"gitHead\":\"7e52b6f4fe74c269b20040664aa4a4920913bef4\",\"gitTree\":\"770e7d50aa4ba8fad993aa86f7740d4c539727f4\"},\"ts\":1789523245529,\"type\":\"log.baseline\"}",
+  "signature": "Co9APfuyNI0vcz1//QBzwU4+5BVewVlQ5sZybJjdrZp4IqXMGQ7y+EYeQsnxtK3g627Y18dKxZ2KwU0mTXO7Cg==",
+  "publicKey": "MCowBQYDK2VwAyEAn2vGsOYNIAi2XRJKKEIwbJJigWO/kp1ARdp0ZP9LZkQ=",
+  "devId": "dev_6977e62cbbff4fa4",
+  "receipt": {
+    "wormSeq": 2,
+    "merkleLeaf": "11968da8b94b56b621de48f18b19727360b3265d58af921327bea3c5741320d2",
+    "chainRoot": "11968da8b94b56b621de48f18b19727360b3265d58af921327bea3c5741320d2",
+    "merkleRoot": "07ff55349ef5265210533a87e0c52c60a03ff0f7573f73535f1b2d1163778739",
+    "ts": "2026-09-16T01:47:25.532Z",
+    "type": "log.baseline"
+  },
+  "verification": {
+    "method": "independent — ledger file re-read, chain recomputed from genesis, merkle inclusion proof verified, service root cross-checked",
+    "chainValid": true
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "title": "Gqeberha Water Infrastructure",
+  "schemaVersion": 38,
+  "version": 1,
+  "uid": "gqeberha-water",
+  "tags": ["water", "gqeberha", "scada"],
+  "timezone": "browser",
+  "refresh": "1m",
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Reservoir Level %",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 4 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "refId": "A", "expr": "reservoir_level_pct{site=\"gqeberha\"}", "legendFormat": "level" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent" } }
+    },
+    {
+      "id": 2,
+      "type": "graph",
+      "title": "Pump Flow Rate (legacy)",
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "refId": "A", "expr": "pump_flow_rate_liters_sec", "legendFormat": "L/s" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "SCADA Telemetry",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 8 },
+      "targets": [
+        { "refId": "A", "expr": "scada_telemetry_lps", "legendFormat": "scada" }
+      ],
+      "datasource": {
+        "type": "prometheus",
+        "url": "https://scada.gqeberha.local/prom",
+        "secureJsonData": { "password": "s3cret-token-12345" }
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Maintenance Log"
+    }
+  ]
+}

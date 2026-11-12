@@ -8,7 +8,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-fraunces);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -38,101 +37,95 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  /* brand tokens */
-  --color-amber-brand: var(--amber-brand);
-  --color-amber-brand-foreground: var(--amber-brand-foreground);
-  --color-emerald-brand: var(--emerald-brand);
-  --color-emerald-brand-foreground: var(--emerald-brand-foreground);
-  --color-clay-brand: var(--clay-brand);
-  --color-clay-brand-foreground: var(--clay-brand-foreground);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --color-vvu-sage: var(--vvu-sage);
+  --color-vvu-lime: var(--vvu-lime);
+  --color-vvu-ochre: var(--vvu-ochre);
 }
 
 :root {
-  --radius: 0.75rem;
-  /* warm paper / ink — African earth, no blue */
-  --background: oklch(0.985 0.008 75);
-  --foreground: oklch(0.21 0.012 55);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.012 55);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.012 55);
-  --primary: oklch(0.23 0.014 55);
-  --primary-foreground: oklch(0.985 0.008 75);
-  --secondary: oklch(0.965 0.010 70);
-  --secondary-foreground: oklch(0.23 0.014 55);
-  --muted: oklch(0.965 0.008 70);
-  --muted-foreground: oklch(0.50 0.018 60);
-  --accent: oklch(0.72 0.150 70);
-  --accent-foreground: oklch(0.23 0.014 55);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.905 0.012 70);
-  --input: oklch(0.905 0.012 70);
-  --ring: oklch(0.72 0.150 70);
-  --chart-1: oklch(0.70 0.150 65);
-  --chart-2: oklch(0.55 0.130 160);
-  --chart-3: oklch(0.58 0.160 40);
-  --chart-4: oklch(0.62 0.110 100);
-  --chart-5: oklch(0.42 0.090 160);
-  --sidebar: oklch(0.985 0.008 75);
-  --sidebar-foreground: oklch(0.21 0.012 55);
-  --sidebar-primary: oklch(0.23 0.014 55);
-  --sidebar-primary-foreground: oklch(0.985 0.008 75);
-  --sidebar-accent: oklch(0.965 0.010 70);
-  --sidebar-accent-foreground: oklch(0.23 0.014 55);
-  --sidebar-border: oklch(0.905 0.012 70);
-  --sidebar-ring: oklch(0.72 0.150 70);
-  /* brand */
-  --amber-brand: oklch(0.72 0.150 70);
-  --amber-brand-foreground: oklch(0.23 0.014 55);
-  --emerald-brand: oklch(0.52 0.118 158);
-  --emerald-brand-foreground: oklch(0.985 0.008 75);
-  --clay-brand: oklch(0.58 0.160 40);
-  --clay-brand-foreground: oklch(0.985 0.008 75);
+  --radius: 0.375rem;
+  /* VVU SCADA palette — charcoal canvas, sage/ochre/lime accents */
+  --vvu-bg: #060806;
+  --vvu-panel: #0b0f0a;
+  --vvu-sage: #6b8a40;
+  --vvu-sage-bright: #8fb35a;
+  --vvu-ochre: #f3e38a;
+  --vvu-lime: #c8ff00;
+  --vvu-text: #c9d4bd;
+  --vvu-text-dim: #7a8a6e;
+  --vvu-crimson: #e5484d;
+  --vvu-amber: #e0a030;
+  --vvu-teal: #2ea8a0;
+
+  --background: #060806;
+  --foreground: #c9d4bd;
+  --card: #0b0f0a;
+  --card-foreground: #c9d4bd;
+  --popover: #0d120b;
+  --popover-foreground: #c9d4bd;
+  --primary: #c8ff00;
+  --primary-foreground: #060806;
+  --secondary: #141a11;
+  --secondary-foreground: #c9d4bd;
+  --muted: #131811;
+  --muted-foreground: #7a8a6e;
+  --accent: #182116;
+  --accent-foreground: #d7e2c9;
+  --destructive: #e5484d;
+  --border: rgba(107, 138, 64, 0.25);
+  --input: rgba(107, 138, 64, 0.3);
+  --ring: #8fb35a;
+  --chart-1: #8fb35a;
+  --chart-2: #f3e38a;
+  --chart-3: #c8ff00;
+  --chart-4: #2ea8a0;
+  --chart-5: #e5484d;
+  --sidebar: #0b0f0a;
+  --sidebar-foreground: #c9d4bd;
+  --sidebar-primary: #c8ff00;
+  --sidebar-primary-foreground: #060806;
+  --sidebar-accent: #182116;
+  --sidebar-accent-foreground: #d7e2c9;
+  --sidebar-border: rgba(107, 138, 64, 0.25);
+  --sidebar-ring: #8fb35a;
 }
 
 .dark {
-  --background: oklch(0.155 0.010 55);
-  --foreground: oklch(0.965 0.008 75);
-  --card: oklch(0.205 0.012 55);
-  --card-foreground: oklch(0.965 0.008 75);
-  --popover: oklch(0.205 0.012 55);
-  --popover-foreground: oklch(0.965 0.008 75);
-  --primary: oklch(0.955 0.012 70);
-  --primary-foreground: oklch(0.18 0.015 55);
-  --secondary: oklch(0.27 0.012 55);
-  --secondary-foreground: oklch(0.965 0.008 75);
-  --muted: oklch(0.27 0.012 55);
-  --muted-foreground: oklch(0.71 0.012 70);
-  --accent: oklch(0.78 0.140 72);
-  --accent-foreground: oklch(0.18 0.015 55);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 13%);
-  --ring: oklch(0.78 0.140 72);
-  --chart-1: oklch(0.74 0.150 68);
-  --chart-2: oklch(0.66 0.130 160);
-  --chart-3: oklch(0.66 0.150 42);
-  --chart-4: oklch(0.70 0.110 100);
-  --chart-5: oklch(0.55 0.100 160);
-  --sidebar: oklch(0.205 0.012 55);
-  --sidebar-foreground: oklch(0.965 0.008 75);
-  --sidebar-primary: oklch(0.955 0.012 70);
-  --sidebar-primary-foreground: oklch(0.18 0.015 55);
-  --sidebar-accent: oklch(0.27 0.012 55);
-  --sidebar-accent-foreground: oklch(0.965 0.008 75);
-  --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.78 0.140 72);
-  /* brand */
-  --amber-brand: oklch(0.78 0.140 72);
-  --amber-brand-foreground: oklch(0.18 0.015 55);
-  --emerald-brand: oklch(0.64 0.120 158);
-  --emerald-brand-foreground: oklch(0.155 0.010 55);
-  --clay-brand: oklch(0.66 0.150 42);
-  --clay-brand-foreground: oklch(0.155 0.010 55);
+  --background: #060806;
+  --foreground: #c9d4bd;
+  --card: #0b0f0a;
+  --card-foreground: #c9d4bd;
+  --popover: #0d120b;
+  --popover-foreground: #c9d4bd;
+  --primary: #c8ff00;
+  --primary-foreground: #060806;
+  --secondary: #141a11;
+  --secondary-foreground: #c9d4bd;
+  --muted: #131811;
+  --muted-foreground: #7a8a6e;
+  --accent: #182116;
+  --accent-foreground: #d7e2c9;
+  --destructive: #e5484d;
+  --border: rgba(107, 138, 64, 0.25);
+  --input: rgba(107, 138, 64, 0.3);
+  --ring: #8fb35a;
+  --chart-1: #8fb35a;
+  --chart-2: #f3e38a;
+  --chart-3: #c8ff00;
+  --chart-4: #2ea8a0;
+  --chart-5: #e5484d;
+  --sidebar: #0b0f0a;
+  --sidebar-foreground: #c9d4bd;
+  --sidebar-primary: #c8ff00;
+  --sidebar-primary-foreground: #060806;
+  --sidebar-accent: #182116;
+  --sidebar-accent-foreground: #d7e2c9;
+  --sidebar-border: rgba(107, 138, 64, 0.25);
+  --sidebar-ring: #8fb35a;
 }
 
 @layer base {
@@ -141,91 +134,355 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "ss01", "cv11";
-  }
-  ::selection {
-    background: oklch(0.72 0.150 70 / 0.28);
+    font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   }
 }
 
-/* fine grain + warm paper texture for the page shell */
-.grain {
-  position: relative;
-}
-.grain::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  mix-blend-mode: multiply;
+/* ── VVU app shell ──────────────────────────────────────────────────────── */
+.vvu-app-shell {
+  background: #060806;
+  color: #c9d4bd;
+  color-scheme: dark;
+  overscroll-behavior: none;
 }
 
-/* custom scrollbar for chain / log panels */
-.scroll-fine::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Custom scrollbars — SCADA aesthetic */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(107, 138, 64, 0.35) transparent;
 }
-.scroll-fine::-webkit-scrollbar-track {
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
   background: transparent;
 }
-.scroll-fine::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 9999px;
+*::-webkit-scrollbar-thumb {
+  background: rgba(107, 138, 64, 0.3);
+  border-radius: 3px;
 }
-.scroll-fine::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
-}
-
-/* monospace hash text with subtle letter-spacing */
-.hash {
-  font-family: var(--font-mono);
-  font-feature-settings: "zero", "ss01";
-  letter-spacing: -0.02em;
-  word-break: break-all;
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 138, 64, 0.5);
 }
 
-/* the thin top accent line that reads as "receipt header" */
-.rule-top {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--amber-brand) 22%,
-    var(--emerald-brand) 58%,
-    var(--clay-brand) 100%
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus rings on interactive elements */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #f3e38a;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Subtle scanline overlay for the SCADA feel */
+.vvu-app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 2px,
+    rgba(107, 138, 64, 0.014) 2px,
+    rgba(107, 138, 64, 0.014) 4px
   );
 }
 
-/* gentle reveal */
-@keyframes vvu-rise {
+/* Panel hover glow — sage border lift on SCADA panels */
+.vvu-panel {
+  background: rgba(11, 15, 10, 0.88);
+  border: 1px solid rgba(107, 138, 64, 0.22);
+  border-radius: 6px;
+  transition: border-color 220ms ease, box-shadow 220ms ease;
+}
+.vvu-panel:hover {
+  border-color: rgba(107, 138, 64, 0.4);
+  box-shadow: 0 0 0 1px rgba(107, 138, 64, 0.1), 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+.vvu-panel-solid {
+  background: #0b0f0a;
+  border: 1px solid rgba(107, 138, 64, 0.22);
+  border-radius: 6px;
+}
+
+/* Panel entrance animation */
+@keyframes vvuPanelEnter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-.rise {
-  animation: vvu-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+.vvu-enter {
+  animation: vvuPanelEnter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* blinking live dot */
-@keyframes vvu-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.25; }
-}
-.pulse-dot {
-  animation: vvu-pulse 1.8s ease-in-out infinite;
+/* HUD label style */
+.vvu-label {
+  font-family: var(--font-geist-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
 }
 
-/* marquee for the receipt ticker */
-@keyframes vvu-marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+/* Live pulse dot */
+@keyframes vvuPulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(200, 255, 0, 0.45);
+  }
+  50% {
+    opacity: 0.65;
+    box-shadow: 0 0 0 5px rgba(200, 255, 0, 0);
+  }
 }
-.marquee-track {
-  animation: vvu-marquee 38s linear infinite;
+.vvu-pulse {
+  animation: vvuPulse 2.2s ease-in-out infinite;
+}
+
+@keyframes vvuBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.vvu-blink {
+  animation: vvuBlink 1.1s step-end infinite;
+}
+
+/* Sonner toast theme overrides */
+[data-sonner-toaster] [data-sonner-toast] {
+  background: rgba(15, 20, 16, 0.96) !important;
+  border: 1px solid rgba(107, 138, 64, 0.3) !important;
+  color: #c9d4bd !important;
+  font-family: var(--font-geist-mono), monospace !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] {
+  border-color: rgba(176, 42, 42, 0.45) !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="warning"] {
+  border-color: rgba(196, 109, 26, 0.4) !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] {
+  border-color: rgba(107, 138, 64, 0.45) !important;
+}
+
+/* 3D canvas container — prevent pull-to-refresh interfering with orbit */
+.vvu-canvas-wrap {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Tactical map cursor */
+.vvu-map-cursor {
+  cursor: crosshair;
+}
+
+/* Text selection tint */
+::selection {
+  background: rgba(200, 255, 0, 0.25);
+  color: #f3e38a;
+}
+
+/* Hide number input spinners in scenario sliders */
+input[type="range"] {
+  accent-color: #8fb35a;
+}
+
+/* ── Chrome details (header/footer) ─────────────────────────────────────── */
+
+/* 1px signature edge under the header — lime fading into sage */
+.vvu-header-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(200, 255, 0, 0.55) 0%,
+    rgba(200, 255, 0, 0.18) 18%,
+    rgba(107, 138, 64, 0.22) 55%,
+    rgba(107, 138, 64, 0) 100%
+  );
+}
+
+/* Keyboard keycap chip — used by chrome hints (⌘K / CTRL K) */
+.vvu-kbd {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  padding: 2px 4px;
+  border: 1px solid rgba(243, 227, 138, 0.3);
+  border-bottom-width: 2px; /* keycap depth */
+  border-radius: 3px;
+  background: rgba(243, 227, 138, 0.05);
+  color: #f3e38a;
+}
+
+/* ── DAYSHIFT light ops mode (Task 16-a) ───────────────────────────────────
+   High-contrast light theme for bright control rooms. The dark SCADA palette
+   is untouched (every rule above is additive-only); light mode is a root-level
+   invert + hue-rotate on <html>, so every DOM surface AND the WebGL/canvas
+   scenes re-theme automatically without refactoring ~30 components with
+   hard-coded hexes. hue-rotate(180deg) approximately preserves the palette
+   family: lime→gold, sage→light sage, near-black→near-white.
+   The filter MUST live on `html` ONLY — never on body or .vvu-app-shell:
+   a filter creates a containing block for fixed descendants, but on the root
+   element the containing block is the initial/viewport one, so fixed HUD
+   elements (WorkspaceToggle, sonner toaster, scanline overlay) stay
+   viewport-anchored. The self-filtered #060806 background yields a near-white
+   root backdrop. */
+html[data-theme="light"] {
+  filter: invert(1) hue-rotate(180deg);
+  background: #060806;
+  color-scheme: light;
+}
+
+/* Photographic/embedded content must render TRUE under the root inversion —
+   re-invert it back. Inside [data-theme-exempt] containers the two filters
+   cancel, which is exactly the intent (the outreach email preview is a light
+   inbox mock by design and must not flip dark). */
+html[data-theme="light"] img,
+html[data-theme="light"] video,
+html[data-theme="light"] [data-theme-exempt] {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Native scrollbar painting is not covered by the root filter — give the
+   light mode its own sage-toned scrollbar (chromium + firefox). */
+html[data-theme="light"] * {
+  scrollbar-color: rgba(60, 80, 40, 0.45) transparent;
+}
+html[data-theme="light"] *::-webkit-scrollbar-thumb {
+  background: rgba(60, 80, 40, 0.4);
+}
+html[data-theme="light"] *::-webkit-scrollbar-thumb:hover {
+  background: rgba(60, 80, 40, 0.6);
+}
+
+/* Theme toggle icon visibility — dark mode shows a SUN ("switch to light"),
+   light mode shows a MOON. Pure CSS, so the button renders identically on
+   server and client (zero hydration concerns; useTheme is not needed for
+   rendering, only for the click). */
+.vvu-theme-icon-moon {
+  display: none;
+}
+html[data-theme="light"] .vvu-theme-icon-moon {
+  display: inline-flex;
+}
+html[data-theme="light"] .vvu-theme-icon-sun {
+  display: none;
+}
+
+/* ── Task 49 · ICSH 4TH STATE — CRT phosphor layer ────────────────────────── */
+
+.icsh-crt {
+  position: relative;
+  animation: icsh-flicker 9s infinite;
+}
+.icsh-crt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.16) 0px,
+    rgba(0, 0, 0, 0.16) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+.icsh-crt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 31;
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.38) 100%);
+}
+@keyframes icsh-flicker {
+  0%, 93%, 100% { opacity: 1; }
+  94% { opacity: 0.88; }
+  95% { opacity: 1; }
+  97% { opacity: 0.93; }
+  98% { opacity: 1; }
+}
+@keyframes icsh-scan {
+  0% { transform: translateY(-80px); }
+  100% { transform: translateY(calc(100vh)); }
+}
+.icsh-scanbeam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 72px;
+  pointer-events: none;
+  z-index: 29;
+  background: linear-gradient(180deg, transparent, rgba(125, 255, 168, 0.045), transparent);
+  animation: icsh-scan 8s linear infinite;
+}
+.icsh-glow {
+  text-shadow: 0 0 8px rgba(125, 255, 168, 0.38);
+}
+.icsh-glow-lime {
+  text-shadow: 0 0 10px rgba(200, 255, 0, 0.42);
+}
+.icsh-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.icsh-scroll::-webkit-scrollbar-thumb {
+  background: #1d3325;
+}
+.icsh-scroll::-webkit-scrollbar-track {
+  background: #060b08;
+}
+@keyframes icsh-dash {
+  to { stroke-dashoffset: -24; }
+}
+.icsh-flow {
+  stroke-dasharray: 6 6;
+  animation: icsh-dash 1.2s linear infinite;
+}
+@keyframes icsh-blink {
+  0%, 60% { opacity: 1; }
+  61%, 100% { opacity: 0.25; }
+}
+.icsh-blink {
+  animation: icsh-blink 1.6s steps(1) infinite;
+}
+@keyframes icsh-rise {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.icsh-rise {
+  animation: icsh-rise 0.24s ease-out both;
 }

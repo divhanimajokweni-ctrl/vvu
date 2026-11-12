@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "schema": "vvu-clock/v1",
+  "version": "RELEASE_20260901",
+  "revision": 118,
+  "current_utc": "2026-11-12T08:15:00.000Z",
+  "last_written_by": "production-dashboard",
+  "last_written_at_utc": "2026-11-12T08:15:00.000Z",
+  "sim": { "month": 109, "day": 12, "label": "M109-D12" },
+  "speed": 1,
+  "steady_hours": 11.9,
+  "worm_id": "#118",
+  "worm_seq": 118,
+  "sha": "44805322e8",
+  "moi_pct": 70.66,
+  "nodes": 10,
+  "mrr": 28900,
+  "fsm": "STEADY_STATE_LOCKED",
+  "chain_depth": 1,
+  "chain_root": "a3f2c1b8e9d45c1c"
+}

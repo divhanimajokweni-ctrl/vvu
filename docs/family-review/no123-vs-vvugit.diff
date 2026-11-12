@@ -1,0 +1,66 @@
+Files redesigned-no123/.github/workflows/ci.yml and proofbridge-vvu/.github/workflows/ci.yml differ
+Files redesigned-no123/.github/workflows/deploy.yml and proofbridge-vvu/.github/workflows/deploy.yml differ
+Files redesigned-no123/.zscripts/dev.pid and proofbridge-vvu/.zscripts/dev.pid differ
+Only in redesigned-no123/.zscripts: watchdog.sh
+Only in redesigned-no123: AGENTS.md
+Only in redesigned-no123: ENGINEERING_CONSTITUTION.md
+Only in redesigned-no123: HOMEPAGE_VISION.md
+Only in redesigned-no123: MEMORY.md
+Only in redesigned-no123: VVU_COLONY_SPEC.md
+Only in redesigned-no123: active
+Only in redesigned-no123/docs: VVU-IMPLEMENTATION-PLAN-2026-001.md
+Only in redesigned-no123/docs: VVU-PHASE1-EXIT-REPORT.md
+Only in redesigned-no123/docs: VVU-SHELL-2026-001.md
+Only in redesigned-no123: fire
+Files redesigned-no123/next.config.ts and proofbridge-vvu/next.config.ts differ
+Only in redesigned-no123/public: fire.html
+Files redesigned-no123/scripts/enforce-boundaries.sh and proofbridge-vvu/scripts/enforce-boundaries.sh differ
+Files redesigned-no123/shared/license/validator.ts and proofbridge-vvu/shared/license/validator.ts differ
+Files redesigned-no123/src/app/api/license/route.ts and proofbridge-vvu/src/app/api/license/route.ts differ
+Files redesigned-no123/src/app/api/miner/mine/route.ts and proofbridge-vvu/src/app/api/miner/mine/route.ts differ
+Files redesigned-no123/src/app/api/policies/validate/route.ts and proofbridge-vvu/src/app/api/policies/validate/route.ts differ
+Files redesigned-no123/src/app/api/test-suite/route.ts and proofbridge-vvu/src/app/api/test-suite/route.ts differ
+Files redesigned-no123/src/app/page.tsx and proofbridge-vvu/src/app/page.tsx differ
+Files redesigned-no123/src/components/epistemic/citytwin3d.tsx and proofbridge-vvu/src/components/epistemic/citytwin3d.tsx differ
+Files redesigned-no123/src/components/epistemic/dependency-graph.tsx and proofbridge-vvu/src/components/epistemic/dependency-graph.tsx differ
+Files redesigned-no123/src/components/epistemic/interactive-graph.tsx and proofbridge-vvu/src/components/epistemic/interactive-graph.tsx differ
+Files redesigned-no123/src/components/epistemic/real-geospatial-map.tsx and proofbridge-vvu/src/components/epistemic/real-geospatial-map.tsx differ
+Only in proofbridge-vvu/src/components/ui: accordion.tsx
+Files redesigned-no123/src/components/ui/alert.tsx and proofbridge-vvu/src/components/ui/alert.tsx differ
+Only in proofbridge-vvu/src/components/ui: aspect-ratio.tsx
+Only in proofbridge-vvu/src/components/ui: calendar.tsx
+Only in proofbridge-vvu/src/components/ui: carousel.tsx
+Only in proofbridge-vvu/src/components/ui: chart.tsx
+Only in proofbridge-vvu/src/components/ui: checkbox.tsx
+Only in proofbridge-vvu/src/components/ui: command.tsx
+Only in proofbridge-vvu/src/components/ui: context-menu.tsx
+Only in proofbridge-vvu/src/components/ui: drawer.tsx
+Only in proofbridge-vvu/src/components/ui: form.tsx
+Only in proofbridge-vvu/src/components/ui: hover-card.tsx
+Only in proofbridge-vvu/src/components/ui: input-otp.tsx
+Only in proofbridge-vvu/src/components/ui: menubar.tsx
+Only in proofbridge-vvu/src/components/ui: navigation-menu.tsx
+Only in proofbridge-vvu/src/components/ui: pagination.tsx
+Only in proofbridge-vvu/src/components/ui: popover.tsx
+Only in proofbridge-vvu/src/components/ui: radio-group.tsx
+Only in proofbridge-vvu/src/components/ui: resizable.tsx
+Only in proofbridge-vvu/src/components/ui: sidebar.tsx
+Only in proofbridge-vvu/src/components/ui: sonner.tsx
+Files redesigned-no123/src/components/ui/toast.tsx and proofbridge-vvu/src/components/ui/toast.tsx differ
+Only in proofbridge-vvu/src/components/ui: toggle-group.tsx
+Only in proofbridge-vvu/src/components/ui: toggle.tsx
+Files redesigned-no123/src/components/workspace/devices-section.tsx and proofbridge-vvu/src/components/workspace/devices-section.tsx differ
+Files redesigned-no123/src/lib/hbk/wormchain.ts and proofbridge-vvu/src/lib/hbk/wormchain.ts differ
+Only in redesigned-no123/src/lib: interop
+Only in redesigned-no123/src/lib: shell
+Files redesigned-no123/src/lib/utils.ts and proofbridge-vvu/src/lib/utils.ts differ
+Files redesigned-no123/src/skylantern/anatomy/visual-state.ts and proofbridge-vvu/src/skylantern/anatomy/visual-state.ts differ
+Files redesigned-no123/src/skylantern/components/ChainGraphOverlay.tsx and proofbridge-vvu/src/skylantern/components/ChainGraphOverlay.tsx differ
+Files redesigned-no123/src/skylantern/components/DeviceRegistry.tsx and proofbridge-vvu/src/skylantern/components/DeviceRegistry.tsx differ
+Files redesigned-no123/src/skylantern/components/SkylanternMap.tsx and proofbridge-vvu/src/skylantern/components/SkylanternMap.tsx differ
+Files redesigned-no123/src/skylantern/hooks/useSkylanternStore.ts and proofbridge-vvu/src/skylantern/hooks/useSkylanternStore.ts differ
+Files redesigned-no123/src/skylantern/lib/api.ts and proofbridge-vvu/src/skylantern/lib/api.ts differ
+Files redesigned-no123/src/skylantern/server/service.ts and proofbridge-vvu/src/skylantern/server/service.ts differ
+Only in redesigned-no123: tests
+Files redesigned-no123/tsconfig.json and proofbridge-vvu/tsconfig.json differ
+Files redesigned-no123/worklog.md and proofbridge-vvu/worklog.md differ

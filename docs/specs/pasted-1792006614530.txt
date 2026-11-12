@@ -1,0 +1,1404 @@
+# Track B — The Native Debugger (Parallel Workstream)
+
+The epistemological analysis gives us the spec for free: a debugger is just an **epistemic microscope** — a device for turning raw runtime reality (L1) into anchored, replayable, diffable knowledge (L7). Below is the complete parallel workstream: design, full implementation, wiring, and the tests that prove the invariants hold.
+
+---
+
+## 1. Two-Track Parallel Plan
+
+| | **Track A — Main (existing)** | **Track B — Debugger (this document)** |
+|---|---|---|
+| Scope | Dashboard, services, fleet, pipeline, daemon panel | `mini-services/debugger`, `src/lib/debugger/*`, `api/debugger`, `debugger-panel.tsx` |
+| Files touched | Existing set | **Additive only** — no edits to existing components |
+| Shared touchpoints | — | `package.json` (scripts), `.env.example`, `next.config.ts` (one flag, Next 14 only), `page.tsx` (one mount line) |
+| Contract between tracks | — | The `op` vocabulary of `/api/debugger` — freeze it first, then both tracks run independently |
+
+Track B can be merged at any point without conflicting with main work.
+
+---
+
+## 2. Epistemic Spec: Invariants → Mechanisms
+
+| Invariant | Debugger mechanism |
+|---|---|
+| **I1 Zero-trust** | The chain accepts only collector-emitted events. Nothing self-certifies. Unreachable collector ⇒ the panel reports `offline`, never fabricates. |
+| **I2 Immutability** | Every event is `hash = SHA256(prevHash ‖ canon(core))`. Sessions are append-only JSONL. `/verify` recomputes the chain and pinpoints the first tampered `seq`. |
+| **I3 Reproducibility** | `/replay` is a **pure function** over the event list — no wall-clock reads, no randomness. Same chain ⇒ byte-identical replay. |
+| **I4 Holistic** | `/diff` evaluates two **whole sessions** against each other via signature statistics — never a single event in isolation. |
+| **I5 Separation** | The debugger observes only. It has no write path into product runtime. The one bridge (to red-daemon) is one-way and failure-tolerant. |
+
+**The 7-layer lineage, debugger edition:**
+
+```
+L1 Artifacts      raw http/console/error/span/metric emissions
+L2 Evidence       sanitized + SHA-256-chained events in .sessions/<id>.jsonl
+L3 Observations   /replay — pure compilation into timeline, durations, spans
+L4 Inferences     /diff — signature drift, duration deltas, earliest divergence
+L5 Governance     session-close evidence (merkleRoot) → red-daemon (one-way)
+L6 Knowledge Graph traceId/spanId/parentSpanId edges + prevHash lineage
+L7 Outputs        dashboard panel, anchored incident records, ADR-ready close data
+```
+
+**EIS principle, debugger edition:** five identical errors are **one signature observed five times** — the differ counts them as `count: 5`, never as five independent proofs. Normalization (`<uuid>`, `<n>`, `<hash>`) collapses correlation by construction.
+
+---
+
+## 3. Implementation
+
+### 3.1 `mini-services/debugger/package.json`
+
+```json
+{
+  "name": "@cc/debugger",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "start": "tsx index.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}
+```
+
+### 3.2 `mini-services/debugger/index.ts` — the diagnostic tracer (:3098)
+
+```ts
+/**
+ * Native Debugger — :3098
+ * The epistemic microscope for cc-export.
+ *
+ * I1 Zero-trust      — chain accepts only collector-emitted events; nothing self-certifies.
+ * I2 Immutability    — append-only WORM chain; /verify detects any retro-edit.
+ * I3 Reproducibility — /replay is a pure function over the event list.
+ * I4 Holistic        — /diff judges whole sessions, never a lone event.
+ * I5 Separation      — observe-only. No write path into product runtime.
+ */
+
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createHash, randomUUID } from 'node:crypto';
+import { appendFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PORT = Number(process.env.DEBUGGER_PORT ?? 3098);
+const STORE_DIR = process.env.DEBUGGER_STORE ?? join(__dirname, '.sessions');
+const DAEMON_URL = process.env.DAEMON_URL ?? '';
+const CORS = process.env.DEBUGGER_CORS ?? '*';
+const MAX_SESSION_EVENTS = Number(process.env.DEBUGGER_MAX_EVENTS ?? 20_000);
+const AMBIENT_ROTATE_AT = 5_000;
+const MAX_EVENT_BYTES = 64 * 1024;
+
+mkdirSync(STORE_DIR, { recursive: true });
+
+/* ---------- canonicalization & hashing (JCS-lite: sorted keys, no whitespace) ---------- */
+
+function canon(v: unknown): string {
+  if (v === null || v === undefined) return 'null';
+  if (Array.isArray(v)) return `[${v.map(canon).join(',')}]`;
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    return `{${Object.keys(o).sort().map((k) => `${JSON.stringify(k)}:${canon(o[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(v);
+}
+const sha256 = (s: string) => createHash('sha256').update(s, 'utf8').digest('hex');
+const GENESIS = '0'.repeat(64);
+const now = () => new Date().toISOString();
+
+/* ---------- model ---------- */
+
+const EVENT_TYPES = new Set(['http', 'console', 'error', 'span', 'metric', 'custom', 'system']);
+const LEVELS = new Set(['debug', 'info', 'warn', 'error']);
+
+type EventType = 'http' | 'console' | 'error' | 'span' | 'metric' | 'custom' | 'system';
+type EventLevel = 'debug' | 'info' | 'warn' | 'error';
+
+interface ChainEvent {
+  seq: number;
+  ts: string;
+  type: EventType;
+  level: EventLevel;
+  source: string;
+  message: string;
+  data?: Record<string, unknown>;
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  correlationId?: string;
+  prevHash: string;
+  hash: string;
+}
+type IncomingEvent = Partial<Omit<ChainEvent, 'seq' | 'prevHash' | 'hash'>>;
+
+interface Session {
+  id: string;
+  ambient: boolean;
+  status: 'open' | 'closed';
+  startedAt: string;
+  closedAt?: string;
+  head: string;
+  merkleRoot?: string;
+  meta: Record<string, unknown>;
+}
+
+const sessions = new Map<string, Session>();
+const chains = new Map<string, ChainEvent[]>();
+const streamClients = new Set<{ res: ServerResponse; sessionId?: string }>();
+let rotating = false;
+
+const fileFor = (id: string) => join(STORE_DIR, `${id.replace(/[^a-zA-Z0-9_.-]/g, '_')}.jsonl`);
+const persistLine = (id: string, obj: unknown) => appendFileSync(fileFor(id), JSON.stringify(obj) + '\n');
+
+/* ---------- merkle (leaves = event hashes, odd levels duplicate last) ---------- */
+
+function merkleRoot(hashes: string[]): string {
+  if (hashes.length === 0) return GENESIS;
+  let level = [...hashes];
+  while (level.length > 1) {
+    const next: string[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      next.push(sha256(level[i]! + (level[i + 1] ?? level[i]!)));
+    }
+    level = next;
+  }
+  return level[0]!;
+}
+
+/* ---------- persistence (append-only JSONL; loader tolerates a torn tail line) ---------- */
+
+function loadFromDisk() {
+  const files = readdirSync(STORE_DIR).filter((f) => f.endsWith('.jsonl')).sort();
+  for (const f of files) {
+    const id = f.slice(0, -'.jsonl'.length);
+    const lines = readFileSync(join(STORE_DIR, f), 'utf8').split('\n');
+    const list: ChainEvent[] = [];
+    const session: Session = {
+      id,
+      ambient: id.startsWith('ambient-'),
+      status: 'open',
+      startedAt: now(),
+      head: GENESIS,
+      meta: {},
+    };
+    let closed = false;
+    for (const line of lines) {
+      if (!line) continue;
+      let rec: any;
+      try { rec = JSON.parse(line); } catch { break; } // torn write at tail — stop at last integral line
+      if (rec.__session) {
+        session.startedAt = rec.__session.startedAt ?? session.startedAt;
+        session.meta = rec.__session.meta ?? {};
+        session.ambient = !!rec.__session.ambient;
+      } else if (rec.__closed) {
+        closed = true;
+        session.closedAt = rec.__closed.closedAt;
+        session.merkleRoot = rec.__closed.merkleRoot;
+      } else {
+        list.push(rec as ChainEvent);
+      }
+    }
+    session.status = closed ? 'closed' : 'open';
+    session.head = list.length ? list[list.length - 1]!.hash : GENESIS;
+    sessions.set(id, session);
+    chains.set(id, list);
+  }
+}
+
+/* ---------- sanitize (I1: nothing enters the chain unvalidated) ---------- */
+
+function stripUnsafe(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(stripUnsafe);
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v)) {
+      if (val === undefined || typeof val === 'function' || typeof val === 'symbol') continue;
+      if (typeof val === 'bigint') { out[k] = val.toString(); continue; }
+      out[k] = stripUnsafe(val);
+    }
+    return out;
+  }
+  return v;
+}
+
+function sanitizeEvent(raw: IncomingEvent): { ok: true; ev: Omit<ChainEvent, 'seq' | 'prevHash' | 'hash'> } | { ok: false; error: string } {
+  const type = raw.type as EventType;
+  if (!EVENT_TYPES.has(type)) return { ok: false, error: 'invalid-type' };
+  const level = (raw.level ?? 'info') as EventLevel;
+  if (!LEVELS.has(level)) return { ok: false, error: 'invalid-level' };
+  const ev: Omit<ChainEvent, 'seq' | 'prevHash' | 'hash'> = {
+    ts: typeof raw.ts === 'string' && raw.ts.length <= 40 ? raw.ts : now(),
+    type, level,
+    source: String(raw.source ?? 'unknown').slice(0, 120),
+    message: String(raw.message ?? '').slice(0, 2000),
+  };
+  if (raw.data !== undefined) {
+    if (typeof raw.data !== 'object' || raw.data === null || Array.isArray(raw.data)) {
+      return { ok: false, error: 'invalid-data' };
+    }
+    const clean = stripUnsafe(raw.data) as Record<string, unknown>;
+    try {
+      if (canon(clean).length > MAX_EVENT_BYTES) return { ok: false, error: 'data-too-large' };
+    } catch { return { ok: false, error: 'invalid-data' }; }
+    ev.data = clean;
+  }
+  for (const k of ['traceId', 'spanId', 'parentSpanId', 'correlationId'] as const) {
+    const v = raw[k];
+    if (typeof v === 'string' && v) ev[k] = v.slice(0, 80);
+  }
+  return { ok: true, ev };
+}
+
+/* ---------- append (I2: the WORM write) ---------- */
+
+function appendEvent(session: Session, raw: IncomingEvent): { ok: true; event: ChainEvent } | { ok: false; error: string } {
+  if (session.status === 'closed') return { ok: false, error: 'session-closed' };
+  const list = chains.get(session.id)!;
+  if (!session.ambient && list.length >= MAX_SESSION_EVENTS) return { ok: false, error: 'session-full' };
+
+  const s = sanitizeEvent(raw);
+  if (!s.ok) return s;
+
+  // Conditional keys only — the in-memory shape must equal the persisted shape,
+  // or post-restart verification would diverge. (canon sorts keys; shape must not.)
+  const core: Record<string, unknown> = {
+    seq: list.length + 1,
+    ts: s.ev.ts, type: s.ev.type, level: s.ev.level,
+    source: s.ev.source, message: s.ev.message,
+  };
+  if (s.ev.data) core.data = s.ev.data;
+  if (s.ev.traceId) core.traceId = s.ev.traceId;
+  if (s.ev.spanId) core.spanId = s.ev.spanId;
+  if (s.ev.parentSpanId) core.parentSpanId = s.ev.parentSpanId;
+  if (s.ev.correlationId) core.correlationId = s.ev.correlationId;
+
+  const prevHash = session.head;
+  const hash = sha256(prevHash + '\n' + canon(core));
+  const event = { ...core, prevHash, hash } as ChainEvent;
+
+  list.push(event);
+  session.head = hash;
+  persistLine(session.id, event);
+  broadcast(session, event);
+
+  if (session.ambient && !rotating && list.length >= AMBIENT_ROTATE_AT) {
+    rotating = true;
+    try { rotateAmbient('size'); } finally { rotating = false; }
+  }
+  return { ok: true, event };
+}
+
+/* ---------- sessions ---------- */
+
+function startSession(meta: Record<string, unknown>): Session {
+  const id = `s-${now().replace(/[:.]/g, '')}-${randomUUID().slice(0, 8)}`;
+  const session: Session = { id, ambient: false, status: 'open', startedAt: now(), head: GENESIS, meta };
+  sessions.set(id, session);
+  chains.set(id, []);
+  persistLine(id, { __session: { id, startedAt: session.startedAt, meta, ambient: false } });
+  return session;
+}
+
+function ambientIndex(): number {
+  let max = 0;
+  for (const id of sessions.keys()) {
+    const m = /^ambient-(\d+)$/.exec(id);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return max;
+}
+
+function openAmbient(n?: number): Session {
+  const id = `ambient-${n ?? ambientIndex() + 1}`;
+  const session: Session = {
+    id, ambient: true, status: 'open', startedAt: now(), head: GENESIS,
+    meta: { label: 'ambient evidence (errors & system signals)' },
+  };
+  sessions.set(id, session);
+  chains.set(id, []);
+  persistLine(id, { __session: { id, startedAt: session.startedAt, meta: session.meta, ambient: true } });
+  return session;
+}
+
+function currentAmbient(): Session {
+  const s = sessions.get(`ambient-${ambientIndex()}`);
+  if (s && s.status === 'open') return s;
+  return openAmbient();
+}
+
+function rotateAmbient(reason: string) {
+  const cur = sessions.get(`ambient-${ambientIndex()}`);
+  if (cur && cur.status === 'open') closeSession(cur.id, `ambient-rotate:${reason}`, true);
+  openAmbient();
+}
+
+function closeSession(id: string, reason = 'manual', silent = false):
+  { ok: true; merkleRoot: string; eventCount: number } | { ok: false; error: string } {
+  const session = sessions.get(id);
+  if (!session) return { ok: false, error: 'not-found' };
+  if (session.status === 'closed') return { ok: false, error: 'already-closed' };
+
+  appendEvent(session, { type: 'system', level: 'info', source: 'debugger', message: `session closed (${reason})` });
+  session.status = 'closed';
+  session.closedAt = now();
+  const list = chains.get(id)!;
+  session.merkleRoot = merkleRoot(list.map((e) => e.hash));
+  persistLine(id, { __closed: { closedAt: session.closedAt, merkleRoot: session.merkleRoot, eventCount: list.length, reason } });
+
+  if (!silent) void notifyDaemon({ kind: 'debugger.session.closed', sessionId: id, merkleRoot: session.merkleRoot, eventCount: list.length, reason });
+  return { ok: true, merkleRoot: session.merkleRoot, eventCount: list.length };
+}
+
+/* ---------- verify (I2: recompute the chain, pinpoint first break) ---------- */
+
+function verifyChain(id: string) {
+  const list = chains.get(id) ?? [];
+  let prev = GENESIS;
+  for (const e of list) {
+    const { prevHash: _p, hash: _h, ...core } = e;
+    const expected = sha256(prev + '\n' + canon(core));
+    if (e.prevHash !== prev || e.hash !== expected) {
+      return {
+        sessionId: id, ok: false, checked: e.seq - 1,
+        firstBroken: { seq: e.seq, expectedPrevHash: prev, actualPrevHash: e.prevHash, expectedHash: expected, actualHash: e.hash },
+      };
+    }
+    prev = e.hash;
+  }
+  return { sessionId: id, ok: true, checked: list.length, merkleRoot: merkleRoot(list.map((e) => e.hash)) };
+}
+
+/* ---------- replay (I3: pure function — no clock, no randomness) ---------- */
+
+function percentile(xs: number[], p: number): number | undefined {
+  if (xs.length === 0) return undefined;
+  const s = [...xs].sort((a, b) => a - b);
+  const i = Math.min(s.length - 1, Math.max(0, Math.ceil((p / 100) * s.length) - 1));
+  return Math.round(s[i]! * 100) / 100;
+}
+
+function replay(id: string) {
+  const list = chains.get(id) ?? [];
+  const session = sessions.get(id);
+  const levelCounts: Record<string, number> = {};
+  const typeCounts: Record<string, number> = {};
+  const http: Array<Record<string, unknown>> = [];
+  const errors: Array<Record<string, unknown>> = [];
+  const durationsBySource = new Map<string, number[]>();
+  const spanBegins = new Map<string, ChainEvent>();
+  const spanEnds = new Map<string, ChainEvent>();
+
+  for (const e of list) {
+    levelCounts[e.level] = (levelCounts[e.level] ?? 0) + 1;
+    typeCounts[e.type] = (typeCounts[e.type] ?? 0) + 1;
+    if (e.type === 'http') {
+      http.push({ seq: e.seq, ts: e.ts, source: e.source, method: e.data?.method, path: e.data?.path, status: e.data?.status, durationMs: e.data?.durationMs });
+      const d = e.data?.durationMs;
+      if (typeof d === 'number') {
+        const arr = durationsBySource.get(e.source) ?? [];
+        arr.push(d);
+        durationsBySource.set(e.source, arr);
+      }
+    }
+    if (e.level === 'error' || e.type === 'error') errors.push({ seq: e.seq, ts: e.ts, source: e.source, message: e.message });
+    if (e.type === 'span' && e.spanId) {
+      if (e.data?.phase === 'end') spanEnds.set(e.spanId, e);
+      else spanBegins.set(e.spanId, e);
+    }
+  }
+
+  const spans = [...spanBegins.entries()].map(([sid, b]) => {
+    const end = spanEnds.get(sid);
+    return {
+      spanId: sid,
+      name: (b.data?.name as string) ?? b.message,
+      source: b.source,
+      beginSeq: b.seq,
+      endSeq: end?.seq,
+      durationMs: (end?.data?.durationMs as number | undefined) ??
+        (end ? Math.max(0, Date.parse(end.ts) - Date.parse(b.ts)) : undefined),
+      closed: !!end,
+    };
+  });
+  const orphanEndSpans = [...spanEnds.keys()].filter((sid) => !spanBegins.has(sid)).length;
+
+  return {
+    sessionId: id,
+    session: session && { status: session.status, startedAt: session.startedAt, closedAt: session.closedAt, merkleRoot: session.merkleRoot, meta: session.meta },
+    eventCount: list.length,
+    levelCounts, typeCounts,
+    httpCount: http.length,
+    errorCount: errors.length,
+    http: http.slice(-200),
+    errors: errors.slice(-100),
+    spans: spans.slice(-100),
+    orphanEndSpans,
+    httpBySource: [...durationsBySource.entries()].map(([source, ds]) => ({
+      source, count: ds.length, p50: percentile(ds, 50), p95: percentile(ds, 95), max: Math.round(Math.max(...ds) * 100) / 100,
+    })),
+    chainHead: list.length ? list[list.length - 1]!.hash : GENESIS,
+  };
+}
+
+/* ---------- diff (I4: holistic, least-divergent) ---------- */
+
+function normalizeMessage(m: string): string {
+  return m
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<uuid>')
+    .replace(/\b[0-9a-f]{16,}\b/gi, '<hash>')
+    .replace(/-?\d+(?:\.\d+)?/g, '<n>')
+    .slice(0, 140);
+}
+const signatureOf = (e: ChainEvent) => `${e.type}/${e.source}/${normalizeMessage(e.message)}`;
+
+interface SigStat { count: number; firstSeq: number; durations: number[]; errored: boolean }
+
+function signatures(list: ChainEvent[]): Map<string, SigStat> {
+  const m = new Map<string, SigStat>();
+  for (const e of list) {
+    const sig = signatureOf(e);
+    let st = m.get(sig);
+    if (!st) { st = { count: 0, firstSeq: e.seq, durations: [], errored: false }; m.set(sig, st); }
+    st.count++;
+    if (e.level === 'error') st.errored = true;
+    const d = e.data?.durationMs;
+    if (typeof d === 'number') st.durations.push(d);
+  }
+  return m;
+}
+
+function diffSessions(aId: string, bId: string) {
+  const A = signatures(chains.get(aId) ?? []);
+  const B = signatures(chains.get(bId) ?? []);
+
+  const onlyInA: Array<{ signature: string; count: number; firstSeq: number; error: boolean }> = [];
+  const onlyInB: Array<{ signature: string; count: number; firstSeq: number; error: boolean }> = [];
+  const drift: Array<{ signature: string; countA: number; countB: number; countDelta: number; p50A?: number; p50B?: number; durationRatio?: number }> = [];
+
+  for (const [sig, st] of A) {
+    if (!B.has(sig)) { onlyInA.push({ signature: sig, count: st.count, firstSeq: st.firstSeq, error: st.errored }); continue; }
+    const stB = B.get(sig)!;
+    const pA = percentile(st.durations, 50), pB = percentile(stB.durations, 50);
+    const ratio = pA !== undefined && pB !== undefined && pB > 0 ? pA / pB : undefined;
+    if (st.count !== stB.count || (ratio !== undefined && (ratio > 1.5 || ratio < 1 / 1.5))) {
+      drift.push({
+        signature: sig, countA: st.count, countB: stB.count, countDelta: st.count - stB.count,
+        p50A: pA, p50B: pB, durationRatio: ratio ? Math.round(ratio * 100) / 100 : undefined,
+      });
+    }
+  }
+  for (const [sig, st] of B) if (!A.has(sig)) onlyInB.push({ signature: sig, count: st.count, firstSeq: st.firstSeq, error: st.errored });
+
+  onlyInA.sort((x, y) => x.firstSeq - y.firstSeq);
+  onlyInB.sort((x, y) => x.firstSeq - y.firstSeq);
+  drift.sort((x, y) => Math.abs(y.countDelta) - Math.abs(x.countDelta));
+
+  const earliest = onlyInA[0];
+  return {
+    a: aId, b: bId,
+    summary: { signaturesA: A.size, signaturesB: B.size, onlyInA: onlyInA.length, onlyInB: onlyInB.length, drift: drift.length },
+    earliestDivergence: earliest && {
+      signature: earliest.signature, firstSeq: earliest.firstSeq,
+      interpretation: 'earliest event present in A (investigated) but absent from B (baseline) — least-divergent suspect',
+    },
+    onlyInA: onlyInA.slice(0, 50),
+    onlyInB: onlyInB.slice(0, 50),
+    drift: drift.slice(0, 50),
+  };
+}
+
+/* ---------- I5: one-way, failure-tolerant bridge to red-daemon ---------- */
+
+async function notifyDaemon(payload: Record<string, unknown>) {
+  if (!DAEMON_URL) return;
+  try {
+    await fetch(DAEMON_URL, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload), signal: AbortSignal.timeout(2000),
+    });
+  } catch { /* delivery failure is not an observation about the app */ }
+}
+
+/* ---------- SSE ---------- */
+
+function broadcast(session: Session, event: ChainEvent) {
+  if (streamClients.size === 0) return;
+  const frame = `event: evidence\ndata: ${JSON.stringify({ sessionId: session.id, event })}\n\n`;
+  for (const c of [...streamClients]) {
+    if (c.sessionId && c.sessionId !== session.id) continue;
+    try { c.res.write(frame); } catch { streamClients.delete(c); }
+  }
+}
+
+/* ---------- HTTP plumbing ---------- */
+
+function json(res: ServerResponse, status: number, body: unknown) {
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'access-control-allow-origin': CORS,
+    'access-control-allow-methods': 'GET,POST,OPTIONS',
+    'access-control-allow-headers': 'content-type',
+  });
+  res.end(JSON.stringify(body));
+}
+
+function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks: Buffer[] = [];
+    req.on('data', (c: Buffer) => {
+      size += c.length;
+      if (size > 2 * 1024 * 1024) { reject(new Error('body-too-large')); req.destroy(); return; }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      if (chunks.length === 0) return resolve({});
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch { reject(new Error('invalid-json')); }
+    });
+    req.on('error', reject);
+  });
+}
+
+const server = createServer(async (req, res) => {
+  const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
+  const parts = url.pathname.split('/').filter(Boolean);
+
+  if (req.method === 'OPTIONS') return json(res, 204, {});
+
+  try {
+    if (req.method === 'GET' && url.pathname === '/healthz') {
+      return json(res, 200, {
+        ok: true, service: 'debugger', port: PORT,
+        sessions: sessions.size,
+        openSessions: [...sessions.values()].filter((s) => s.status === 'open').length,
+        uptimeSec: Math.round(process.uptime()),
+      });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/sessions') {
+      const list = [...sessions.values()]
+        .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))
+        .map((s) => ({
+          id: s.id, ambient: s.ambient, status: s.status, startedAt: s.startedAt,
+          closedAt: s.closedAt, eventCount: chains.get(s.id)?.length ?? 0,
+          merkleRoot: s.merkleRoot, head: s.head, meta: s.meta,
+        }));
+      return json(res, 200, { ok: true, sessions: list });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/session/start') {
+      const body = await readBody(req);
+      const meta = (body.meta && typeof body.meta === 'object' ? body.meta : body) as Record<string, unknown>;
+      const session = startSession(meta);
+      appendEvent(session, { type: 'system', source: 'debugger', message: 'session opened', data: { meta: session.meta } });
+      return json(res, 201, { ok: true, sessionId: session.id, genesis: GENESIS, head: session.head });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/ambient/events') {
+      const body = await readBody(req);
+      const ambient = currentAmbient();
+      const incoming = (Array.isArray(body.events) ? body.events : [body.event]).filter(Boolean) as IncomingEvent[];
+      let appended = 0; const rejected: string[] = [];
+      for (const ev of incoming) { const r = appendEvent(ambient, ev); r.ok ? appended++ : rejected.push(r.error); }
+      return json(res, 200, { ok: true, sessionId: ambient.id, appended, rejected });
+    }
+
+    if (parts[0] === 'session' && parts[1]) {
+      const id = decodeURIComponent(parts[1]);
+      const session = sessions.get(id);
+      if (!session) return json(res, 404, { ok: false, error: 'not-found' });
+
+      if (parts.length === 3 && parts[2] === 'event' && req.method === 'POST') {
+        const r = appendEvent(session, (await readBody(req)) as IncomingEvent);
+        return r.ok ? json(res, 201, { ok: true, event: r.event }) : json(res, 400, { ok: false, error: r.error });
+      }
+
+      if (parts.length === 3 && parts[2] === 'events' && req.method === 'POST') {
+        const body = await readBody(req);
+        const incoming = Array.isArray(body.events) ? (body.events as IncomingEvent[]) : [];
+        if (incoming.length > 500) return json(res, 413, { ok: false, error: 'batch-too-large' });
+        let appended = 0; const rejected: string[] = [];
+        for (const ev of incoming) { const r = appendEvent(session, ev); r.ok ? appended++ : rejected.push(r.error); }
+        return json(res, 200, { ok: true, sessionId: id, appended, rejected, head: session.head });
+      }
+
+      if (parts.length === 3 && parts[2] === 'close' && req.method === 'POST') {
+        const body = await readBody(req);
+        const r = closeSession(id, typeof body.reason === 'string' ? body.reason : 'manual');
+        return r.ok ? json(res, 200, r) : json(res, 400, r);
+      }
+
+      if (parts.length === 2 && req.method === 'GET') {
+        const afterSeq = Number(url.searchParams.get('afterSeq') ?? 0) || 0;
+        const all = chains.get(id) ?? [];
+        const list = all.filter((e) => e.seq > afterSeq).slice(-500);
+        return json(res, 200, { ok: true, session: { ...session }, events: list, head: session.head, totalCount: all.length });
+      }
+
+      if (parts.length === 3 && parts[2] === 'verify' && req.method === 'GET') return json(res, 200, verifyChain(id));
+      if (parts.length === 3 && parts[2] === 'replay' && req.method === 'GET') return json(res, 200, { ok: true, replay: replay(id) });
+    }
+
+    if (req.method === 'POST' && url.pathname === '/diff') {
+      const body = await readBody(req);
+      const a = typeof body.a === 'string' ? body.a : '';
+      const b = typeof body.b === 'string' ? body.b : '';
+      if (!a || !b) return json(res, 400, { ok: false, error: 'a-and-b-required' });
+      if (!sessions.has(a) || !sessions.has(b)) return json(res, 404, { ok: false, error: 'not-found' });
+      return json(res, 200, { ok: true, diff: diffSessions(a, b) });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/stream') {
+      const sessionId = url.searchParams.get('sessionId') ?? undefined;
+      res.writeHead(200, {
+        'content-type': 'text/event-stream', 'cache-control': 'no-cache, no-transform',
+        connection: 'keep-alive', 'access-control-allow-origin': CORS,
+      });
+      res.write(`event: hello\ndata: ${JSON.stringify({ ok: true, sessionId: sessionId ?? '*' })}\n\n`);
+      const client = { res, sessionId };
+      streamClients.add(client);
+      const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch { /* closed */ } }, 15_000);
+      req.on('close', () => { clearInterval(ping); streamClients.delete(client); });
+      return;
+    }
+
+    return json(res, 404, { ok: false, error: 'no-route' });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const status = msg === 'body-too-large' || msg === 'invalid-json' ? 400 : 500;
+    return json(res, status, { ok: false, error: msg === 'body-too-large' || msg === 'invalid-json' ? msg : 'internal' });
+  }
+});
+
+process.on('unhandledRejection', (r) => console.error('[debugger] unhandledRejection:', r));
+
+loadFromDisk();
+if (ambientIndex() === 0) openAmbient(1);
+else currentAmbient(); // reopens if the latest ambient was closed before shutdown
+
+server.listen(PORT, () => {
+  console.log(`[debugger] listening on :${PORT}  (store: ${STORE_DIR})`);
+  console.log(`[debugger] contract: observe-only · WORM chain · pure replay · holistic diff`);
+});
+```
+
+### 3.3 `src/lib/debugger/types.ts`
+
+```ts
+export type EventType = 'http' | 'console' | 'error' | 'span' | 'metric' | 'custom' | 'system';
+export type EventLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export interface CollectorEvent {
+  type: EventType;
+  level?: EventLevel;
+  source: string;
+  message: string;
+  data?: Record<string, unknown>;
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  correlationId?: string;
+}
+```
+
+### 3.4 `src/lib/debugger/client.ts` — server-side collector (never imported by browser code)
+
+```ts
+/**
+ * Server-side collector. I5: observation must never break the observed —
+ * every method swallows its own failures. The queue is bounded and lossy
+ * under pressure; losing evidence is honest, fabricating it is not.
+ */
+import { randomUUID } from 'node:crypto';
+import type { CollectorEvent } from './types';
+
+const BASE = process.env.DEBUGGER_URL ?? 'http://127.0.0.1:3098';
+const APP = process.env.DEBUGGER_APP_ID ?? 'cc-web';
+
+class DebuggerClient {
+  private sessionId: string | null = null;
+  private queue: CollectorEvent[] = [];
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private inflight = false;
+
+  get activeSession() { return this.sessionId; }
+
+  bind(sessionId: string) { this.sessionId = sessionId; void this.flush(); }
+  unbind() { this.sessionId = null; }
+
+  /** Traced capture: goes to the bound session if one exists. */
+  capture(ev: CollectorEvent) {
+    if (!this.sessionId) {
+      if (ev.level === 'error') this.captureAmbient(ev); // errors always leave a record
+      return;
+    }
+    this.queue.push({ ...ev, source: ev.source || APP });
+    if (this.queue.length > 1000) this.queue.splice(0, this.queue.length - 1000);
+    if (this.timer === null) {
+      this.timer = setTimeout(() => { this.timer = null; void this.flush(); }, 300);
+    }
+  }
+
+  /** Ambient capture: process-level signals, independent of any active session. */
+  captureAmbient(ev: CollectorEvent) {
+    const body = JSON.stringify({ events: [{ ...ev, source: ev.source || APP }] });
+    try { void fetch(`${BASE}/ambient/events`, { method: 'POST', headers: { 'content-type': 'application/json' }, body }).catch(() => {}); }
+    catch { /* never throw from observation */ }
+  }
+
+  async flush() {
+    if (this.inflight || !this.sessionId || this.queue.length === 0) return;
+    this.inflight = true;
+    const batch = this.queue.splice(0, 200);
+    try {
+      const r = await fetch(`${BASE}/session/${this.sessionId}/events`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ events: batch }), signal: AbortSignal.timeout(3000),
+      });
+      if (r.ok) {
+        const j = await r.json().catch(() => null);
+        // If the service closed the session under us, stop targeting it.
+        if (j && Array.isArray(j.rejected) && (j.rejected as string[]).some((e) => e === 'session-closed' || e === 'not-found')) {
+          this.sessionId = null;
+        }
+      } else if (r.status === 404) {
+        this.sessionId = null;
+      }
+    } catch { /* collector unreachable — evidence is lost, honestly */ }
+    finally {
+      this.inflight = false;
+      if (this.queue.length && this.sessionId) void this.flush();
+    }
+  }
+}
+
+export const debuggerClient = new DebuggerClient();
+
+/* ---------- instrumentation helpers ---------- */
+
+export async function withSpan<T>(name: string, fn: () => Promise<T> | T): Promise<T> {
+  const spanId = randomUUID();
+  const t0 = performance.now();
+  debuggerClient.capture({ type: 'span', level: 'debug', source: APP, message: `${name} begin`, spanId, data: { phase: 'begin', name } });
+  try {
+    const result = await fn();
+    debuggerClient.capture({
+      type: 'span', level: 'info', source: APP, message: `${name} end`, spanId,
+      data: { phase: 'end', name, durationMs: Math.round((performance.now() - t0) * 100) / 100 },
+    });
+    return result;
+  } catch (err) {
+    debuggerClient.capture({
+      type: 'span', level: 'error', source: APP, message: `${name} failed`, spanId,
+      data: { phase: 'end', name, durationMs: Math.round((performance.now() - t0) * 100) / 100, error: String(err) },
+    });
+    throw err;
+  }
+}
+
+export function captureHttp(req: Request, status: number, durationMs: number) {
+  const path = new URL(req.url).pathname;
+  debuggerClient.capture({
+    type: 'http',
+    level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
+    source: 'next',
+    message: `${req.method} ${path} → ${status}`,
+    data: { method: req.method, path, status, durationMs: Math.round(durationMs * 100) / 100 },
+  });
+}
+```
+
+### 3.5 `src/lib/debugger/server-capture.ts` — process-level native hooks
+
+```ts
+import { debuggerClient, captureHttp } from './client';
+
+export function attachProcessCapture() {
+  process.on('uncaughtException', (err) => {
+    debuggerClient.captureAmbient({
+      type: 'error', level: 'error', source: 'process',
+      message: `uncaughtException: ${err.message}`,
+      data: { stack: err.stack?.slice(0, 4000) },
+    });
+  });
+  process.on('unhandledRejection', (reason) => {
+    debuggerClient.captureAmbient({
+      type: 'error', level: 'error', source: 'process',
+      message: `unhandledRejection: ${String(reason).slice(0, 500)}`,
+    });
+  });
+  // Optional heartbeat proving the collector is alive (DEBUGGER_HEARTBEAT=1)
+  if (process.env.DEBUGGER_HEARTBEAT === '1') {
+    setInterval(() => {
+      const m = process.memoryUsage();
+      debuggerClient.captureAmbient({
+        type: 'metric', level: 'info', source: 'process',
+        message: 'heartbeat',
+        data: { rssMb: Math.round(m.rss / 1048576), heapMb: Math.round(m.heapUsed / 1048576) },
+      });
+    }, 60_000);
+  }
+}
+
+/** Wired from src/instrumentation.ts — Next.js native request-error hook. */
+export async function captureRequestError(
+  req: Request,
+  error: Error & { digest?: string },
+  ctx?: { routerKind?: string; routePath?: string; routeType?: string },
+) {
+  const url = typeof req.url === 'string' ? req.url : '/';
+  debuggerClient.captureAmbient({
+    type: 'error', level: 'error', source: 'next',
+    message: `request error: ${error.message}`.slice(0, 500),
+    data: { digest: error.digest, route: ctx?.routePath, router: ctx?.routerKind, url: url.slice(0, 300) },
+  });
+}
+
+export { captureHttp };
+```
+
+### 3.6 `src/instrumentation.ts` — the truly "native" entry point
+
+```ts
+/**
+ * Next.js native instrumentation. Next ≥ 15: drop-in.
+ * Next 14: add `experimental: { instrumentationHook: true }` to next.config.ts.
+ */
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { attachProcessCapture } = await import('@/lib/debugger/server-capture');
+    attachProcessCapture();
+  }
+}
+
+export async function onRequestError(
+  req: Request,
+  error: Error & { digest?: string },
+  ctx: { routerKind: 'app' | 'pages'; routePath: string; routeType: 'render' | 'route' | 'action' },
+) {
+  const { captureRequestError } = await import('@/lib/debugger/server-capture');
+  await captureRequestError(req, error, ctx);
+}
+```
+
+Instrument any existing route with one wrapper (example for `api/services`):
+
+```ts
+// src/app/api/services/route.ts — existing body unchanged, wrapped
+import { NextResponse } from 'next/server';
+import { withSpan } from '@/lib/debugger/client';
+
+export async function GET() {
+  return withSpan('api:services:list', async () => {
+    /* ...existing handler body... */
+    return NextResponse.json({ /* ... */ });
+  });
+}
+```
+
+### 3.7 `src/app/api/debugger/route.ts` — the proxy (zero-trust gap reporting)
+
+```ts
+import { NextRequest, NextResponse } from 'next/server';
+import { debuggerClient } from '@/lib/debugger/client';
+
+const BASE = process.env.DEBUGGER_URL ?? 'http://127.0.0.1:3098';
+
+async function proxy(path: string, init?: RequestInit) {
+  try {
+    const r = await fetch(`${BASE}${path}`, {
+      ...init,
+      headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+      signal: AbortSignal.timeout(4000),
+    });
+    const body = await r.text();
+    return new NextResponse(body, { status: r.status, headers: { 'content-type': 'application/json' } });
+  } catch {
+    // Zero-trust: report the gap, never fabricate evidence.
+    return NextResponse.json(
+      { ok: false, reason: 'debugger-unreachable', hint: 'run `npm run debugger` or set DEBUGGER_URL' },
+      { status: 503 },
+    );
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const p = req.nextUrl.searchParams;
+  const op = p.get('op') ?? 'sessions';
+  const id = p.get('id') ?? '';
+  switch (op) {
+    case 'status':  return proxy('/healthz');
+    case 'session': return proxy(`/session/${encodeURIComponent(id)}${p.get('afterSeq') ? `?afterSeq=${p.get('afterSeq')}` : ''}`);
+    case 'verify':  return proxy(`/session/${encodeURIComponent(id)}/verify`);
+    case 'replay':  return proxy(`/session/${encodeURIComponent(id)}/replay`);
+    default:        return proxy('/sessions');
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
+  switch (body.op) {
+    case 'start': return proxy('/session/start', { method: 'POST', body: JSON.stringify(body.payload ?? {}) });
+    case 'close': return proxy(`/session/${encodeURIComponent(body.id)}/close`, { method: 'POST', body: JSON.stringify(body.payload ?? {}) });
+    case 'diff':  return proxy('/diff', { method: 'POST', body: JSON.stringify(body.payload ?? {}) });
+    case 'bind':   debuggerClient.bind(body.id);  return NextResponse.json({ ok: true, bound: body.id });
+    case 'unbind': debuggerClient.unbind();       return NextResponse.json({ ok: true });
+    default: return NextResponse.json({ ok: false, reason: 'unknown-op' }, { status: 400 });
+  }
+}
+```
+
+### 3.8 `src/components/dashboard/debugger-panel.tsx` — the L7 surface
+
+```tsx
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+interface SessionRow {
+  id: string; ambient: boolean; status: 'open' | 'closed';
+  startedAt: string; closedAt?: string; eventCount: number;
+  merkleRoot?: string; meta: Record<string, unknown>;
+}
+interface Ev { seq: number; ts: string; type: string; level: string; source: string; message: string }
+interface VerifyResult { sessionId: string; ok: boolean; checked: number; merkleRoot?: string; firstBroken?: { seq: number } }
+interface ReplayResult {
+  eventCount: number; httpCount: number; errorCount: number;
+  levelCounts: Record<string, number>; typeCounts: Record<string, number>;
+  httpBySource: Array<{ source: string; count: number; p50?: number; p95?: number; max?: number }>;
+  errors: Array<{ seq: number; ts: string; source: string; message: string }>;
+  spans: Array<{ spanId: string; name: string; durationMs?: number; closed: boolean }>;
+  chainHead: string;
+}
+interface DiffRow { signature: string; count: number; firstSeq: number; error: boolean }
+interface DiffResult {
+  a: string; b: string;
+  summary: { onlyInA: number; onlyInB: number; drift: number };
+  earliestDivergence?: { signature: string; firstSeq: number; interpretation: string };
+  onlyInA: DiffRow[]; onlyInB: DiffRow[];
+  drift: Array<{ signature: string; countA: number; countB: number; countDelta: number; p50A?: number; p50B?: number; durationRatio?: number }>;
+}
+
+const LEVEL_CLASS: Record<string, string> = {
+  error: 'text-red-400', warn: 'text-amber-400', info: 'text-zinc-300', debug: 'text-zinc-500',
+};
+
+async function apiGet(qs: string) {
+  const r = await fetch(`/api/debugger?${qs}`);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).reason ?? `HTTP ${r.status}`);
+  return r.json();
+}
+async function apiPost(body: Record<string, unknown>) {
+  const r = await fetch('/api/debugger', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  return r.json();
+}
+
+export function DebuggerPanel() {
+  const [up, setUp] = useState<boolean | null>(null);
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [live, setLive] = useState<Ev[]>([]);
+  const [replay, setReplay] = useState<ReplayResult | null>(null);
+  const [diff, setDiff] = useState<DiffResult | null>(null);
+  const [diffA, setDiffA] = useState('');
+  const [diffB, setDiffB] = useState('');
+  const [verdicts, setVerdicts] = useState<Record<string, VerifyResult>>({});
+  const [busy, setBusy] = useState(false);
+  const lastSeq = useRef(0);
+
+  const activeSession = useMemo(() => sessions.find((s) => s.id === selected), [sessions, selected]);
+
+  /* status + session list */
+  useEffect(() => {
+    let alive = true;
+    const tick = async () => {
+      try {
+        await apiGet('op=status');
+        if (alive) setUp(true);
+        const j = await apiGet('op=sessions');
+        if (alive) setSessions(j.sessions ?? []);
+      } catch { if (alive) setUp(false); }
+    };
+    void tick();
+    const t = setInterval(tick, 4000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
+
+  /* live tail (polling — Vercel-safe; SSE available on :3098/stream for local use) */
+  useEffect(() => {
+    if (!selected || activeSession?.status !== 'open') return;
+    let alive = true;
+    const tick = async () => {
+      try {
+        const j = await apiGet(`op=session&id=${encodeURIComponent(selected)}&afterSeq=${lastSeq.current}`);
+        if (!alive) return;
+        const evs: Ev[] = j.events ?? [];
+        if (evs.length > 0) {
+          lastSeq.current = evs[evs.length - 1]!.seq;
+          setLive((prev) => [...prev, ...evs].slice(-300));
+        }
+      } catch { /* transient */ }
+    };
+    void tick();
+    const t = setInterval(tick, 1500);
+    return () => { alive = false; clearInterval(t); };
+  }, [selected, activeSession?.status]);
+
+  const select = (id: string) => {
+    setSelected(id); setLive([]); setReplay(null); lastSeq.current = 0;
+  };
+
+  const startCapture = async () => {
+    setBusy(true);
+    try {
+      const j = await apiPost({ op: 'start', payload: { app: 'cc-web', label: 'dashboard capture' } });
+      if (j.sessionId) {
+        await apiPost({ op: 'bind', id: j.sessionId }); // point the Next server collector at this session
+        select(j.sessionId);
+      }
+    } finally { setBusy(false); }
+  };
+
+  const stopCapture = async () => {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      await apiPost({ op: 'unbind' });
+      const j = await apiPost({ op: 'close', id: selected, payload: { reason: 'dashboard' } });
+      if (j.merkleRoot) void checkVerify(selected);
+    } finally { setBusy(false); }
+  };
+
+  const checkVerify = useCallback(async (id: string) => {
+    try { setVerdicts((v) => ({ ...v, [id]: await apiGet(`op=verify&id=${encodeURIComponent(id)}`) })); } catch { /* ignore */ }
+  }, []);
+
+  const runReplay = async () => {
+    if (!selected) return;
+    setBusy(true);
+    try { const j = await apiGet(`op=replay&id=${encodeURIComponent(selected)}`); setReplay(j.replay); }
+    finally { setBusy(false); }
+  };
+
+  const runDiff = async () => {
+    if (!diffA || !diffB || diffA === diffB) return;
+    setBusy(true);
+    try { const j = await apiPost({ op: 'diff', payload: { a: diffA, b: diffB } }); setDiff(j.diff); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Card id="debugger">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="space-y-1">
+          <CardTitle className="text-base">Native Debugger</CardTitle>
+          <p className="text-xs text-muted-foreground">WORM evidence · pure replay · least-divergent diff · :3098</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className={`h-2 w-2 rounded-full ${up === null ? 'animate-pulse bg-zinc-500' : up ? 'bg-emerald-500' : 'bg-red-500'}`} />
+            {up === null ? 'probing' : up ? 'collector online' : 'offline'}
+          </span>
+          {activeSession?.status === 'open' ? (
+            <Button size="sm" variant="destructive" onClick={stopCapture} disabled={busy}>Stop &amp; Anchor</Button>
+          ) : (
+            <Button size="sm" onClick={startCapture} disabled={busy || up !== true}>Start Capture</Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {up === false && (
+          <div className="mb-3 rounded-md border border-red-500/30 bg-red-500/5 p-3 text-xs text-red-400">
+            Collector unreachable on :3098 — start it with <code className="font-mono">npm run debugger</code>. Zero-trust: the panel reports the gap; it never fabricates evidence.
+          </div>
+        )}
+
+        <Tabs defaultValue="sessions" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+            <TabsTrigger value="live">Live</TabsTrigger>
+            <TabsTrigger value="replay">Replay</TabsTrigger>
+            <TabsTrigger value="diff">Diff</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="sessions" className="space-y-2">
+            <div className="max-h-72 overflow-auto rounded-md border">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-muted/50 text-muted-foreground">
+                  <tr>
+                    <th className="p-2 text-left font-medium">Session</th>
+                    <th className="p-2 text-left font-medium">Status</th>
+                    <th className="p-2 text-right font-medium">Events</th>
+                    <th className="p-2 text-left font-medium">Anchor</th>
+                    <th className="p-2 text-right font-medium">Chain</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessions.map((s) => (
+                    <tr
+                      key={s.id}
+                      onClick={() => select(s.id)}
+                      className={`cursor-pointer border-t hover:bg-muted/30 ${selected === s.id ? 'bg-muted/40' : ''}`}
+                    >
+                      <td className="p-2 font-mono">
+                        {s.ambient && <Badge variant="outline" className="mr-1.5 py-0 text-[10px]">ambient</Badge>}
+                        {s.id}
+                      </td>
+                      <td className="p-2"><Badge variant={s.status === 'open' ? 'default' : 'secondary'} className="py-0 text-[10px]">{s.status}</Badge></td>
+                      <td className="p-2 text-right font-mono">{s.eventCount}</td>
+                      <td className="p-2 font-mono text-[10px] text-muted-foreground">{s.merkleRoot ? `${s.merkleRoot.slice(0, 10)}…` : '—'}</td>
+                      <td className="p-2 text-right">
+                        {verdicts[s.id] ? (
+                          <Badge variant={verdicts[s.id]!.ok ? 'default' : 'destructive'} className="py-0 text-[10px]">
+                            {verdicts[s.id]!.ok ? `✓ ${verdicts[s.id]!.checked}` : `✗ @${verdicts[s.id]!.firstBroken?.seq}`}
+                          </Badge>
+                        ) : (
+                          <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]"
+                            onClick={(e) => { e.stopPropagation(); void checkVerify(s.id); }}>verify</Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {sessions.length === 0 && (
+                    <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">No sessions yet — start a capture.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="live" className="space-y-2">
+            {!selected ? (
+              <p className="p-4 text-center text-xs text-muted-foreground">Select a session above.</p>
+            ) : activeSession?.status === 'open' ? (
+              <div className="max-h-72 overflow-auto rounded-md border bg-zinc-950/50 p-2 font-mono text-[11px] leading-relaxed">
+                {live.length === 0 && <p className="text-zinc-500">listening…</p>}
+                {live.map((e) => (
+                  <div key={e.seq} className="flex gap-2">
+                    <span className="w-10 shrink-0 text-right text-zinc-600">{e.seq}</span>
+                    <span className="w-16 shrink-0 text-zinc-600">{e.ts.slice(11, 23)}</span>
+                    <span className="w-14 shrink-0 uppercase text-violet-400/70">{e.type}</span>
+                    <span className={`w-10 shrink-0 uppercase ${LEVEL_CLASS[e.level] ?? ''}`}>{e.level}</span>
+                    <span className="w-28 shrink-0 truncate text-sky-400">{e.source}</span>
+                    <span className="text-zinc-300">{e.message}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="p-4 text-center text-xs text-muted-foreground">Session closed — see Replay for the compiled view.</p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="replay" className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={runReplay} disabled={!selected || busy}>Compile Replay</Button>
+              {replay && (
+                <span className="text-xs text-muted-foreground">head <code className="font-mono">{replay.chainHead.slice(0, 16)}…</code></span>
+              )}
+            </div>
+            {replay && (
+              <>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <Stat label="events" value={replay.eventCount} />
+                  <Stat label="http" value={replay.httpCount} />
+                  <Stat label="errors" value={replay.errorCount} highlight={replay.errorCount > 0} />
+                  <Stat label="spans open" value={replay.spans.filter((s) => !s.closed).length} />
+                </div>
+                {replay.httpBySource.length > 0 && (
+                  <Tableish
+                    header={['source', 'count', 'p50', 'p95', 'max']}
+                    rows={replay.httpBySource.map((h) => [h.source, String(h.count), String(h.p50 ?? '—'), String(h.p95 ?? '—'), String(h.max ?? '—')])}
+                  />
+                )}
+                {replay.errors.length > 0 && (
+                  <div className="max-h-40 overflow-auto rounded-md border border-red-500/20 bg-red-500/5 p-2 font-mono text-[11px] text-red-300">
+                    {replay.errors.map((e) => (
+                      <div key={e.seq}>#{e.seq} {e.ts.slice(11, 19)} [{e.source}] {e.message}</div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="diff" className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <label className="flex items-center gap-1">
+                A (investigate)
+                <select className="rounded border bg-background px-1.5 py-1" value={diffA} onChange={(e) => setDiffA(e.target.value)}>
+                  <option value="">—</option>
+                  {sessions.map((s) => <option key={s.id} value={s.id}>{s.id}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-1">
+                B (baseline)
+                <select className="rounded border bg-background px-1.5 py-1" value={diffB} onChange={(e) => setDiffB(e.target.value)}>
+                  <option value="">—</option>
+                  {sessions.map((s) => <option key={s.id} value={s.id}>{s.id}</option>)}
+                </select>
+              </label>
+              <Button size="sm" onClick={runDiff} disabled={!diffA || !diffB || diffA === diffB || busy}>Diff</Button>
+            </div>
+            {diff && (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  {diff.summary.onlyInA} only in A · {diff.summary.onlyInB} only in B · {diff.summary.drift} drifted
+                </p>
+                {diff.earliestDivergence && (
+                  <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs">
+                    <span className="font-medium text-amber-400">Least-divergent suspect:</span>{' '}
+                    <code className="font-mono">{diff.earliestDivergence.signature}</code>{' '}
+                    <span className="text-muted-foreground">(first at seq {diff.earliestDivergence.firstSeq} in A)</span>
+                  </div>
+                )}
+                {diff.onlyInA.length > 0 && (
+                  <Tableish header={['only in A', 'count', 'first seq']} mono
+                    rows={diff.onlyInA.map((r) => [r.signature, String(r.count), String(r.firstSeq)])} />
+                )}
+                {diff.drift.length > 0 && (
+                  <Tableish header={['drifted', 'A', 'B', 'Δcount', 'p50A', 'p50B', '×dur']} mono
+                    rows={diff.drift.map((r) => [r.signature, String(r.countA), String(r.countB), String(r.countDelta), String(r.p50A ?? '—'), String(r.p50B ?? '—'), String(r.durationRatio ?? '—')])} />
+                )}
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Stat({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+  return (
+    <div className={`rounded-md border p-2 ${highlight ? 'border-red-500/30 bg-red-500/5' : ''}`}>
+      <div className={`font-mono text-lg ${highlight ? 'text-red-400' : ''}`}>{value}</div>
+      <div className="text-[10px] uppercase text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function Tableish({ header, rows, mono }: { header: string[]; rows: string[][]; mono?: boolean }) {
+  return (
+    <div className="max-h-44 overflow-auto rounded-md border">
+      <table className="w-full text-[11px]">
+        <thead className="sticky top-0 bg-muted/50 text-muted-foreground">
+          <tr>{header.map((h) => <th key={h} className="p-1.5 text-left font-medium">{h}</th>)}</tr>
+        </thead>
+        <tbody className={mono ? 'font-mono' : ''}>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-t">
+              {r.map((c, j) => <td key={j} className={`p-1.5 ${j > 0 ? 'text-right' : ''}`}>{c}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+```
+
+Mount with one line in `page.tsx` (the single Track-A touchpoint):
+
+```tsx
+import { DebuggerPanel } from '@/components/dashboard/debugger-panel';
+// …inside the dashboard grid:
+<DebuggerPanel />
+```
+
+---
+
+## 4. Wiring
+
+**`.env.example` — add:**
+
+```bash
+# Native debugger (:3098)
+DEBUGGER_URL=http://127.0.0.1:3098     # where the Next server sends evidence
+DEBUGGER_PORT=3098                     # port the service listens on
+DEBUGGER_STORE=                        # optional: override .sessions dir
+DEBUGGER_CORS=*                        # allowed origin for direct browser calls
+DEBUGGER_APP_ID=cc-web                 # source tag for app-emitted events
+DEBUGGER_HEARTBEAT=                    # "1" = ambient 60s metric heartbeat
+DAEMON_URL=                            # optional: red-daemon endpoint for session-close anchors
+```
+
+**Root `package.json` — add scripts:**
+
+```json
+{
+  "scripts": {
+    "debugger": "npm run dev --prefix mini-services/debugger",
+    "dev:all": "concurrently -n web,daemon,debugger -c blue,red,magenta \"npm run dev\" \"npm run dev --prefix mini-services/red-daemon\" \"npm run dev --prefix mini-services/debugger\""
+  },
+  "devDependencies": { "concurrently": "^9" }
+}
+```
+
+**Optional red-daemon bridge** (one-way evidence, I5-compliant — add inside its POST handler):
+
+```ts
+if (body.kind === 'debugger.session.closed') {
+  auditAppend({ type: 'debugger.anchor', sessionId: body.sessionId, merkleRoot: body.merkleRoot, eventCount: body.eventCount });
+}
+```
+
+**Deployment note:** on Vercel the :3098 service doesn't run, so the proxy returns `503 debugger-unreachable` and the panel shows **offline** — which is the correct zero-trust behavior. Point `DEBUGGER_URL` at any always-on host (or run it in CI) to collect remotely. Locally, `npm run dev:all` runs everything.
+
+---
+
+## 5. Epistemic Test Checklist (prove the invariants, don't assume them)
+
+```bash
+# 1. Smoke test — chain, anchor, verify, replay
+S=$(curl -s -X POST localhost:3098/session/start -H 'content-type: application/json' \
+     -d '{"label":"smoke"}' | jq -r .sessionId)
+curl -s -X POST localhost:3098/session/$S/event -H 'content-type: application/json' \
+     -d '{"type":"http","source":"smoke","message":"GET /api/services → 200","data":{"status":200,"durationMs":12}}'
+curl -s -X POST localhost:3098/session/$S/close -H 'content-type: application/json' \
+     -d '{"reason":"smoke"}' | jq .merkleRoot
+curl -s localhost:3098/session/$S/verify | jq .ok          # → true
+curl -s localhost:3098/session/$S/replay | jq .replay.typeCounts
+
+# 2. Tamper test (I2) — edit a logged line, restart, verify
+sed -i 's/→ 200/→ 500/' mini-services/debugger/.sessions/$S.jsonl
+# restart the debugger service, then:
+curl -s localhost:3098/session/$S/verify | jq '.ok, .firstBroken.seq'   # → false, exact seq of the edit
+
+# 3. Determinism (I3) — replay twice, compare byte-for-byte
+diff <(curl -s localhost:3098/session/$S/replay) <(curl -s localhost:3098/session/$S/replay)   # → empty
+
+# 4. Correlation test (EIS) — five identical errors are ONE signature with count 5
+for i in 1 2 3 4 5; do
+  curl -s -X POST localhost:3098/ambient/events -H 'content-type: application/json' \
+    -d '{"events":[{"type":"error","level":"error","source":"sensor-'"$i"'","message":"pump pressure 4.2bar"}]}'
+done
+# diff the two ambient halves → 5 signatures if sources differ, count=5 if identical —
+# the differ never multiplies correlated observations into independent proof.
+```
+
+Test 2 is the important one: **the sed edit changes the message but not the hash — verification fails at exactly the tampered `seq`, and if the attacker recomputes that hash, it fails at `seq + 1` on the broken `prevHash` linkage.** Chain of custody, mechanically enforced.
+
+---
+
+## 6. Deliberately Deferred (v2 candidates)
+
+| Deferred | Why / path |
+|---|---|
+| SSE in the panel | Polling is Vercel-safe; the service already serves `/stream` for local use |
+| On-chain/anchored roots | `merkleRoot` is already exportable at close — feed it into the existing Ed25519/anchor path (`proofbridge/anchor`) when the translation lands |
+| Trace-graph visualization (L6) | The edges (`traceId`/`spanId`/`parentSpanId`) are already captured; rendering is a UI task |
+| Ambient → SLA correlation | Needs the red-daemon bridge protocol formalized; the `notifyDaemon` hook is the seam |
+| Time-travel debugging (record → replay against instrumented handlers) | Requires deterministic handler replay; the WORM chain is the prerequisite and is done |
+
+---
+
+### Summary of the parallel structure
+
+Track A builds the **dashboard** — the system observing the fleet. Track B builds the **debugger** — the system observing the system. Both run on the same epistemology the analysis laid out: evidence in, hashes chained, replay pure, judgement holistic, observation causally closed. The debugger's `merkleRoot` per session is exactly the ProofBridge-Liner "anchor" concept, and its diff is exactly `selfRepair`'s least-divergent logic — so when the main translation workstream lands, the debugger is already speaking its language.

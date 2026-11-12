@@ -1,0 +1,97 @@
+{
+  "title": "VVU Runtime Health",
+  "schemaVersion": 38,
+  "version": 1,
+  "uid": "vvu-runtime-health",
+  "tags": ["vvu", "runtime", "sre"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Epistemic Health %",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "refId": "A", "expr": "epistemic_health_pct", "legendFormat": "health" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [] } }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false } }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Active shards",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "refId": "A", "expr": "shard_count{state=\"active\"}", "legendFormat": "shards" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false } }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Merge rate (5m)",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "refId": "A", "expr": "rate(merges_total[5m])", "legendFormat": "merges/s" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "drawStyle": "line", "lineInterpolation": "linear" } }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } }
+    },
+    {
+      "id": 4,
+      "type": "gauge",
+      "title": "Invariant violations",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "refId": "A", "expr": "invariant_violations_total", "legendFormat": "violations" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 1 },
+            { "color": "red", "value": 10 }
+          ] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "values": false } }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Top violating policies",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "refId": "A", "expr": "topk(10, sort_desc(sum by (policy) (policy_violations_total)))", "format": "table", "instant": true }
+      ],
+      "options": { "showHeader": true }
+    },
+    {
+      "id": 6,
+      "type": "text",
+      "title": "VVU EARTH TECH — Runtime SRE view",
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 4 },
+      "targets": [],
+      "options": {
+        "content": "# VVU EARTH TECH — Runtime SRE view\n\nThis dashboard surfaces live **invariant-enforcement** telemetry for the Epistemic Runtime control plane.\n\n- **Epistemic Health %** — share of shards passing all invariants\n- **Active shards** — nodes currently participating in the DAG/CRDT\n- **Merge rate** — self-repairing merge throughput\n- **Invariant violations** — total open violations across policies\n- **Top violating policies** — ranked breakdown for triage\n\nEscalation: `#vvu-runtime-sre` · Runbook: `docs/sre/runtime-health.md`",
+        "mode": "markdown"
+      }
+    }
+  ]
+}

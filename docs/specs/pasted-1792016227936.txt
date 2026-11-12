@@ -1,0 +1,866 @@
+# VVU MASTER MINDMAP
+
+**Constructed from everything in this thread. Every claim sourced. Every gap marked.**
+
+**Legend:** ✅ evidenced · 🟡 specified · 🔴 missing · ⚪ unknown
+
+---
+
+## ROOT: VVU — Trusted-Decision Infrastructure
+
+**Entity:** Vaguely Vanity LLC (Pty) Ltd t/a Venture Vision Ubuntu
+**CIPC:** 2026/259053/07 · **SARS:** 9106703292
+**Address:** 14 Bird Street, Central, Gqeberha, 6001 ⚠️ *(conflicts with SARS: 76 Park Drive)*
+**Email:** divh@venturevisionubuntu.co.za ⚪ *(unconfirmed as working)*
+**B-BBEE:** Level 1, 135%
+**Contact:** Mihle Majokweni, Commercial & Compliance Orchestrator
+**Codename:** Skylantern · **Anchor:** E965B01D 🟡 *(stale — head has moved)*
+
+---
+
+## BRANCH 1 — THE PRIMITIVE ✅
+
+```
+DEVICE → SIGNED EVENT → WORM CHAIN → VERIFICATION → ECONOMIC EVIDENCE
+```
+
+**Four layers:**
+
+| Layer | Function | Status |
+|---|---|---|
+| Device | Sensor produces observation | ✅ |
+| Chain | Hash-linked, signed, append-only | ✅ |
+| Verification | Recompute from genesis, name break row | ✅ |
+| Interface | Dashboard, SDK, API | 🟡 |
+
+**The Oracle Boundary:** chain proves record wasn't altered. Does not prove reading was true. ✅
+
+---
+
+## BRANCH 2 — FIVE ENVIRONMENTS 🟡
+
+```
+       ┌─────────────────────────────────────┐
+       │      SHARED OPERATING CONTRACT       │
+       │  Identify → Context → Inputs →       │
+       │  Operate → Inspect → Preserve → Export│
+       └─────────────────────────────────────┘
+                        │
+    ┌────────┬──────────┼──────────┬────────┐
+    │        │          │          │        │
+  FORGE    BENCH      FIRE       FIELD    PRESS
+```
+
+### FORGE — Create 🟡
+**Purpose:** learning, modelling, drafting, experimenting
+**Existing surfaces:**
+- ✅ `Plugin-Creator-Studio.html`
+- 🟡 `VVU · STUDI — Paranoia-First Learning Studio.html`
+- 🟡 `spreadsheet.html`
+- ✅ **`ProofBridge Validation Dashboard v0.1.0`** (from screenshot: seed input, run harness, load JSON, demo data)
+**Missing:** unified artefact identity · proposed-claim type · export path naming Forge artefacts
+
+### BENCH — Verify ✅ **STRONGEST**
+**Purpose:** examine whether evidence supports a claim under a policy
+**Existing surfaces:**
+- ✅ `proofbridge.html`
+- ✅ `SEARM1 · Evidence Pipeline (Live API).html`
+- ✅ Mini-service `:3004 vault-bridge`
+- ✅ WORM chain (9-case tamper matrix passed)
+- ✅ Ed25519 signing (`LOG_1.json` verified)
+- ✅ Governance rules wired (N1–N9 pass)
+**Missing:** verification policy as a named concept · `PROVEN`/`INCONCLUSIVE`/`NOT PROVEN`/`BLOCKED` vocabulary · claim object separate from evidence · `IMPORTED`/`PARSED`/`INTEGRITY_VALID`/`VERIFIED`/`REJECTED` statuses
+
+### FIRE — Challenge 🔴 **MISSING**
+**Purpose:** adversarial testing, falsification
+**Existing evidence (but no environment):**
+- ✅ 9-case tamper matrix in `FINAL_GO_LIVE_EVIDENCE.md`
+- ✅ N1–N9 tests in `E2E_LOG1_EVIDENCE.md`
+- ✅ 12 QR adversarial tests in `TEMPLATE_QR_BRIDGE.md`
+- ⚪ `POST /api/validate` endpoint (referenced in screenshot, unexamined)
+**Must build:** threat model registry · expected-behaviour registry · test execution · counterexample preservation · continuous run
+**Priority:** #1 new build
+
+### FIELD — Observe ✅ **SECOND STRONGEST**
+**Purpose:** physical-world sensing, offline-first
+**Existing surfaces:**
+- ✅ `FIELD OS · CARD.html`
+- ✅ `Vvu-Field-Os-Pin.html`
+- ✅ Mini-service `:3005 vvu-field`
+- ✅ Offline queue · idempotent sync · signature capture · rejected[] list
+**Missing:** observation vocabulary formalised · observed-vs-inferred separation · five status states (`recorded` / `queued` / `transmitted` / `accepted` / `validated`)
+
+### PRESS — Communicate 🟡
+**Purpose:** publishing, editorial, preservation
+**Existing surfaces:**
+- 🟡 `MEDIA reader.html`
+- 🟡 `VVU COMMAND CENTER.html`
+**Missing:** claim extraction · receipt linkage · correction workflow · version preservation
+**Question:** is Press the software the magazine runs on, or a new environment?
+
+---
+
+## BRANCH 3 — DEPLOYMENTS ✅
+
+**One primitive. Multiple configurations. Not water-first.**
+
+| Deployment | Sensors | Buyer | Price | Status |
+|---|---|---|---|---|
+| **Water / HBK Mk-II** | Pressure, flow, acoustic | Municipality, water board | R99/km/mo · R999/unit | 🟡 Tier 2 |
+| **Phone / BYOD** | Motion, separation, SIM | Consumer, insurer | R25/mo | 🟡 Tier 2 |
+| **Vehicle** | CAN bus, phone proximity | Owner, insurer | R199/mo + R999 dongle | 🟡 Tier 2 |
+| **Fleet** | Multi-vehicle + gateway | Taxi, courier, car pool | R250/vehicle/mo | 🟡 Tier 2 |
+| **SDK** | Chain read API | Developer | R99/mo | 🟡 Tier 2 |
+
+**The rule:** R9–R9999 price band. Every tier. Every deployment.
+
+---
+
+## BRANCH 4 — WITNESS CIRCLE 🟡
+
+**The network effect that raises evidentiary weight without hardware.**
+
+| Ring | Who | Weight | Consent |
+|---|---|---|---|
+| Self | Own devices | 1.0 | Yours |
+| Trusted Circle | Friends, family | 0.6 | Mutual, revocable |
+| Open Network | Nearby opted-in devices | 0.3 | One-time, revocable |
+
+**The growth loop:** invite → weight rises → invite more → network grows
+
+**One-line pitch:** *"Add two friends to your Witness Circle and your theft records become court-grade."*
+
+---
+
+## BRANCH 5 — HARDWARE LADDER 🟡
+
+| Step | Hardware | Role | Price |
+|---|---|---|---|
+| 0 | User's phone | Sense + sign | Free with app |
+| 1 | ESP32-C3 beacon | Witness + anchor | R999 one-off |
+| 2 | Raspberry Pi gateway | Aggregate + sync | R4,999 + R499/mo |
+| 3 | OBD dongle | CAN bus reader | R999 + R199/mo |
+| 4 | Fleet | N vehicles + gateway | R999 gateway + per-vehicle |
+
+**Transport ladder:** Cellular → WiFi → Satellite (NTN) → Offline cache
+**Key insight:** transport does not affect attestation. Keypair is identity. VPN irrelevant.
+
+**Negative scope:** No VPN defeat · No radio bypass · No OS modification · No covert tracking · No remote engine disable
+
+---
+
+## BRANCH 6 — COMMERCIAL MODEL 🟡
+
+### Price Book (R9–R9999)
+
+**Water:** R99/km/mo · R999/unit · R999/site · R9,999/deposit
+**Phone:** R25/mo · R99/advance
+**Vehicle:** R199/mo · R999 dongle · R9,999 retainer
+**Fleet:** R250/vehicle/mo · R9,999 deposit
+**SDK:** R99/mo · R4,999 advance
+
+### Commercial Quest Framework 🟡
+**The single rule:** commercial viability = *will you pay this amount for this service against this evidence.* Nothing else counts.
+
+| Tier | Quest | Pass threshold |
+|---|---|---|
+| 1 | Who pays for what exists? | 3 of 10 at stated price |
+| 2 | Who funds the build? | 2 of 10 sign LOI |
+| 3 | Who funds the test? | 1 of 10 commits cash/access |
+| 4 | Who options the vision? | 1 of 10 pays for future |
+
+**Pre-registration required. Criteria locked before approach. Verbatim records. No post-hoc changes.**
+
+### Capacity Rationing 🟡
+
+| Cohort | Slots | FTE | Revenue/mo | Margin |
+|---|---|---|---|---|
+| A (launch) | 218 | 1 | R24,686 | Breakeven |
+| B (2 FTE) | 435 | 2 | R49,400 | Breakeven |
+| C (5 FTE) | ~1,450 | 5 | R148,000 | Profitable |
+
+**Bottleneck at every stage:** Water pilot (180 min/slot)
+
+---
+
+## BRANCH 7 — COMMERCIAL QUEST 🟡
+
+### Strategy Addendum: BYOD + Witness Circle
+
+**Zero-friction onboarding:** Install → Scan → Enroll → Live. Under 90 seconds.
+**Cryptographic identity:** Device keypair (Ed25519). Private key never leaves Secure Enclave/StrongBox.
+**Reverse-IP model:** User owns device. Skylantern issues identity. Neither can impersonate the other.
+
+---
+
+## BRANCH 8 — GOVERNANCE & COMPLIANCE
+
+### Regulatory ✅/🟡/🔴
+
+| Regulator | Status |
+|---|---|
+| **CIPC** | ✅ Registered 2026/259053/07 |
+| **SARS** | ✅ Entity ref 9106703292 · Personal ref 0567417282 |
+| **FIC Act** | 🟡 RMCP filed · Entity-wide risk assessment current · goAML registration in progress |
+| **POPIA** | 🟡 Information Officer registration in progress · Consent gate in code (G12) |
+| **FSCA** | 🔴 **NOT held. NOT claimed.** Any regulated financial services waits for authorisation |
+| **B-BBEE** | ✅ Level 1, 135% |
+| **Joint Standards 1 & 2** | ⚠️ Wrong portal — for authorised institutions only |
+
+### The Zero Fabrication Rule ✅
+**Nothing is presented as operational unless it is. Every claim carries a tier tag. Every tier advance requires a signed artifact.**
+
+### Voice Law 🟡
+Bans four legal-standing words. Uses instead: *measured · tested · checked against the spec · independent technical review.*
+
+### Commercial Rights Position 🟡
+- **VVU retains:** sole commercial control, pricing, customers, deployment decisions, IP
+- **Academic partners get:** 2.5% net HBK profit years 1–5 · 5% years 6–10 · renegotiated Year 10
+- **VVU funds Quad-Partite Alliance from Year 10** without further profit share
+
+---
+
+## BRANCH 9 — TIER ARCHITECTURE ✅
+
+| Tier | Meaning | Standard |
+|---|---|---|
+| 1 | Observed / established | Signed artifact, commit, test report |
+| 2 | Specified, awaiting implementation | Written spec, design record |
+| 3 | Hypothesis under test | Protocol exists, results pending |
+| 4 | Strategic vision | Stated as intent |
+
+**Rule that replaces all gates:** Nothing must pass for anything to move. Every claim carries a tier tag. Every failure logged, not deleted.
+
+---
+
+## BRANCH 10 — TIA PRESEED APPLICATION 🟡
+
+**Deadline:** 30 October 2026 · **Submit by:** 28 October
+
+**Budget (approved categories only):**
+
+| Category | Amount |
+|---|---|
+| Prototypes | R250,000 |
+| Testing | R280,000 |
+| IP Protection | R35,000 |
+| Market Analysis | R30,000 |
+| **Total ask** | **R595,000** |
+| Company co-funding | R302,000 |
+
+**Five blockers:**
+1. 🔴 Entity name consistency — CIPC check
+2. 🔴 Eight quotations / basis-of-estimates
+3. 🔴 Entity attachments (CIPC cert, B-BBEE, tax clearance, bank letter)
+4. 🟡 Filled application form
+5. 🟡 TRL statement + technical annex
+
+---
+
+## BRANCH 11 — ALLIANCE & OUTREACH 🟡
+
+### Quad-Partite Alliance
+```
+        VVU (orchestrator)
+           /    |    \
+         NMU  Wits  UCT
+```
+
+**Academic anchors:**
+- ✅ **Prof. Giovanni Poggi** (NMU) — provisional support confirmed via WhatsApp, 13 Oct 19:14
+- 🟡 **Mr. Jonathan Van der Walt** (NMU) — Facility Anchor, proposed
+- 🟡 **Prof. John Ndiritu** (Wits) — Bayesian review
+- 🟡 **Dr. Siphesihle Khumalo** (Wits) — field prototype
+- 🟡 **Dr. Jakobus van Zyl** (UCT) — EPANET
+- 🟡 **Teboho Mofokeng** (UCT) — Future Water Institute
+
+### Sponsor Matrix 🟡
+| Sponsor | Ask | Priority |
+|---|---|---|
+| SPAR Eastern Cape | R1,000 × 5 mo vouchers | #1 |
+| Shoprite | R1,000 × 5 mo vouchers | #1 |
+| Jonsson | PPE | #2 |
+| BUCO | Refurbishment materials | #2 |
+| Game/Makro | Storage | #2 |
+| Vodacom/MTN/Rain | SIM cards | #2 |
+| Kazin | Tools | #2 |
+
+**Pledge (locked):** Preferred Vendor status. **Never "exclusive."** Never tied to sponsorship amount.
+
+---
+
+## BRANCH 12 — WORKSPACE & OPERATIONS 🟡
+
+### Physical Spaces
+- **Fixed workshop** — needed for measurement
+- **Container workshop** — needed for mobility. Insulated, ventilated, AC.
+- **NMU Music Building Garage** — proposed at Bird Street, 1 Nov 2026 – 15 Mar 2027
+
+### Four-Phase Research Programme 🟡
+| Phase | Period | Focus |
+|---|---|---|
+| Phase 0 | Late Oct 2026 | Setup |
+| Phase 1 | Nov 1 – Dec 10 | Build |
+| Phase 2 | Dec 11 – Jan 10 | Full operation |
+| Phase 3 | Jan 11 – Mar 15 | Wind-down |
+
+---
+
+## BRANCH 13 — COMPOUNDING ESTATE 🟡
+
+### Local-first rebuild objective
+- Build everything locally
+- Reproducible + recoverable, not just "clone and run dev"
+- Live deployment stays intact during reconstruction
+
+### Workspace target (`VVU-Masterpiece/`) 🟡
+```
+00_GOVERNANCE/   01_PROVENANCE/   02_APPS/     03_SERVICES/
+04_CONTRACTS/    05_DATA/         06_PIPELINES/ 07_ENGINEERING/
+08_EVIDENCE/     09_DOCS/         10_TESTS/     11_RELEASE/
+99_QUARANTINE/
+```
+
+### Estate Truth Register 🟡
+**Key split:** *intent* / *implements* / *demonstrated* — three separate columns.
+
+---
+
+## BRANCH 14 — CRITICAL GAPS 🔴
+
+| # | Gap | Impact | Owner |
+|---|---|---|---|
+| 1 | **Fire environment** | No continuous adversarial testing | Build |
+| 2 | **Repo state unverified** | 404 on GitHub URL · can't verify claims | Operator |
+| 3 | **Entity name inconsistency** | Rejection risk on grant applications | Operator |
+| 4 | **Address conflict** | 14 Bird St vs 76 Park Dr | Operator |
+| 5 | **External anchor stubbed** | Chain not externally verifiable | Operator |
+| 6 | **Real-phone bridge untested** | Engineering go-live blocked | Operator |
+| 7 | **FSCA not held** | Cannot do regulated financial services | Counsel |
+| 8 | **No signed customer** | Pre-revenue | Commercial |
+| 9 | **No quotations** | TIA budget incomplete | Operator |
+| 10 | **WRC cycle date unverified** | Funding path uncertain | Operator |
+
+---
+
+## BRANCH 15 — EVIDENCED (Tier 1) ✅
+
+**These are the load-bearing artifacts. Everything else rests on them.**
+
+| Evidence | What it proves |
+|---|---|
+| `FINAL_GO_LIVE_EVIDENCE.md` | 3 surfaces matched · 125+97 receipts · 9-case matrix passed · BLOCKED verdict |
+| `E2E_LOG1_EVIDENCE.md` | 7 governance rules wired · N1–N9 adversarial passed · 4 DH queued · chain valid |
+| `LOG_1.json` | Ed25519 signed · JCS canonical · Merkle inclusion verified |
+| `redesigned-no123` (unfetched) | ⚪ Referenced as live, unverified |
+
+**The chain exists. It works. It detects tampering. Everything else is configuration.**
+
+---
+
+## THE ONE-LINE SUMMARY
+
+**VVU is a device-to-evidence primitive — five environments (Forge, Bench, Fire, Field, Press) that can each work independently — deployed across many assets (water, phone, vehicle, fleet, SDK) — priced inside a fixed band — sold to whoever will pay for what it proves — made honest by a chain that cannot be silently altered and a discipline that refuses to claim more than the evidence supports.**
+
+**Fire is missing. The repo is unverified. Everything else is in place.**
+
+---
+
+**Constructed from the full thread. Sources: this conversation only. Nothing inferred from the 404'd repo. Where a claim is unverified, it is marked ⚪.**
+# THE FIVE ENVIRONMENTS — MASTER BLUEPRINT
+
+**Ref:** VVU-ENV-BLUEPRINT-2026-001
+**Date:** 15 October 2026
+**Status:** Tier 2 — Design complete. Fire is the only environment requiring a full build.
+
+---
+
+## PART 0 — THE GOVERNING RULE
+
+> **Every environment must be capable of completing its own job independently. It may exchange work with other environments, but it must never require another environment to be available to perform its primary function.**
+
+Everything below is a consequence of that rule.
+
+---
+
+# PART 1 — THE WHOLE
+
+## 1.1 The shared foundation
+
+Five things are common to all environments. Nothing else.
+
+| Shared | What it is | Why it is shared |
+|---|---|---|
+| **Artefact envelope** | The wrapper every environment uses at its boundary | So any environment can parse any other's output |
+| **Status vocabulary** | A fixed set of state names | So status means the same thing everywhere |
+| **Identity** | `environment_id` · `instance_id` · `operator_id` | So the origin of any artefact is unambiguous |
+| **Cryptographic primitives** | SHA-256 digest · Ed25519 signature | So integrity is verifiable across boundaries |
+| **Chain client** | A library that writes to and reads from the WORM ledger | So Bench records are consistent |
+
+**Not shared:**
+
+- Business logic
+- Data stores
+- UI
+- Services
+- Deployment configs
+- Schedules
+
+The shared foundation makes cooperation possible. It does not make any environment depend on another.
+
+---
+
+## 1.2 The artefact envelope
+
+Every artefact that crosses an environment boundary carries this envelope. The content inside varies by type. The envelope does not.
+
+```
+envelope:
+  envelope_version:      string       "1.0"
+  artefact_id:           uuid
+  artefact_type:         enum         see §1.3
+  produced_by:
+    environment:         enum         forge | bench | fire | field | press
+    instance_id:         string
+    operator_id:         string
+    software_version:    semver
+  produced_at:           ISO 8601 UTC
+  content:               object       type-specific
+  provenance:
+    inputs:              list<artefact_id>
+    policy:              string       optional
+    configuration:       string       optional
+  integrity:
+    digest:              string       sha256:...
+    signature:           string       ed25519:...   optional
+    chain_ref:           string       optional
+  status:                enum         see §1.4
+  limitations:           list<string>
+```
+
+**Rules for the envelope:**
+
+- `artefact_id` is stable. Never reassigned. Never reused.
+- `produced_by.environment` is one of five values. Never combined.
+- `provenance.inputs` is a list of upstream `artefact_id`s. Empty is valid.
+- `integrity.digest` is always present. Signature and chain_ref are optional.
+- `status` at export time describes the producing environment's assessment.
+- `limitations` is a list of strings. Empty is valid.
+
+**Nothing about the envelope implies the content is verified.** The envelope is a wrapper, not a claim.
+
+---
+
+## 1.3 The artefact types
+
+Seven types. Fixed list.
+
+| Type | Produced by | What it is |
+|---|---|---|
+| `claim` | Forge | A proposition not yet checked |
+| `model` | Forge | A computational artifact (code, parameters, logic) |
+| `learning_submission` | Forge | A completed educational exercise |
+| `experimental_record` | Forge | Structured record of a self-run experiment |
+| `observation` | Field | A measured value with provenance |
+| `verification_receipt` | Bench | The result of checking a claim against a policy |
+| `test_report` | Fire | The result of running a defined test case |
+| `counterexample` | Fire | The smallest reproduction of a discovered failure |
+| `publication` | Press | Editorial material intended for an audience |
+
+Each type has its own content schema. All share the envelope.
+
+---
+
+## 1.4 The status vocabulary
+
+Shared across all environments. Same words, same meaning, everywhere.
+
+| Status | Meaning |
+|---|---|
+| `DRAFT` | Created locally. Not yet exported. |
+| `IMPORTED` | Received by a receiving environment. Structure not yet checked. |
+| `PARSED` | Structure understood. Content not yet validated. |
+| `INTEGRITY_VALID` | Digest matches. Signature valid if present. |
+| `VERIFIED` | Applicable verification policy satisfied. |
+| `REJECTED` | Refused for a stated reason. |
+| `INCONCLUSIVE` | Checked but the evidence does not establish the result. |
+| `NOT_PROVEN` | Mandatory conditions not satisfied. |
+| `BLOCKED` | A required operation could not proceed. |
+| `EXPIRED` | Time-bounded validity has passed. |
+| `SUPERSEDED` | A newer artefact replaces this one's authority. |
+| `WITHDRAWN` | Producer has retracted it. |
+
+**Rules:**
+
+- `VERIFIED` is the strongest status. It requires a policy check.
+- `NOT_PROVEN` does not mean false. It means not established.
+- `REJECTED` and `NOT_PROVEN` are different. Rejection is a processing failure. Not-proven is a substantive finding.
+- Status is never silently upgraded. A `PARSED` artefact becomes `INTEGRITY_VALID` only by running the integrity check.
+
+---
+
+## 1.5 Version negotiation
+
+Every envelope declares `envelope_version`. Every receiving environment declares a set of supported versions.
+
+**On receive:**
+
+1. Parse `envelope_version` from the incoming artefact.
+2. If it is in the receiver's supported set: accept and continue.
+3. If it is not: reject with `REJECTED_VERSION_UNSUPPORTED`, stating the version received and the versions supported.
+4. If it is a **newer minor version within the same major**: accept with `status: IMPORTED` and note the version mismatch in `limitations`.
+5. If it is a **newer major version**: reject. Do not guess.
+
+**Rule:** an environment never silently upgrades the trust status of an imported artefact because of a version match.
+
+---
+
+## 1.6 Failure semantics — the four questions
+
+Every environment must answer all four, in writing, in its own specification.
+
+| Question | Required answer |
+|---|---|
+| **What can it do without a network connection?** | The primary function must succeed offline. |
+| **What happens when a shared service is unavailable?** | The environment must distinguish "unavailable dependency" from "negative result." |
+| **How does it recover?** | Unfinished work is preserved. Interrupted operations are recorded. Resume is safe. |
+| **How can the work move elsewhere?** | An export path exists that does not require another environment to be online. |
+
+Failure to answer any of the four disqualifies the environment from being counted as independent.
+
+---
+
+## 1.7 How work travels
+
+Five routes are possible. None is mandatory.
+
+```
+Forge ──claim──▶ Fire ──report──▶ Bench ──receipt──▶ Press
+  │                 │                │                 │
+  │                 │                │                 │
+  └─model───────────┘                │                 │
+                                     │                 │
+Field ──observation─────────────────┘                 │
+                                                       │
+Press ◀────────────────── publication ─────────────────┘
+```
+
+| Route | From | To | What travels |
+|---|---|---|---|
+| A | Field | Bench | Observation for verification against a claim |
+| B | Field | Fire | Dataset for adversarial testing of a detector |
+| C | Forge | Fire | Model or claim for challenge |
+| D | Bench | Press | Receipt for publication with accurate scope |
+| E | Press | Outside world | Publication package with references |
+
+**Rule:** any route can be cut. The originating environment continues to function.
+
+---
+
+# PART 2 — INDIVIDUAL BLUEPRINTS
+
+Each environment is specified by seven elements: purpose, components, produces, consumes, API surface, failure modes, status.
+
+---
+
+## 2.1 FORGE — Create
+
+**Purpose.** Where work originates. Learning, modelling, drafting, experimenting, scaffolding, running harnesses.
+
+**Components.**
+
+| Component | Role | Status |
+|---|---|---|
+| `Plugin-Creator-Studio.html` | Scaffolding and templating | ✅ exists |
+| `VVU · STUDI.html` | Learning modules, mastery tracking | 🟡 exists |
+| `spreadsheet.html` | Tabular work, parameter grids | 🟡 exists |
+| `ProofBridge Validation Dashboard v0.1.0` | Runs harness, displays validation output | ✅ exists (screenshot 14 Oct) |
+
+**Produces.**
+
+- `claim`
+- `model`
+- `learning_submission`
+- `experimental_record`
+- `validation_payload` (harness output)
+
+**Consumes.**
+
+- `test_report` from Fire (for remediation)
+- `verification_receipt` from Bench (for reference in a draft)
+
+**API surface.**
+
+- `POST /api/validate` — invokes the harness, returns validation payload
+- Local storage for drafts and versions
+
+**Failure modes.**
+
+| Condition | Behaviour |
+|---|---|
+| Offline | Continue working. Save locally. |
+| Harness endpoint unavailable | Mark the run as `BLOCKED`, preserve the seed and configuration |
+| Save failure | Preserve in-memory, warn the operator, allow retry |
+| Export missing | Refuse to export, state what is missing |
+
+**What Forge owns:** drafts, versions, work-in-progress state, harness invocation records.
+**What Forge does not own:** verification results, published material, physical observations.
+
+**Status:** partly built. Needs unification of the four components under one envelope.
+
+---
+
+## 2.2 BENCH — Verify
+
+**Purpose.** Examine whether specified evidence supports a specified claim under a defined verification policy.
+
+**Components.**
+
+| Component | Role | Status |
+|---|---|---|
+| `proofbridge.html` | Evidence intake, receipt display | ✅ exists |
+| `SEARM1 · Evidence Pipeline.html` | Staged pipeline view | ✅ exists |
+| `:3004 vault-bridge` | WORM bridge service | ✅ evidenced |
+
+**Produces.**
+
+- `verification_receipt` — contains claim, policy, evidence refs, checks, outcomes, overall result, limitations, integrity
+
+**Consumes.**
+
+- `claim`, `observation`, `model`, `test_report`, any artefact to be checked
+
+**API surface.**
+
+- `POST /api/bridge/take` — submit an artefact for verification
+- `GET /api/bridge/governance` — read governance state
+- `GET /api/bridge/chain` — read chain head and receipts
+- `POST /api/bridge/revoke` — revoke a credential
+
+**Failure modes.**
+
+| Condition | Behaviour |
+|---|---|
+| Chain integrity failure | Refuse to serve. Name the break row. |
+| Missing evidence | Return `INCONCLUSIVE`, state what is missing |
+| Policy version unsupported | Return `REJECTED_VERSION_UNSUPPORTED` |
+| Adversarial input (unsigned, unregistered, replayed) | Return `REJECTED` with reason code |
+
+**What Bench owns:** the verification policy registry, the receipt chain, the governance ledger.
+**What Bench does not own:** the artefacts it examines, the physical world, the publication.
+
+**Status:** ✅ strongest environment. Evidenced. Needs vocabulary formalisation only.
+
+---
+
+## 2.3 FIRE — Challenge
+
+**Purpose.** Expose weaknesses. Test whether a system, claim, model, rule, or pipeline behaves correctly under challenging conditions.
+
+**Components.** None today.
+
+**Must build:**
+
+| Component | Function |
+|---|---|
+| Threat model registry | Operator defines what could go wrong |
+| Expected-behaviour registry | Success criteria defined before test execution |
+| Test execution engine | Runs selected test cases |
+| Counterexample preserver | Smallest reproduction of any discovered failure |
+| Report generator | Records target, scope, cases, outcomes, limitations |
+| Regression scheduler | Re-runs prior tests against new builds |
+
+**Produces.**
+
+- `test_report`
+- `counterexample`
+
+**Consumes.**
+
+- `claim`, `model`, `verification_receipt`, `observation`, any artefact to be tested
+- External systems under authorised scope
+
+**API surface.** To be designed. Minimum:
+
+- `POST /api/fire/test` — submit a target for testing
+- `GET /api/fire/reports` — list prior reports
+- `GET /api/fire/counterexamples` — list preserved failures
+- `POST /api/fire/regression` — re-run against a new version
+
+**Failure modes.**
+
+| Condition | Behaviour |
+|---|---|
+| Test cannot execute | Record with reason. Do not mark pass or fail. |
+| Target unavailable | Record `BLOCKED`. Preserve the intent. |
+| Expected-behaviour undefined | Refuse to run. State the missing definition. |
+| No counterexample found | Report "tested, no failure observed under stated conditions" — never "the system is safe." |
+
+**What Fire owns:** test cases, threat models, expected-behaviour definitions, counterexample archive, regression history.
+**What Fire does not own:** the target system, the verification policy, the publication.
+
+**Status:** 🔴 **MISSING.** First build priority.
+
+**Assets that already exist for Fire to consume:**
+
+- 9-case tamper matrix (`FINAL_GO_LIVE_EVIDENCE.md`)
+- N1–N9 adversarial tests (`E2E_LOG1_EVIDENCE.md`)
+- 12 QR bridge adversarial tests (`TEMPLATE_QR_BRIDGE.md`)
+- `POST /api/validate` endpoint (harness invocation from the Validation Dashboard)
+
+---
+
+## 2.4 FIELD — Observe
+
+**Purpose.** Physical-world sensing. Water, agriculture, industrial, mobile. Must work offline.
+
+**Components.**
+
+| Component | Role | Status |
+|---|---|---|
+| `FIELD OS · CARD.html` | Capture, queue, signature | ✅ exists |
+| `Vvu-Field-Os-Pin.html` | Compact widget view | ✅ exists |
+| `:3005 vvu-field` | Field sync service | ✅ evidenced |
+
+**Produces.**
+
+- `observation` — value, unit, sensor ID, measurement time, receipt time, calibration state, configuration version, integrity metadata
+
+**Consumes.** None. Field does not need any other environment to function.
+
+**API surface.**
+
+- `POST /api/field/sync` — batch upload of queued observations
+- `GET /api/field/status` — device health, queue depth, last sync
+- Method on capture: `SIGNATURE` (per card's code)
+
+**Failure modes.**
+
+| Condition | Behaviour |
+|---|---|
+| Offline | Continue collecting. Queue locally. |
+| Power loss | Preserve queue in durable storage. |
+| Storage full | Refuse new captures. Alert. Preserve existing. |
+| Sensor fault | Record observation with `sensor_state: FAULT`. Do not silently drop. |
+| Calibration expired | Record observation with `calibration_state: EXPIRED`. |
+| Sync failure | Preserve queue. Record failure. Retry with idempotency. |
+| Duplicate submission | Return duplicate marker. Drop on device. |
+
+**What Field owns:** the observation record, the local queue, the device identity, the calibration state.
+**What Field does not own:** the interpretation of observations, the verification policy, the publication.
+
+**Status:** ✅ second strongest. Needs the observation vocabulary formalised and the five status states made explicit.
+
+---
+
+## 2.5 PRESS — Communicate
+
+**Purpose.** Publish. Editorial, technical, public-facing material.
+
+**Components.**
+
+| Component | Role | Status |
+|---|---|---|
+| `MEDIA reader.html` | Asset viewer, metadata | 🟡 exists |
+| `VVU COMMAND CENTER.html` | Dashboard, distribution view | 🟡 exists |
+
+**Must add:**
+
+| Component | Function |
+|---|---|
+| Claim extractor | Separate observations from interpretations from conclusions |
+| Receipt linker | Import a Bench receipt and represent its scope accurately |
+| Approval record | Who approved, which version, when |
+| Correction workflow | Original preserved, correction linked, both accessible |
+| Version preservation | Every published version recoverable |
+
+**Produces.**
+
+- `publication`
+
+**Consumes.**
+
+- Any artefact referenced in the publication
+- Especially `verification_receipt` (for accuracy of representation)
+
+**API surface.** To be designed. Minimum:
+
+- `POST /api/press/draft` — create a draft
+- `POST /api/press/approve` — approve for release
+- `POST /api/press/publish` — release
+- `POST /api/press/correct` — publish a correction
+- `GET /api/press/versions/{publication_id}` — version history
+
+**Failure modes.**
+
+| Condition | Behaviour |
+|---|---|
+| Receipt unavailable | Publish without the verification claim, or state that the receipt could not be retrieved |
+| Receipt inconclusive | Publish with the receipt's actual scope, never upgraded |
+| Source retracted after publication | Publish a correction. Preserve the original. |
+| Correction needed | Original preserved. Correction linked. Both remain accessible. |
+
+**What Press owns:** drafts, approved versions, published artefacts, correction history.
+**What Press does not own:** the truth of the claims it publishes, the verification status of referenced receipts.
+
+**Status:** 🟡 partly built. Needs the editorial workflow.
+
+---
+
+# PART 3 — BUILD ORDER
+
+The five environments have different states of readiness. This is the recommended sequence.
+
+| # | What | Why this order |
+|---|---|---|
+| **1** | Shared foundation spec | Envelope, statuses, version negotiation. Nothing else can be built consistently without it. |
+| **2** | **Fire** | Missing entirely. Blocks Route B and Route C. Smallest build of the five. Consumes existing assets. |
+| **3** | Forge unification | Four components under one envelope. Not a rebuild — a wrapper. |
+| **4** | Press editorial workflow | Claim extraction, receipt linkage, correction. Needed before any public claim is made. |
+| **5** | Field vocabulary formalisation | Observation schema, five statuses. Low effort, high clarity. |
+| **6** | Bench vocabulary formalisation | Rename only. Vocabulary already exists in the code. |
+
+**Rule:** do not build #3 through #6 before #1 and #2. The envelope and Fire are the load-bearing pieces.
+
+---
+
+# PART 4 — THE INTEROPERABILITY DEMONSTRATION
+
+The first end-to-end test that proves the architecture works:
+
+1. **Forge** creates a claim. Exports it.
+2. **Fire** imports the claim. Runs an adversarial test. Exports a `test_report`.
+3. **Bench** imports the claim and the test report. Evaluates the evidence against a policy. Exports a `verification_receipt`.
+4. **Press** imports the receipt. Prepares a publication that correctly represents its scope.
+5. **Field** independently records a related real-world observation. Exports it when connectivity permits.
+
+**The test passes if:**
+
+- Each environment completes its job without any other being online at the same time
+- Every artefact carries a valid envelope
+- Every status is accurate to what was actually done
+- No environment silently upgrades the trust status of an imported artefact
+
+**If any of those four fails, the architecture is declared and not verified.**
+
+---
+
+# PART 5 — THE OPERATIONAL STANDARD
+
+The governing statement for the entire estate:
+
+> **Every environment owns its purpose, operations, data handling, and outputs. It must be capable of completing its primary job without requiring another environment to be available. It may exchange artefacts with other environments through documented contracts, preserving their identity, provenance, integrity information, and limitations. Receiving an artefact does not make its claims true, and exchanging an artefact does not transfer authority over the receiving environment's decisions.**
+
+**Forge creates. Bench verifies. Fire challenges. Field observes. Press communicates.**
+
+Each can work independently. Each can export its results. Each can interpret compatible work produced elsewhere.
+
+The shared foundation makes cooperation possible. It does not make every environment dependent on a single operational sequence.
+
+---
+
+## What to do next
+
+**One document is missing from this blueprint:** the shared foundation specification (envelope schema, status vocabulary, version negotiation contract) as a formal artefact rather than a section within this one.
+
+Say the word and I produce it as a standalone spec that Fire, Forge, Field, Bench, and Press can each implement against.

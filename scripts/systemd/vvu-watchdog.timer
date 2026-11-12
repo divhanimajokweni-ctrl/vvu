@@ -1,0 +1,13 @@
+[Unit]
+Description=VVU Estate Runner Watchdog Timer
+Documentation=https://proton.me/support/lumo
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+AccuracySec=1min
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

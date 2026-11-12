@@ -1,0 +1,10 @@
+START HERE
+
+1. Unzip this package.
+2. Open examples/evidence-instrument/index.html in your browser.
+3. Read docs/INTEGRATION_PLAN.md.
+4. Keep vendor/anatomy/ as the unmodified upstream reference copy.
+5. Ask your coding agent to implement Stage 1 and Stage 2 only. Do not ask it to refactor your whole dashboard.
+
+Suggested first task to give a coding agent:
+"Read START_HERE.txt, docs/INTEGRATION_PLAN.md, docs/ACCEPTANCE_TESTS.md, and vendor/anatomy/README.md plus vendor/anatomy/SKILL.md. Implement only the typed visual-state contract and one Evidence Runtime figure in an isolated route. Keep the existing application shell and verification logic unchanged. Use authoritative state as read-only input; figure interactions must emit intent events only. Add tests for BLOCKED_MISSING_INPUT, INCONCLUSIVE, and PROVEN. Do not claim integration with real services until the API connection exists."

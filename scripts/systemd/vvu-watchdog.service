@@ -1,0 +1,25 @@
+[Unit]
+Description=VVU Estate Runner Watchdog Service
+Documentation=https://proton.me/support/lumo
+After=network.target
+Wants=vvu-watchdog.timer
+
+[Service]
+Type=oneshot
+User=runner
+WorkingDirectory=/home/runner/vvu-estate
+ExecStart=/bin/bash /home/runner/vvu/scripts/bootstrap_round.sh
+StandardOutput=journal
+StandardError=journal
+Environment="VVU_LOG=/home/runner/vvu/setup.log"
+Environment="VVU_KEY=/home/runner/.ssh/vvu_deploy_main"
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/runner/vvu
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

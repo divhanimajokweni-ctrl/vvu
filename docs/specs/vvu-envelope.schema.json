@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://venturevisionubuntu.co.za/spec/vvu-sf-2026-001/envelope.schema.json",
+  "title": "VVU Shared Foundation — Artefact Envelope",
+  "description": "VVU-SF-2026-001 v1.0. The wrapper every artefact carries across an environment boundary. The envelope asserts structure, origin, and integrity. It never asserts that the content is true or verified.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "envelope_version",
+    "artefact_id",
+    "artefact_type",
+    "produced_by",
+    "produced_at",
+    "content",
+    "provenance",
+    "integrity",
+    "status",
+    "limitations"
+  ],
+  "properties": {
+    "envelope_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "description": "Semver version of VVU-SF the producer conformed to."
+    },
+    "artefact_id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "RFC 9562 v4 UUID. Stable, never reassigned, never reused."
+    },
+    "artefact_type": {
+      "type": "string",
+      "enum": [
+        "claim",
+        "model",
+        "learning_submission",
+        "experimental_record",
+        "validation_payload",
+        "observation",
+        "verification_receipt",
+        "test_report",
+        "counterexample",
+        "publication",
+        "status_transition"
+      ],
+      "description": "One of the registered types. Closed list."
+    },
+    "produced_by": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment", "instance_id", "operator_id", "software_version"],
+      "properties": {
+        "environment": {
+          "type": "string",
+          "enum": ["forge", "bench", "fire", "field", "press"]
+        },
+        "instance_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Unique among concurrently live instances of this environment."
+        },
+        "operator_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Accountable human or service identity. Anonymous production is forbidden."
+        },
+        "software_version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+        }
+      }
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "description": "RFC 3339 UTC timestamp."
+    },
+    "content": {
+      "type": "object",
+      "description": "Type-specific payload. Required fields per type are defined in VVU-SF-2026-001 section 3.1."
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputs", "supersedes"],
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": { "type": "string", "format": "uuid" },
+          "description": "Upstream artefact_ids this one was derived from. MAY be empty."
+        },
+        "supersedes": {
+          "type": "array",
+          "items": { "type": "string", "format": "uuid" },
+          "description": "artefact_ids this one replaces. Declaring supersession MUST NOT modify the superseded artefact."
+        },
+        "policy": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Verification policy identifier. REQUIRED when artefact_type is verification_receipt."
+        },
+        "configuration": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Configuration or model identifier."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "artefact_type": { "const": "verification_receipt" } },
+            "required": ["artefact_type"]
+          },
+          "then": { "required": ["policy"] }
+        }
+      ]
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest"],
+      "properties": {
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "sha256: prefix plus 64 lowercase hex. SHA-256 over JCS of the envelope with the integrity key removed. MANDATORY."
+        },
+        "signature": {
+          "type": "string",
+          "pattern": "^ed25519:[A-Za-z0-9_-]{86}$",
+          "description": "ed25519: prefix plus base64url (no padding) of the Ed25519 signature over the 32 RAW digest bytes. OPTIONAL."
+        },
+        "chain_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pointer into the WORM ledger. A pointer, not a proof."
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "IMPORTED",
+        "PARSED",
+        "INTEGRITY_VALID",
+        "VERIFIED",
+        "INCONCLUSIVE",
+        "NOT_PROVEN",
+        "REJECTED",
+        "BLOCKED",
+        "EXPIRED",
+        "SUPERSEDED",
+        "WITHDRAWN"
+      ],
+      "description": "The producer's assessment at export. Immutable; transitions are recorded separately."
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Known limits. MAY be empty EXCEPT when status is INCONCLUSIVE, NOT_PROVEN, or BLOCKED, where it MUST be non-empty."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "enum": ["INCONCLUSIVE", "NOT_PROVEN", "BLOCKED"] } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": { "limitations": { "minItems": 1 } }
+      }
+    }
+  ]
+}

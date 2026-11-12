@@ -1,0 +1,32 @@
+{
+  "format": "vvu.anchor-bundle.v1",
+  "exportedAtUtc": "2026-09-24 04:43:28 UTC",
+  "streamId": "proximity.gqeberha.v1",
+  "algorithm": "VVU-WORM-v1",
+  "chain": {
+    "records": 8,
+    "headPosition": 8,
+    "headHash": "18eee0ed20d379526e1d86550f0156b128de4d110e8f73f3fec111861fe19bf0"
+  },
+  "anchors": [
+    {
+      "seq": 1,
+      "anchoredAtUtc": "2026-09-24 03:28:54 UTC",
+      "headPosition": 7,
+      "headHash": "c739ebf14429f83fd0aae19abb6837edd82186585bf2481911590821bde1171b",
+      "algorithm": "VVU-WORM-v1",
+      "streamId": "proximity.gqeberha.v1",
+      "note": "first pin — watchdog round"
+    },
+    {
+      "seq": 2,
+      "anchoredAtUtc": "2026-09-24 03:45:16 UTC",
+      "headPosition": 8,
+      "headHash": "18eee0ed20d379526e1d86550f0156b128de4d110e8f73f3fec111861fe19bf0",
+      "algorithm": "VVU-WORM-v1",
+      "streamId": "proximity.gqeberha.v1",
+      "note": "head advanced by a live scan — pin #2"
+    }
+  ],
+  "bundleHash": "0bc5cf74dba877a8b6b2e4d6194d9dede4c3d2c2f2e9d2d78c455aca60f6a3bf"
+}
