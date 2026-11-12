@@ -4,17 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>VVU — Venture Vision Ubuntu · Unified Console</title>
-<meta property="og:title" content="VVU — Venture Vision Ubuntu · Unified Console">
-<meta property="og:description" content="Provable Digital Twins. One world. One StateVector bus. One WORM chain.">
-<meta property="og:image" content="/img/og.jpg">
-<meta property="og:type" content="website">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="/img/x-banner.jpg">
-<link rel="apple-touch-icon" href="/img/og.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,400&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- SafeGrid Relay libraries (pinned) -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
 <style>
 /* ==========================================================================
    1. CONSOLE TOKENS
@@ -123,8 +120,6 @@ nav{
   box-shadow:0 0 20px -6px var(--accent); font-weight:700;
 }
 .nav-links button i{font-size:10px; opacity:.85}
-.nav-links a.nav-ext:hover{color:var(--fg); background:var(--bg-card)}
-.nav-links a.nav-ext i{font-size:10px; opacity:.85}
 
 .theme-toggle{display:inline-flex; background:var(--bg-elev); border:1px solid var(--border-strong);
   border-radius:999px; padding:3px; gap:2px}
@@ -1347,6 +1342,105 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
   .st-knobs{grid-template-columns:repeat(2,1fr)}
 }
 
+/* ==========================================================================
+   13. SAFEGRID RELAY · universal camera ingest (scoped .rl-* / .relay-scope)
+   ========================================================================== */
+.relay-scope,.rl-backdrop,.rl-sender{
+  --rl-bg:#0a0b0e; --rl-panel:#121419; --rl-border:#2a2e38;
+  --rl-text:#e2e8f0; --rl-muted:#64748b; --rl-live:#10b981;
+  --rl-accent:#f59e0b; --rl-accent-h:#d97706; --rl-danger:#ef4444;
+}
+.relay-scope{
+  font-family:var(--sans); color:var(--rl-text); background:var(--rl-bg);
+  height:calc(100dvh - var(--nav-h)); min-height:620px;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.relay-scope *,.rl-backdrop *,.rl-sender *{box-sizing:border-box}
+@keyframes rl-pulse{0%,100%{opacity:1} 50%{opacity:.4}}
+#module-relay{overflow:hidden}
+
+.rl-head{display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:0 18px; height:52px; background:var(--rl-panel); border-bottom:1px solid var(--rl-border); flex:0 0 auto}
+.rl-brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:14px; letter-spacing:1px}
+.rl-brand small{color:var(--rl-muted); font-size:11px; font-weight:400; letter-spacing:.06em}
+.rl-global{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--rl-muted); padding:4px 10px; border:1px solid var(--rl-border); border-radius:4px;
+  display:flex; align-items:center; gap:8px}
+.rl-global.live{color:var(--rl-live); border-color:rgba(16,185,129,.3); background:rgba(16,185,129,.08)}
+.rl-dot{width:8px; height:8px; border-radius:50%; background:var(--rl-muted); flex:0 0 auto}
+.rl-global.live .rl-dot{background:var(--rl-live); animation:rl-pulse 2s infinite}
+
+.rl-grid{flex:1 1 auto; min-height:0; padding:14px; display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:12px}
+.rl-feed{position:relative; overflow:hidden; border-radius:8px; border:1px solid var(--rl-border); background:#000;
+  background-image:repeating-linear-gradient(45deg,#111 25%,transparent 25%,transparent 75%,#111 75%,#111),
+    repeating-linear-gradient(45deg,#111 25%,#0a0b0e 25%,#0a0b0e 75%,#111 75%,#111);
+  background-position:0 0,10px 10px; background-size:20px 20px}
+.rl-feed video{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:1; display:none; background:#000}
+.rl-feed.active video{display:block}
+.rl-nosig{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  color:var(--rl-muted); font-family:var(--mono); font-size:11px; letter-spacing:.1em; z-index:0}
+.rl-feed.active .rl-nosig{display:none}
+.rl-overlay{position:absolute; inset:0; z-index:2; pointer-events:none; display:flex; flex-direction:column;
+  justify-content:space-between; padding:10px}
+.rl-top,.rl-bottom{display:flex; justify-content:space-between; align-items:flex-start; gap:8px}
+.rl-chan{background:rgba(0,0,0,.7); border-left:3px solid var(--rl-accent); padding:4px 8px;
+  font:600 12px var(--mono); letter-spacing:1px; color:#fff}
+.rl-live{display:flex; align-items:center; gap:6px; background:rgba(0,0,0,.7); padding:4px 8px; border-radius:4px;
+  font:700 10px var(--mono); color:var(--rl-muted)}
+.rl-feed.active .rl-live{color:var(--rl-live)}
+.rl-feed.active .rl-live .rl-dot{background:var(--rl-live)}
+.rl-bottom{font:11px var(--mono); color:#ddd; text-shadow:1px 1px 2px #000; align-items:flex-end}
+
+.rl-menu{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:3;
+  width:max-content; max-width:90%; display:flex; flex-direction:column; gap:8px; padding:14px;
+  background:rgba(10,11,14,.88); border:1px solid var(--rl-border); border-radius:8px; text-align:center}
+.rl-menu h4{font-size:11px; color:var(--rl-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:2px}
+.rl-feed.active .rl-menu{display:none}
+
+.rl-disc{position:absolute; top:44px; right:8px; z-index:4; display:none; background:rgba(0,0,0,.75);
+  color:#fca5a5; border:1px solid rgba(239,68,68,.4); padding:4px 8px; border-radius:4px;
+  font:600 9px var(--mono); letter-spacing:.08em; cursor:pointer}
+.rl-disc:hover{background:rgba(239,68,68,.2)}
+.rl-feed.active .rl-disc{display:block}
+
+.rl-btn{background:var(--rl-panel); color:var(--rl-text); border:1px solid var(--rl-border); padding:8px 12px;
+  border-radius:4px; cursor:pointer; font:600 12px var(--sans); transition:all .2s;
+  display:flex; align-items:center; justify-content:center; gap:8px; flex:1}
+.rl-btn:hover{background:#1a1d24; border-color:var(--rl-muted)}
+.rl-btn.primary{background:var(--rl-accent); color:#000; border-color:var(--rl-accent)}
+.rl-btn.primary:hover{background:var(--rl-accent-h)}
+
+.rl-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.8); display:none; align-items:center;
+  justify-content:center; z-index:200; backdrop-filter:blur(4px)}
+.rl-backdrop.open{display:flex}
+.rl-modal{background:var(--rl-panel); border:1px solid var(--rl-border); border-radius:12px; padding:24px;
+  width:90%; max-width:400px; text-align:center; font-family:var(--sans); color:var(--rl-text)}
+.rl-modal h3{margin-bottom:12px; font-size:16px}
+.rl-modal p{font-size:12px; color:var(--rl-muted); margin-bottom:12px; line-height:1.5}
+.rl-input{width:100%; padding:10px; margin-bottom:12px; background:var(--rl-bg); border:1px solid var(--rl-border);
+  color:#fff; border-radius:4px; font:12px var(--mono)}
+.rl-row{display:flex; gap:8px}
+.rl-qr{background:#fff; padding:14px; border-radius:8px; display:inline-block; margin-bottom:12px}
+.rl-status{font-size:11px; color:var(--rl-accent); margin-bottom:12px; min-height:14px}
+
+.rl-sender{position:fixed; inset:0; z-index:999; display:none; background:#000; align-items:center; justify-content:center}
+.rl-sender video{width:100%; height:100%; object-fit:cover}
+.rl-sender-msg{position:absolute; top:20px; left:20px; background:rgba(0,0,0,.7); color:#fff;
+  padding:10px 18px; border-radius:20px; font:12px var(--mono); transition:opacity .5s}
+
+@media (max-width:1200px){
+  .rl-grid{grid-template-columns:repeat(3,minmax(0,1fr)); grid-template-rows:none; grid-auto-rows:minmax(200px,1fr)}
+}
+@media (max-width:900px){
+  .rl-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:600px){
+  #module-relay{overflow:visible}
+  .relay-scope{height:auto; min-height:calc(100dvh - var(--nav-h)); overflow:visible}
+  .rl-grid{grid-template-columns:1fr; grid-auto-rows:220px}
+}
+
 </style>
 </head>
 <body data-module="home">
@@ -1367,11 +1461,7 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
     <button data-module-link="pools"><i class="fas fa-people-group"></i><span class="nav-label">Pools</span></button>
     <button data-module-link="proof"><i class="fas fa-link"></i><span class="nav-label">Bridge</span></button>
     <button data-module-link="studio"><i class="fas fa-music"></i><span class="nav-label">Studio</span></button>
-    <a href="/twin" class="nav-ext" style="font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;background:transparent;border:1px solid transparent;color:var(--fg-dim);padding:8px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none"><i class="fas fa-cube"></i><span class="nav-label">Twin</span></a>
-    <a href="/vehicles" class="nav-ext" style="font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;background:transparent;border:1px solid transparent;color:var(--fg-dim);padding:8px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none"><i class="fas fa-car"></i><span class="nav-label">Fleet</span></a>
-    <a href="/freecity" class="nav-ext" style="font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;background:transparent;border:1px solid transparent;color:var(--fg-dim);padding:8px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none"><i class="fas fa-gamepad"></i><span class="nav-label">Drive</span></a>
-    <a href="/data" class="nav-ext" style="font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;background:transparent;border:1px solid transparent;color:var(--fg-dim);padding:8px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none"><i class="fas fa-chart-line"></i><span class="nav-label">Data</span></a>
-    <a href="/evidence" class="nav-ext" style="font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;background:transparent;border:1px solid transparent;color:var(--fg-dim);padding:8px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none"><i class="fas fa-file-shield"></i><span class="nav-label">Evidence</span></a>
+    <button data-module-link="relay"><i class="fas fa-video"></i><span class="nav-label">Relay</span></button>
   </div>
   <div class="theme-toggle" role="group" aria-label="Theme selector">
     <button class="theme-btn active" data-theme="dark" title="Dark" aria-label="Dark theme"><i class="fas fa-moon"></i></button>
@@ -1433,24 +1523,6 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
       </svg>
       <span style="position:absolute; top:10%; right:-4%; font-size:40px; color:var(--accent); opacity:.25; font-family:var(--serif); font-style:italic;">∫</span>
       <span style="position:absolute; bottom:18%; left:-6%; font-size:34px; color:var(--accent-2); opacity:.25; font-family:var(--serif); font-style:italic;">π</span>
-    </div>
-  </section>
-
-  <!-- the proof strip — real screenshots of the estate in production -->
-  <section style="padding:0 40px 60px; max-width:1400px; margin:0 auto;">
-    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px;">
-      <div style="position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border);">
-        <img src="/img/industrial-twin-banner.jpg" alt="VVU Industrial Twin — Gqeberha Line" style="width:100%; display:block; aspect-ratio:16/10; object-fit:cover;">
-        <div style="position:absolute; bottom:0; left:0; right:0; padding:12px 16px; background:linear-gradient(transparent, rgba(0,0,0,.85)); font-family:var(--mono); font-size:10px; color:var(--accent); letter-spacing:.1em; text-transform:uppercase;">Industrial Twin · Gqeberha Line</div>
-      </div>
-      <div style="position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border);">
-        <img src="/img/scene-live.jpg" alt="VVU Scene Live — 12 Assets" style="width:100%; display:block; aspect-ratio:16/10; object-fit:cover;">
-        <div style="position:absolute; bottom:0; left:0; right:0; padding:12px 16px; background:linear-gradient(transparent, rgba(0,0,0,.85)); font-family:var(--mono); font-size:10px; color:var(--accent-3); letter-spacing:.1em; text-transform:uppercase;">Scene Live · 12 Assets · PBR · IBL</div>
-      </div>
-      <div style="position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border);">
-        <img src="/img/free-city-twin.jpg" alt="VVU Free City Twin — Gqeberha" style="width:100%; display:block; aspect-ratio:16/10; object-fit:cover;">
-        <div style="position:absolute; bottom:0; left:0; right:0; padding:12px 16px; background:linear-gradient(transparent, rgba(0,0,0,.85)); font-family:var(--mono); font-size:10px; color:var(--accent); letter-spacing:.1em; text-transform:uppercase;">Free City Twin · Gqeberha</div>
-      </div>
     </div>
   </section>
 
@@ -1620,15 +1692,11 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
         <a data-module-link="pools">Ubuntu Pools</a>
         <a data-module-link="proof">ProofBridge</a>
         <a data-module-link="studio">Fluid Studio</a>
+        <a data-module-link="relay">SafeGrid Relay</a>
       </div>
       <div class="footer-col">
         <h4>Ecosystem</h4>
-        <a href="/freecity">Free City (Drive)</a>
-        <a href="/twin">Digital Twin (3D Estate)</a>
-        <a href="/vehicles">Vehicle Fleet (GLBs)</a>
-        <a href="/evidence">Field Evidence (NMU)</a>
-        <a href="/live">Live Watchboard</a>
-        <a href="/field">Field Onboarding</a>
+        <a>Free City</a>
         <a>HostAfrica Affiliate</a>
         <a>Obsidian Export</a>
         <a>POPIA Compliance</a>
@@ -2630,6 +2698,47 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   </div>
 </div>
 
+<!-- ==========================================================================
+     MODULE · SAFEGRID RELAY (universal camera ingest · WebRTC + HLS)
+     ========================================================================== -->
+<div class="module" id="module-relay">
+  <div class="relay-scope">
+    <div class="rl-head">
+      <div class="rl-brand">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--rl-accent)" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+        SAFEGRID RELAY <small>// INGEST HUB</small>
+      </div>
+      <div class="rl-global" id="rl-global"><span class="rl-dot"></span><span id="rl-global-text">WAITING FOR FEEDS</span></div>
+    </div>
+    <div class="rl-grid" id="rl-grid"></div>
+  </div>
+
+  <!-- CCTV / HLS modal (moved to <body> at runtime so it sits above the nav) -->
+  <div class="rl-backdrop" id="rl-url-modal">
+    <div class="rl-modal">
+      <h3>Connect CCTV stream</h3>
+      <p>Paste an HLS (.m3u8) URL from your NVR or camera. Browsers can't play RTSP directly — convert it to HLS first.</p>
+      <input class="rl-input" id="rl-url-input" type="text" placeholder="https://nvr.local/stream.m3u8">
+      <div class="rl-row">
+        <button class="rl-btn" id="rl-url-cancel">Cancel</button>
+        <button class="rl-btn primary" id="rl-url-submit">Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remote QR modal -->
+  <div class="rl-backdrop" id="rl-qr-modal">
+    <div class="rl-modal">
+      <h3>Connect remote camera</h3>
+      <p>Scan this code with another phone to use its camera as a live feed.</p>
+      <div class="rl-qr" id="rl-qr"></div>
+      <div class="rl-status" id="rl-qr-status">—</div>
+      <button class="rl-btn" id="rl-qr-cancel" style="width:100%">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
 </main>
 
 <div class="toast" id="toast">
@@ -2676,30 +2785,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }catch(e){}
   setTheme(savedTheme, false);
 
-  /* ---- triple-tap gesture: cycle dark → light → cyber ---- */
-  (function(){
-    let taps = 0;
-    let tapTimer = null;
-    const CYCLE = ['dark', 'light', 'cyber'];
-    document.addEventListener('touchend', handleTap, {passive:true});
-    document.addEventListener('click', handleTap);
-    function handleTap(e){
-      // ignore taps on buttons, links, inputs — only toggle on empty space
-      if(e.target.closest('button, a, input, textarea, select, .quiz-option, .vertex-handle, .phase-tab, .theme-btn, .nav-links, .code-window')) return;
-      taps++;
-      if(tapTimer) clearTimeout(tapTimer);
-      tapTimer = setTimeout(() => { taps = 0; }, 400);
-      if(taps >= 3){
-        taps = 0;
-        const current = rootEl.getAttribute('data-theme') || 'dark';
-        const idx = CYCLE.indexOf(current);
-        const next = CYCLE[(idx + 1) % CYCLE.length];
-        setTheme(next, true);
-        if(window.showToast) showToast('theme: ' + next);
-      }
-    }
-  })();
-
   /* ---- nav height sync ---- */
   function syncNav(){ rootEl.style.setProperty('--nav-h', navEl.offsetHeight + 'px'); }
   if(window.ResizeObserver){ new ResizeObserver(syncNav).observe(navEl); }
@@ -2718,7 +2803,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   /* ---- module router ---- */
-  const MODULES = ['home','onboarding','compiler','auth','pools','proof','studio'];
+  const MODULES = ['home','onboarding','compiler','auth','pools','proof','studio','relay'];
 
   function setModule(name, push){
     if(!MODULES.includes(name)) name = 'home';
@@ -4743,6 +4828,275 @@ window.addEventListener('resize', () => {
 buildEQPanel();
 renderAll();
 updateMicUI();
+
+})();
+</script>
+
+<!-- Sender overlay: shown on a phone that scanned the QR (#sender?peer=…) -->
+<div class="rl-sender" id="rl-sender">
+  <video id="rl-sender-video" autoplay playsinline muted></video>
+  <div class="rl-sender-msg" id="rl-sender-msg">Connecting to SafeGrid…</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+const $ = id => document.getElementById(id);
+const NUM = 8;
+const pad = n => String(n).padStart(2,'0');
+const hubId = Math.random().toString(36).slice(2,8);
+const peers = {}, hlsInst = {}, kind = {};
+let modalCh = null;
+const toast = m => (window.showToast ? window.showToast(m) : console.warn(m));
+
+/* ---------- SENDER MODE: a phone that scanned the hub's QR ---------- */
+if(location.hash.startsWith('#sender')){
+  initSender();
+  return;
+}
+
+/* ---------- HUB MODE ---------- */
+if(!$('module-relay')) return;
+
+buildGrid();
+document.body.appendChild($('rl-url-modal'));
+document.body.appendChild($('rl-qr-modal'));
+wireEvents();
+startClock();
+updateGlobal();
+
+function buildGrid(){
+  const grid = $('rl-grid');
+  grid.innerHTML = '';
+  for(let i = 1; i <= NUM; i++){
+    const d = document.createElement('div');
+    d.className = 'rl-feed';
+    d.id = 'rl-ch-' + i;
+    d.innerHTML = `
+      <video id="rl-video-${i}" autoplay muted playsinline></video>
+      <div class="rl-nosig">AWAITING SOURCE</div>
+      <div class="rl-overlay">
+        <div class="rl-top">
+          <div class="rl-chan">CH ${pad(i)}</div>
+          <div class="rl-live"><span class="rl-dot"></span><span id="rl-status-${i}">STANDBY</span></div>
+        </div>
+        <div class="rl-bottom">
+          <div id="rl-time-${i}">--:--:--</div>
+          <div id="rl-res-${i}">--</div>
+        </div>
+      </div>
+      <button class="rl-disc" data-act="disconnect" data-ch="${i}">✕ DISCONNECT</button>
+      <div class="rl-menu">
+        <h4>Select source</h4>
+        <button class="rl-btn" data-act="cctv" data-ch="${i}">🌐 CCTV / HLS</button>
+        <button class="rl-btn" data-act="local" data-ch="${i}">📱 This device</button>
+        <button class="rl-btn primary" data-act="remote" data-ch="${i}">📷 Remote QR</button>
+      </div>`;
+    grid.appendChild(d);
+  }
+}
+
+function wireEvents(){
+  $('rl-grid').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if(!b) return;
+    const ch = +b.dataset.ch;
+    if(b.dataset.act === 'cctv') openUrl(ch);
+    if(b.dataset.act === 'local') startLocal(ch);
+    if(b.dataset.act === 'remote') startRemote(ch);
+    if(b.dataset.act === 'disconnect') releaseSource(ch);
+  });
+  $('rl-url-submit').addEventListener('click', submitUrl);
+  $('rl-url-input').addEventListener('keydown', e => { if(e.key === 'Enter') submitUrl(); });
+  $('rl-url-cancel').addEventListener('click', closeModals);
+  $('rl-qr-cancel').addEventListener('click', closeModals);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModals(); });
+}
+
+/* ---------- source lifecycle ---------- */
+function setStatus(ch, text){ $('rl-status-' + ch).textContent = text; }
+
+function activate(ch, label, k){
+  kind[ch] = k;
+  $('rl-ch-' + ch).classList.add('active');
+  setStatus(ch, 'LIVE');
+  $('rl-res-' + ch).textContent = label;
+  updateGlobal();
+}
+function setIdle(ch){
+  delete kind[ch];
+  $('rl-ch-' + ch).classList.remove('active');
+  setStatus(ch, 'STANDBY');
+  $('rl-res-' + ch).textContent = '--';
+  updateGlobal();
+}
+// Stop media on a channel without touching the PeerJS session (used when a remote call ends)
+function dropMedia(ch){
+  if(hlsInst[ch]){ hlsInst[ch].destroy(); delete hlsInst[ch]; }
+  const v = $('rl-video-' + ch);
+  if(v.srcObject){ v.srcObject.getTracks().forEach(t => t.stop()); v.srcObject = null; }
+  v.pause();
+  v.removeAttribute('src');
+  v.load();
+}
+// Full teardown: media, PeerJS session, UI
+function releaseSource(ch){
+  dropMedia(ch);
+  if(peers[ch]){ peers[ch].destroy(); delete peers[ch]; }
+  setIdle(ch);
+}
+function updateGlobal(){
+  const n = document.querySelectorAll('#rl-grid .rl-feed.active').length;
+  $('rl-global').classList.toggle('live', n > 0);
+  $('rl-global-text').textContent = n ? n + ' FEED' + (n > 1 ? 'S' : '') + ' ACTIVE' : 'WAITING FOR FEEDS';
+}
+
+/* ---------- 1. CCTV / HLS ---------- */
+function openUrl(ch){
+  modalCh = ch;
+  $('rl-url-modal').classList.add('open');
+  $('rl-url-input').focus();
+}
+function submitUrl(){
+  const url = $('rl-url-input').value.trim();
+  const ch = modalCh;
+  if(!url || ch == null) return;
+  if(!/^https?:\/\//i.test(url)){ toast('Use an http(s):// URL'); return; }
+
+  releaseSource(ch);
+  const v = $('rl-video-' + ch);
+  const isHls = /\.m3u8(\?|$)/i.test(url);
+  if(isHls && window.Hls && Hls.isSupported()){
+    const h = new Hls();
+    hlsInst[ch] = h;
+    h.on(Hls.Events.ERROR, (_, d) => {
+      if(d.fatal){ setStatus(ch, 'ERROR'); toast('Stream error: ' + d.details); }
+    });
+    h.loadSource(url);
+    h.attachMedia(v);
+    h.on(Hls.Events.MANIFEST_PARSED, () => v.play().catch(()=>{}));
+  } else {
+    // Safari plays HLS natively; other browsers get a direct source
+    v.src = url;
+    v.play().catch(()=>{});
+  }
+  activate(ch, 'CCTV / IP', 'cctv');
+  closeModals();
+}
+
+/* ---------- 2. THIS DEVICE ---------- */
+async function startLocal(ch){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    toast('Camera API unavailable — needs HTTPS or localhost'); return;
+  }
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ video:true, audio:false });
+    releaseSource(ch);
+    const v = $('rl-video-' + ch);
+    v.srcObject = s;
+    v.play().catch(()=>{});
+    activate(ch, 'LOCAL CAM', 'local');
+  } catch(err){
+    toast('Camera unavailable: ' + err.name);
+  }
+}
+
+/* ---------- 3. REMOTE PHONE (QR + WebRTC) ---------- */
+function startRemote(ch){
+  if(kind[ch]){ toast('CH ' + pad(ch) + ' is live — disconnect it first'); return; }
+  if(!window.Peer || !window.QRCode){ toast('Remote libraries failed to load — check network'); return; }
+
+  modalCh = ch;
+  $('rl-qr-modal').classList.add('open');
+  const peerId = `safegrid-${hubId}-ch${ch}`;
+  const box = $('rl-qr');
+  box.innerHTML = '';
+  const url = location.origin + location.pathname + '#sender?peer=' + encodeURIComponent(peerId);
+  new QRCode(box, { text:url, width:200, height:200, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.H });
+
+  if(peers[ch]){ peers[ch].destroy(); delete peers[ch]; }
+  const status = $('rl-qr-status');
+  status.textContent = 'Starting hub…';
+  const p = new Peer(peerId);
+  peers[ch] = p;
+  p.on('open', () => { status.textContent = 'Waiting for scan…'; });
+  p.on('error', err => { status.textContent = 'Peer error: ' + err.type; });
+  p.on('call', call => {
+    status.textContent = 'Device connected — establishing stream…';
+    call.answer();
+    call.on('stream', rs => {
+      dropMedia(ch);
+      const v = $('rl-video-' + ch);
+      v.srcObject = rs;
+      v.play().catch(()=>{});
+      activate(ch, 'REMOTE WEBCAM', 'remote');
+      closeModals();
+    });
+    call.on('close', () => {
+      // Phone went away: free the feed but keep the session so it can rescan the same code
+      if(kind[ch] === 'remote'){
+        dropMedia(ch);
+        setIdle(ch);
+        toast('CH ' + pad(ch) + ' remote camera disconnected');
+      }
+    });
+  });
+}
+
+/* ---------- modals ---------- */
+function closeModals(){
+  $('rl-url-modal').classList.remove('open');
+  $('rl-qr-modal').classList.remove('open');
+  $('rl-url-input').value = '';
+  // Cancelled before a phone connected: drop the pending PeerJS session
+  if(modalCh != null && peers[modalCh] && !kind[modalCh]){
+    peers[modalCh].destroy();
+    delete peers[modalCh];
+  }
+  modalCh = null;
+}
+
+/* ---------- clock ---------- */
+function startClock(){
+  const tick = () => {
+    const s = new Date().toLocaleTimeString('en-GB', { hour12:false });
+    for(let i = 1; i <= NUM; i++){ const el = $('rl-time-' + i); if(el) el.textContent = s; }
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+/* ---------- SENDER (phone) ---------- */
+async function initSender(){
+  const ov = $('rl-sender'), msg = $('rl-sender-msg'), v = $('rl-sender-video');
+  ov.style.display = 'flex';
+  const say = t => { msg.textContent = t; msg.style.opacity = '1'; };
+
+  const target = new URLSearchParams(location.hash.split('?')[1] || '').get('peer');
+  if(!target){ say('Error: no hub target in this link'); return; }
+  if(!window.Peer){ say('Connection library failed to load'); return; }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ say('Camera needs HTTPS'); return; }
+
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:{ ideal:'environment' } }, audio:false
+    });
+    v.srcObject = s;
+    say('Camera ready · connecting to hub…');
+    const peer = new Peer();
+    peer.on('open', () => {
+      const call = peer.call(target, s);
+      say('Connected · streaming live to SafeGrid');
+      setTimeout(() => { msg.style.opacity = '0'; }, 3000);
+      call.on('close', () => say('Hub closed the connection'));
+      call.on('error', e => say('Stream error: ' + (e.type || 'unknown')));
+    });
+    peer.on('error', e => say('Connection error: ' + e.type));
+  } catch(err){
+    say('Camera error: ' + err.name + ' — ' + err.message);
+  }
+}
 
 })();
 </script>
