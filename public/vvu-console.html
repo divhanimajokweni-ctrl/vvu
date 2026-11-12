@@ -122,6 +122,11 @@ nav{
   box-shadow:0 0 20px -6px var(--accent); font-weight:700;
 }
 .nav-links button i{font-size:10px; opacity:.85}
+.nav-links .nav-external-link{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em; text-transform:uppercase;
+  background:transparent; border:1px solid transparent; color:var(--fg-dim); padding:8px 12px; border-radius:8px;
+  display:inline-flex; align-items:center; gap:6px; text-decoration:none; transition:all .22s cubic-bezier(.4,0,.2,1)}
+.nav-links .nav-external-link:hover{color:var(--fg); background:var(--bg-card)}
+.nav-links .nav-external-link i{font-size:10px; opacity:.85}
 
 .theme-toggle{display:inline-flex; background:var(--bg-elev); border:1px solid var(--border-strong);
   border-radius:999px; padding:3px; gap:2px}
@@ -130,6 +135,18 @@ nav{
   color:var(--muted); transition:all .35s cubic-bezier(.4,0,.2,1); font-size:12px}
 .theme-btn.active{background:var(--accent); color:var(--bg); box-shadow:0 0 14px var(--glow)}
 .theme-btn:hover:not(.active){color:var(--fg); transform:scale(1.08)}
+
+.service-health{display:flex; align-items:center; gap:6px; flex-wrap:wrap; font:500 9px/1.2 var(--mono); letter-spacing:.06em}
+.service-health__state,.service-health__watchdog,.service-health__heartbeat{display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:6px 8px; border:1px solid var(--border-strong); border-radius:6px; background:var(--bg-elev); color:var(--fg-dim); white-space:nowrap}
+.service-health__state{color:var(--fg); font-weight:700}
+.service-health__dot{width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px currentColor}
+.service-health__state[data-state="connected"] .service-health__dot{background:var(--accent-3)}
+.service-health__state[data-state="reconnecting"] .service-health__dot,.service-health__state[data-state="degraded"] .service-health__dot{background:var(--accent-4)}
+.service-health__state[data-state="booting"] .service-health__dot{animation:healthPulse 1.1s ease-in-out infinite}
+@keyframes healthPulse{50%{opacity:.35; box-shadow:0 0 2px currentColor}}
+.service-health__retry{min-height:30px; padding:6px 8px; border:1px solid var(--border-strong); border-radius:6px; background:transparent; color:var(--fg-dim); font:inherit; letter-spacing:inherit; cursor:pointer}
+.service-health__retry:hover{color:var(--fg); border-color:var(--accent)}
+.service-health__retry:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 
 main{position:relative; z-index:1}
 .module{display:none}
@@ -1557,6 +1574,14 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
     <button data-module-link="relay"><i class="fas fa-video"></i><span class="nav-label">Relay</span></button>
     <button data-module-link="twin"><i class="fas fa-person-walking"></i><span class="nav-label">Twin</span></button>
     <button data-module-link="validation" title="Validation dashboard"><svg class="vd-rings" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="3.6"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(120 12 12)"/></svg><span class="nav-label">Validation</span></button>
+  </div>
+  <div class="service-health" aria-label="Runtime service health">
+    <span class="service-health__state" id="serviceConnection" data-state="booting" role="status" aria-live="polite" aria-atomic="true">
+      <span class="service-health__dot" aria-hidden="true"></span><span id="serviceConnectionLabel">BOOTING</span>
+    </span>
+    <span class="service-health__watchdog" id="serviceWatchdog">WATCHDOG · STARTING</span>
+    <span class="service-health__heartbeat" id="serviceHeartbeat" aria-live="off" title="Most recent completed watchdog pass">NO HEARTBEAT</span>
+    <button class="service-health__retry" id="serviceHealthRetry" type="button" aria-label="Check service health now">CHECK</button>
   </div>
   <div class="theme-toggle" role="group" aria-label="Theme selector">
     <button class="theme-btn active" data-theme="dark" title="Dark" aria-label="Dark theme"><i class="fas fa-moon"></i></button>
@@ -3024,6 +3049,108 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if(window.ResizeObserver){ new ResizeObserver(syncNav).observe(navEl); }
   window.addEventListener('resize', syncNav);
   syncNav();
+
+  /* ---- live service health and watchdog heartbeat ---- */
+  const connectionEl = document.getElementById('serviceConnection');
+  const connectionLabel = document.getElementById('serviceConnectionLabel');
+  const watchdogEl = document.getElementById('serviceWatchdog');
+  const heartbeatEl = document.getElementById('serviceHeartbeat');
+  const retryButton = document.getElementById('serviceHealthRetry');
+  let healthTimer = 0;
+  let healthFailures = 0;
+  let healthCheckRunning = false;
+
+  function setConnectionState(state, label){
+    connectionEl.dataset.state = state;
+    connectionLabel.textContent = label;
+  }
+
+  async function fetchHealth(path){
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    try{
+      const response = await fetch(path, {
+        cache:'no-store',
+        credentials:'same-origin',
+        headers:{ accept:'application/json' },
+        signal:controller.signal
+      });
+      if(!response.ok) throw new Error('health request failed');
+      return await response.json();
+    }finally{
+      clearTimeout(timeout);
+    }
+  }
+
+  function scheduleHealthCheck(delay){
+    clearTimeout(healthTimer);
+    healthTimer = setTimeout(checkServiceHealth, delay);
+  }
+
+  async function checkServiceHealth(){
+    if(healthCheckRunning) return;
+    if(document.visibilityState === 'hidden'){
+      scheduleHealthCheck(45000);
+      return;
+    }
+    healthCheckRunning = true;
+    retryButton.disabled = true;
+    try{
+      const [watchdogResponse, safegridResponse] = await Promise.all([
+        fetchHealth('/api/proximity/watchdog'),
+        fetchHealth('/api/safegrid/health')
+      ]);
+      const watchdog = watchdogResponse.status;
+      const lastPass = watchdog.passes?.[watchdog.passes.length - 1];
+      const lastPassAt = lastPass?.atUtc ? Date.parse(lastPass.atUtc) : NaN;
+      const heartbeatAge = Number.isFinite(lastPassAt) ? Math.max(0, Date.now() - lastPassAt) : Infinity;
+      const staleAfter = Math.max((watchdog.intervalMs || 30000) * 3, 120000);
+      const watchdogReady = watchdog.running && watchdog.enabled && !watchdog.killSwitch;
+      const safegridReady = safegridResponse.ok && safegridResponse.reconciler?.running;
+
+      if(!lastPass){
+        setConnectionState('booting', 'BOOTING');
+        watchdogEl.textContent = watchdogReady ? 'WATCHDOG · FIRST PASS' : 'WATCHDOG · STARTING';
+        heartbeatEl.textContent = 'NO HEARTBEAT';
+      }else{
+        const heartbeatHealthy = lastPass.valid && heartbeatAge <= staleAfter;
+        const servicesHealthy = watchdogReady && safegridReady && heartbeatHealthy;
+        setConnectionState(servicesHealthy ? 'connected' : 'degraded', servicesHealthy ? 'CONNECTED' : 'DEGRADED');
+        watchdogEl.textContent = !watchdogReady
+          ? (watchdog.killSwitch ? 'WATCHDOG · DISABLED' : 'WATCHDOG · STOPPED')
+          : !safegridReady
+            ? 'SAFEGRID · STOPPED'
+            : !lastPass.valid
+              ? 'WATCHDOG · ALERT'
+              : heartbeatHealthy ? 'WATCHDOG · HEALTHY' : 'WATCHDOG · STALE';
+        heartbeatEl.textContent = 'BEAT · ' + new Date(lastPassAt).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+        heartbeatEl.title = 'Last watchdog pass ' + Math.round(heartbeatAge / 1000) + ' seconds ago';
+      }
+      healthFailures = 0;
+      scheduleHealthCheck(Math.max(15000, Math.min(watchdog.intervalMs || 30000, 60000)));
+    }catch(error){
+      healthFailures += 1;
+      setConnectionState('reconnecting', 'RECONNECTING');
+      watchdogEl.textContent = 'WATCHDOG · NO SIGNAL';
+      heartbeatEl.textContent = 'RETRYING';
+      scheduleHealthCheck(Math.min(60000, 3000 * (2 ** Math.min(healthFailures - 1, 4))));
+    }finally{
+      healthCheckRunning = false;
+      retryButton.disabled = false;
+    }
+  }
+
+  retryButton.addEventListener('click', () => {
+    clearTimeout(healthTimer);
+    void checkServiceHealth();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible'){
+      clearTimeout(healthTimer);
+      void checkServiceHealth();
+    }
+  });
+  void checkServiceHealth();
 
   /* ---- toast ---- */
   const toastEl = document.getElementById('toast');

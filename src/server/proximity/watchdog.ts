@@ -198,9 +198,12 @@ export async function watchdogPass(): Promise<WatchdogPass> {
 
 function armTimer(intervalMs: number): void {
   if (g.proximityWatchdogTimer) clearInterval(g.proximityWatchdogTimer);
-  const timer = setInterval(() => {
+  const runPass = () => {
     void watchdogPass().catch((e) => console.error('[proximity-watchdog] pass failed:', e));
-  }, intervalMs);
+  };
+  // Run immediately so a cold boot has a real heartbeat without waiting a full interval.
+  runPass();
+  const timer = setInterval(runPass, intervalMs);
   timer.unref?.();
   g.proximityWatchdogTimer = timer;
   g.proximityWatchdogGen = GENERATION;

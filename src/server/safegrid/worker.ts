@@ -34,7 +34,7 @@ export function startReconcilerWorker(): { started: boolean; intervalMs: number 
   if (g.safegridReconcilerTimer) {
     clearInterval(g.safegridReconcilerTimer); // dispose an older generation
   }
-  const timer = setInterval(() => {
+  const runPass = () => {
     void reconcilePass(db)
       .then((s) => {
         if (s.inspected > 0) {
@@ -44,7 +44,10 @@ export function startReconcilerWorker(): { started: boolean; intervalMs: number 
         }
       })
       .catch((e) => console.error('[safegrid-reconciler] pass failed:', e));
-  }, RECONCILE_INTERVAL_MS);
+  };
+  // Recover any interrupted inbox work as soon as this process boots.
+  runPass();
+  const timer = setInterval(runPass, RECONCILE_INTERVAL_MS);
   timer.unref?.();
   g.safegridReconcilerTimer = timer;
   g.safegridReconcilerGen = GENERATION;

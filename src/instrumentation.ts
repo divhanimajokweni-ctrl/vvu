@@ -5,8 +5,17 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
-    const mod = await import('@/lib/debugger/server-capture');
-    mod.attachProcessCapture();
+    const [capture, watchdog, reconciler] = await Promise.all([
+      import('@/lib/debugger/server-capture'),
+      import('@/server/proximity/watchdog'),
+      import('@/server/safegrid/worker'),
+    ]);
+    capture.attachProcessCapture();
+    const sentinel = watchdog.startProximityWatchdog();
+    const safegrid = reconciler.startReconcilerWorker();
+    console.info(
+      `[vvu-boot] watchdog ${sentinel.killSwitch ? 'disabled by kill switch' : sentinel.started ? 'started' : 'already running'} · safegrid reconciler ${safegrid.started ? 'started' : 'already running'}`,
+    );
   }
 }
 
