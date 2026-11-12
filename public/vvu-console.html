@@ -1556,6 +1556,7 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
     <button data-module-link="studio"><i class="fas fa-music"></i><span class="nav-label">Studio</span></button>
     <button data-module-link="relay"><i class="fas fa-video"></i><span class="nav-label">Relay</span></button>
     <button data-module-link="twin"><i class="fas fa-person-walking"></i><span class="nav-label">Twin</span></button>
+    <button data-module-link="validation" title="Validation dashboard"><svg class="vd-rings" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="3.6"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(120 12 12)"/></svg><span class="nav-label">Validation</span></button>
   </div>
   <div class="theme-toggle" role="group" aria-label="Theme selector">
     <button class="theme-btn active" data-theme="dark" title="Dark" aria-label="Dark theme"><i class="fas fa-moon"></i></button>
@@ -1788,6 +1789,7 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
         <a data-module-link="studio">Fluid Studio</a>
         <a data-module-link="relay">SafeGrid Relay</a>
         <a data-module-link="twin">Sensor Twin &amp; Procedure</a>
+        <a data-module-link="validation">Validation Dashboard</a>
       </div>
       <div class="footer-col">
         <h4>Ecosystem</h4>
@@ -2958,6 +2960,19 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   </div>
 </div>
 
+<!-- ==========================================================================
+     MODULE · VALIDATION (placeholder: dashboard lives elsewhere)
+     ========================================================================== -->
+<div class="module" id="module-validation">
+  <section style="min-height:calc(100dvh - var(--nav-h));display:flex;align-items:center;justify-content:center;padding:40px 20px;text-align:center">
+    <div style="max-width:440px">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.2" style="margin-bottom:18px"><ellipse cx="12" cy="12" rx="9" ry="3.6"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(120 12 12)"/></svg>
+      <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Validation</div>
+      <h2 class="font-display" style="font-size:34px;margin-bottom:14px">Dashboard <em class="italic-serif" style="color:var(--accent)">placeholder</em></h2>
+      <p style="color:var(--fg-dim);line-height:1.6">This is a placeholder. The validation dashboard already exists and will be linked into this module later.</p>
+    </div>
+  </section>
+</div>
 </main>
 
 <div class="toast" id="toast">
@@ -3022,7 +3037,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   /* ---- module router ---- */
-  const MODULES = ['home','onboarding','compiler','auth','pools','proof','studio','relay','twin'];
+  const MODULES = ['home','onboarding','compiler','auth','pools','proof','studio','relay','twin','validation'];
 
   function setModule(name, push){
     if(!MODULES.includes(name)) name = 'home';
