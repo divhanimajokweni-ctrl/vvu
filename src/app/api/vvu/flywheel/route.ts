@@ -19,7 +19,7 @@ import { getFlywheelStatus } from '@/lib/vvu/pyflywheel';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 /** vvu-trust tree — cwd-derived with the absolute sandbox path as fallback. */
 const VVU_ROOT = (() => {
