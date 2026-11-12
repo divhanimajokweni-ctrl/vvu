@@ -50,8 +50,18 @@ export default function DashboardPage() {
           </svg>
           Back to Console
         </a>
-        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#6b6d7a', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-          VVU · Validation Dashboard
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <a href="/pricing" style={{
+            fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 600,
+            color: '#06b6d4', textTransform: 'uppercase', letterSpacing: '0.08em',
+            textDecoration: 'none', cursor: 'pointer',
+          }}>
+            Pricing
+          </a>
+          <span style={{ color: '#6b6d7a' }}>·</span>
+          <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: '#6b6d7a', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            VVU · Validation Dashboard
+          </div>
         </div>
       </div>
       <div style={{ paddingTop: 48 }}>
