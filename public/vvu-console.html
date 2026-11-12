@@ -12,6 +12,8 @@
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<!-- Sensor Twin 3D (pinned r128) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 /* ==========================================================================
    1. CONSOLE TOKENS
@@ -1441,6 +1443,97 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
   .rl-grid{grid-template-columns:1fr; grid-auto-rows:220px}
 }
 
+/* ==========================================================================
+   14. SOVEREIGN TWIN · sensor fusion + build procedure (scoped .tw-*)
+   ========================================================================== */
+#module-twin{overflow:hidden}
+.twin-scope{
+  --tw-bg:#0c0b09; --tw-panel:#1a1d28; --tw-hi:#21242f;
+  --tw-text:#f0ead6; --tw-muted:#6b6d7a; --tw-accent:#f59e0b;
+  --tw-live:#4dd4ac; --tw-danger:#ff5e62; --tw-line:rgba(240,234,214,.12);
+  font-family:var(--sans); color:var(--tw-text); background:var(--tw-bg);
+  height:calc(100dvh - var(--nav-h)); min-height:620px;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.twin-scope *{box-sizing:border-box}
+.tw-pane[hidden]{display:none}
+
+.tw-head{display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:10px 18px;
+  background:var(--tw-panel); border-bottom:1px solid var(--tw-line); flex:0 0 auto}
+.tw-brand{font-weight:800; font-size:14px; letter-spacing:.5px; display:flex; align-items:center; gap:8px}
+.tw-brand small{font-family:var(--mono); font-weight:400; font-size:10px; color:var(--tw-muted); letter-spacing:.1em}
+.tw-dot{width:8px; height:8px; border-radius:50%; background:var(--tw-muted); flex:0 0 auto}
+.tw-dot.on{background:var(--tw-live); box-shadow:0 0 8px var(--tw-live)}
+.tw-tabs{display:flex; gap:6px; margin-left:auto}
+.tw-tab{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; padding:7px 12px; border-radius:6px;
+  border:1px solid var(--tw-line); background:transparent; color:var(--tw-muted); cursor:pointer}
+.tw-tab.on{background:var(--tw-accent); color:#000; border-color:var(--tw-accent); font-weight:700}
+.tw-status{font-family:var(--mono); font-size:11px; color:var(--tw-muted); letter-spacing:.06em}
+.tw-purpose{padding:8px 18px; font-size:12px; color:var(--tw-accent); border-bottom:1px solid var(--tw-line);
+  background:rgba(245,158,11,.05); flex:0 0 auto}
+.tw-body{flex:1 1 auto; min-height:0; overflow-y:auto}
+
+.tw-stage{position:relative; height:clamp(260px,40vh,420px); background:#05070a;
+  border-bottom:1px solid var(--tw-line); overflow:hidden}
+.tw-stage canvas{display:block; width:100%; height:100%}
+.tw-hud{position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between;
+  pointer-events:none; z-index:5}
+.tw-hudbox{background:rgba(0,0,0,.7); border:1px solid var(--tw-muted); padding:6px 10px; border-radius:4px;
+  font-family:var(--mono); font-size:11px}
+.tw-hudbox b{color:var(--tw-accent)}
+
+.tw-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; padding:14px}
+.tw-panel{background:var(--tw-panel); border:1px solid var(--tw-line); border-radius:10px; padding:14px}
+.tw-title{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--tw-muted); margin-bottom:10px}
+.tw-p{font-size:12.5px; line-height:1.55; color:#cfc9b6; margin-bottom:10px}
+.tw-check{display:flex; gap:8px; align-items:flex-start; font-size:12.5px; line-height:1.5; margin-bottom:10px; cursor:pointer}
+.tw-check input{margin-top:3px; accent-color:var(--tw-accent); flex:0 0 auto}
+.tw-check input:disabled + span{opacity:.5}
+.tw-btn{font:700 13px var(--sans); padding:11px 16px; border-radius:8px; border:none; cursor:pointer;
+  background:var(--tw-accent); color:#000; width:100%; margin-top:4px}
+.tw-btn.ghost{background:transparent; color:var(--tw-text); border:1px solid var(--tw-line)}
+.tw-btn:disabled{opacity:.4; cursor:not-allowed}
+.tw-err{font-size:11px; color:var(--tw-danger); min-height:14px; margin-top:8px}
+.tw-sensors{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap}
+.tw-sensor{font-family:var(--mono); font-size:10px; padding:4px 8px; border-radius:4px;
+  border:1px solid var(--tw-line); color:var(--tw-muted)}
+.tw-sensor b{color:var(--tw-text); font-weight:700}
+.tw-sensor.live b{color:var(--tw-live)}
+.tw-sensor.bad b{color:var(--tw-danger)}
+.tw-cells{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.tw-cell{background:var(--tw-hi); border-radius:6px; padding:10px; text-align:center}
+.tw-cell .l{font-size:10px; color:var(--tw-muted); text-transform:uppercase}
+.tw-cell .v{font-family:var(--mono); font-size:20px; font-weight:700; margin-top:4px}
+.tw-meter{height:8px; background:var(--tw-hi); border-radius:4px; overflow:hidden; margin-top:8px}
+.tw-meter-bar{height:100%; width:0; background:var(--tw-live); transition:width .05s}
+.tw-ledger-note{font-size:10.5px; color:var(--tw-muted); margin-bottom:8px; line-height:1.5}
+.tw-ledger{font-family:var(--mono); font-size:10px; color:var(--tw-live); max-height:220px; overflow-y:auto;
+  background:#000; padding:10px; border-radius:4px; line-height:1.6}
+
+/* build procedure */
+.tw-proc{padding:14px; display:flex; flex-direction:column; gap:12px}
+.tw-gate{font-family:var(--mono); font-size:11px; letter-spacing:.06em; padding:10px 12px; border-radius:8px;
+  border:1px solid rgba(255,94,98,.4); color:var(--tw-danger); background:rgba(255,94,98,.06)}
+.tw-gate.open{border-color:rgba(77,212,172,.4); color:var(--tw-live); background:rgba(77,212,172,.06)}
+.tw-quote{border-left:3px solid var(--tw-accent); padding:8px 12px; margin-bottom:10px;
+  font-family:Georgia,serif; font-style:italic; font-size:14px; color:var(--tw-text)}
+.tw-phase.locked{opacity:.45}
+.tw-phase .tw-check{font-size:12px}
+.tw-phase .tw-check b{font-family:var(--mono); color:var(--tw-accent); margin-right:4px}
+.tw-ext{color:var(--tw-muted); font-size:11px}
+.tw-table{width:100%; border-collapse:collapse; font-size:12px}
+.tw-table th,.tw-table td{text-align:left; padding:7px 8px; border-bottom:1px solid var(--tw-line); vertical-align:top}
+.tw-table th{font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--tw-muted)}
+.tw-list{font-size:12px; line-height:1.6; color:#cfc9b6; padding-left:18px; margin-bottom:8px}
+.tw-foot{font-size:11px; font-style:italic; color:var(--tw-muted); line-height:1.5}
+
+@media (max-width:700px){
+  .tw-tabs{margin-left:0; width:100%}
+  .twin-scope{height:auto; min-height:calc(100dvh - var(--nav-h)); overflow:visible}
+  .tw-body{overflow:visible}
+}
+
 </style>
 </head>
 <body data-module="home">
@@ -1462,6 +1555,7 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
     <button data-module-link="proof"><i class="fas fa-link"></i><span class="nav-label">Bridge</span></button>
     <button data-module-link="studio"><i class="fas fa-music"></i><span class="nav-label">Studio</span></button>
     <button data-module-link="relay"><i class="fas fa-video"></i><span class="nav-label">Relay</span></button>
+    <button data-module-link="twin"><i class="fas fa-person-walking"></i><span class="nav-label">Twin</span></button>
   </div>
   <div class="theme-toggle" role="group" aria-label="Theme selector">
     <button class="theme-btn active" data-theme="dark" title="Dark" aria-label="Dark theme"><i class="fas fa-moon"></i></button>
@@ -1693,6 +1787,7 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
         <a data-module-link="proof">ProofBridge</a>
         <a data-module-link="studio">Fluid Studio</a>
         <a data-module-link="relay">SafeGrid Relay</a>
+        <a data-module-link="twin">Sensor Twin &amp; Procedure</a>
       </div>
       <div class="footer-col">
         <h4>Ecosystem</h4>
@@ -2739,6 +2834,130 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 </div>
 
 
+<!-- ==========================================================================
+     MODULE · SOVEREIGN TWIN (sensor fusion + digital twin build procedure)
+     ========================================================================== -->
+<div class="module" id="module-twin">
+  <div class="twin-scope">
+
+    <div class="tw-head">
+      <div class="tw-brand"><span class="tw-dot" id="tw-dot"></span>VVU SOVEREIGN TWIN <small>// SENSOR FUSION · BUILD PROCEDURE</small></div>
+      <div class="tw-tabs">
+        <button class="tw-tab on" data-tab="live">LIVE SENSORS</button>
+        <button class="tw-tab" data-tab="procedure">BUILD PROCEDURE</button>
+      </div>
+      <div class="tw-status" id="tw-status">STANDBY</div>
+    </div>
+
+    <div class="tw-purpose">Intended purpose: this is a telemetry-driven visual twin. It does not diagnose, treat, or inform clinical decisions.</div>
+
+    <div class="tw-body">
+
+      <!-- LIVE SENSORS -->
+      <section class="tw-pane" id="tw-pane-live">
+        <div class="tw-stage" id="tw-stage">
+          <div class="tw-hud">
+            <div class="tw-hudbox">STATE: <b id="tw-state">WAITING</b></div>
+            <div class="tw-hudbox">STEPS: <b id="tw-hud-steps">0</b></div>
+          </div>
+        </div>
+
+        <div class="tw-grid">
+          <div class="tw-panel">
+            <div class="tw-title">Consent · gait sensing</div>
+            <p class="tw-p">Uses the microphone (footfall audio, 20–150 Hz band) and motion sensors to count steps and cadence on this device only. Nothing is sent anywhere. This purpose is separate from identity, payment and face capture.</p>
+            <label class="tw-check"><input type="checkbox" id="tw-consent-box"><span>I consent to gait sensing for this session only. I can revoke it at any time.</span></label>
+            <button class="tw-btn" id="tw-start">Grant &amp; start</button>
+            <button class="tw-btn ghost" id="tw-stop" disabled style="margin-top:8px">Stop &amp; revoke consent</button>
+            <div class="tw-err" id="tw-err"></div>
+          </div>
+
+          <div class="tw-panel">
+            <div class="tw-title">Sensor fusion (live)</div>
+            <div class="tw-sensors">
+              <span class="tw-sensor" id="tw-mic-st">MIC <b>OFF</b></span>
+              <span class="tw-sensor" id="tw-mot-st">MOTION <b>OFF</b></span>
+            </div>
+            <div class="tw-cells">
+              <div class="tw-cell"><div class="l">Cadence (SPM)</div><div class="v" id="tw-val-cadence">—</div></div>
+              <div class="tw-cell"><div class="l">Steps confirmed</div><div class="v" id="tw-val-steps">0</div></div>
+            </div>
+            <div class="tw-title" style="margin-top:14px;display:flex;justify-content:space-between"><span>Acoustic input</span><span id="tw-rms">0.000</span></div>
+            <div class="tw-meter"><div class="tw-meter-bar" id="tw-meter"></div></div>
+            <p class="tw-p" style="margin-top:12px;font-size:11px;color:var(--tw-muted)">A step counts only when a footfall impulse and a motion jolt land within 150 ms. A missing sensor shows SENSOR_ABSENT, never a default value.</p>
+          </div>
+
+          <div class="tw-panel">
+            <div class="tw-title">Ledger · hash-chained (in-memory)</div>
+            <div class="tw-ledger-note">Each entry carries the SHA-256 of the one before it, so an edit breaks the chain. It lives in this tab only and is not WORM storage yet.</div>
+            <div class="tw-ledger" id="tw-ledger"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BUILD PROCEDURE -->
+      <section class="tw-pane" id="tw-pane-procedure" hidden>
+        <div class="tw-proc" id="tw-proc">
+
+          <div class="tw-gate" id="tw-proc-gate">—</div>
+
+          <div class="tw-panel">
+            <div class="tw-title">Digital twin build procedure · draft, not approved for build</div>
+            <p class="tw-p">Crystallised from the working notes ("Digital Twin Model" and the avatar build list), gated against the VVU Telemetry Twin regulatory review.</p>
+            <div class="tw-title">Step 0 · intended-purpose statement (required first)</div>
+            <blockquote class="tw-quote">"This is a telemetry-driven visual twin. It does not diagnose, treat, or inform clinical decisions."</blockquote>
+            <p class="tw-p">This sentence must stay true across UI, documentation and marketing. Any wording that implies detection, prediction or ruling out a physiological state changes the product's status under SAHPRA and blocks the build.</p>
+            <label class="tw-check"><input type="checkbox" data-ack><span>I acknowledge this is the only purpose the product states.</span></label>
+          </div>
+
+          <div class="tw-panel">
+            <div class="tw-title">Blockers · all must be cleared before any phase runs</div>
+            <div id="tw-blockers"></div>
+          </div>
+
+          <div id="tw-phases"></div>
+
+          <div class="tw-panel">
+            <div class="tw-title">Field decisions</div>
+            <table class="tw-table">
+              <tr><th>Field from notes</th><th>Decision</th><th>Reason</th></tr>
+              <tr><td>Bank card registration</td><td>Keep, separate purpose</td><td>Payment, not avatar</td></tr>
+              <tr><td>KYC facial scan</td><td>Keep, provider-performed, outcome only</td><td>Biometric; minimise</td></tr>
+              <tr><td>Facial expression and turns</td><td>Keep, avatar purpose, consented</td><td>Needed for the face model</td></tr>
+              <tr><td>Motion</td><td>Keep only if the gait pipeline needs it</td><td>Justify per use</td></tr>
+              <tr><td>BMI</td><td>Remove unless a written purpose needs it</td><td>Not needed for a face avatar</td></tr>
+              <tr><td>Sex and demography</td><td>Remove unless a written purpose needs it</td><td>Possibly special personal information</td></tr>
+            </table>
+          </div>
+
+          <div class="tw-panel">
+            <div class="tw-title">Transcription notes to confirm</div>
+            <ul class="tw-list">
+              <li>"Light off / torch / shape / pedal shadow" is unclear. Confirm the intended lighting step.</li>
+              <li>"YOLO v8 vs ... render" is unclear. Confirm the render comparison.</li>
+              <li>"Face ID architecture" beside iOS TrueDepth is unclear.</li>
+              <li>The final line of the second page is cut off. Confirm its intent before use.</li>
+            </ul>
+            <div class="tw-title" style="margin-top:12px">Open questions</div>
+            <ul class="tw-list">
+              <li>Will the twin ever be shared outside the owner's account?</li>
+              <li>Which runtime is the primary target (Unity with Cesium, or Three.js with 3D Tiles)?</li>
+              <li>Who signs the confidentiality undertaking for each person with access to sensor-linked states?</li>
+            </ul>
+          </div>
+
+          <div class="tw-panel">
+            <button class="tw-btn ghost" id="tw-proc-reset">Reset checklist</button>
+            <p class="tw-foot" style="margin-top:12px">Not legal advice. The citations and the sharing model need checking by a South African privacy lawyer before any build. Checklist progress is saved in this browser only.</p>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
 </main>
 
 <div class="toast" id="toast">
@@ -2803,7 +3022,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   /* ---- module router ---- */
-  const MODULES = ['home','onboarding','compiler','auth','pools','proof','studio','relay'];
+  const MODULES = ['home','onboarding','compiler','auth','pools','proof','studio','relay','twin'];
 
   function setModule(name, push){
     if(!MODULES.includes(name)) name = 'home';
@@ -5097,6 +5316,402 @@ async function initSender(){
     say('Camera error: ' + err.name + ' — ' + err.message);
   }
 }
+
+})();
+</script>
+
+<script>
+(function(){
+'use strict';
+
+const root = document.getElementById('module-twin');
+if(!root) return;
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+
+/* ---------- tabs ---------- */
+root.querySelectorAll('.tw-tab').forEach(b => b.addEventListener('click', () => {
+  root.querySelectorAll('.tw-tab').forEach(x => x.classList.toggle('on', x === b));
+  $('tw-pane-live').hidden = b.dataset.tab !== 'live';
+  $('tw-pane-procedure').hidden = b.dataset.tab !== 'procedure';
+}));
+
+/* ==========================================================================
+   LIVE SENSOR FUSION
+   Fail-closed: a step is counted only when BOTH mic and motion are live and
+   their impulses land within 150 ms. No default values are ever shown.
+   ========================================================================== */
+const SENS = {
+  running:false, micSt:'OFF', motSt:'OFF',
+  steps:0, cadence:0, lastStep:0, intervals:[],
+  audioAt:0, imuAt:0, audioLast:0, imuLast:0,
+  ctx:null, mic:null, analyser:null, buf:null, audioRaf:0, onMotion:null,
+  ledger:[], chain:'GENESIS', q:Promise.resolve()
+};
+const fused = () => SENS.micSt === 'LIVE' && SENS.motSt === 'LIVE';
+
+/* hash-chained, in-memory ledger; writes are serialised so the chain never forks */
+function ledger(kind, payload){
+  SENS.q = SENS.q.then(async () => {
+    const e = { n: SENS.ledger.length + 1, t: new Date().toISOString(), kind, payload: payload || '', prev: SENS.chain };
+    try {
+      const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(e)));
+      e.hash = [...new Uint8Array(d)].map(b => b.toString(16).padStart(2,'0')).join('');
+    } catch(_){
+      e.hash = 'UNHASHED';   // crypto.subtle needs HTTPS / localhost
+    }
+    SENS.chain = e.hash;
+    SENS.ledger.push(e);
+    renderLedger();
+  });
+}
+function renderLedger(){
+  const el = $('tw-ledger');
+  el.innerHTML = '';
+  SENS.ledger.slice(-20).reverse().forEach(e => {
+    const d = document.createElement('div');
+    d.textContent = `#${e.n} ${e.t.slice(11,19)} ${e.kind}${e.payload ? ' | ' + e.payload : ''} · ${String(e.hash).slice(0,12)}`;
+    el.appendChild(d);
+  });
+}
+
+function ui(){
+  const st = !SENS.running ? 'STANDBY'
+    : fused() ? 'LISTENING'
+    : (SENS.micSt === 'ABSENT' || SENS.motSt === 'ABSENT') ? 'SENSOR_ABSENT'
+    : 'AWAITING SENSORS';
+  $('tw-status').textContent = st;
+  const hud = !SENS.running ? 'WAITING'
+    : fused() ? 'FUSION ACTIVE'
+    : (SENS.micSt === 'ABSENT' || SENS.motSt === 'ABSENT') ? 'SENSOR_ABSENT'
+    : 'AWAITING SENSORS';
+  $('tw-state').textContent = hud;
+  $('tw-dot').classList.toggle('on', fused());
+
+  const setSensor = (id, label, s) => {
+    const el = $(id);
+    el.className = 'tw-sensor' + (s === 'LIVE' ? ' live' : s === 'ABSENT' ? ' bad' : '');
+    el.innerHTML = label + ' <b>' + s + '</b>';
+  };
+  setSensor('tw-mic-st', 'MIC', SENS.micSt);
+  setSensor('tw-mot-st', 'MOTION', SENS.motSt);
+
+  $('tw-val-steps').textContent = SENS.steps;
+  $('tw-hud-steps').textContent = SENS.steps;
+  $('tw-val-cadence').textContent = fused() && SENS.cadence ? SENS.cadence : '—';
+  $('tw-start').disabled = SENS.running;
+  $('tw-stop').disabled = !SENS.running;
+}
+
+function err(msg){ $('tw-err').textContent = msg || ''; }
+
+async function startAudio(){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) throw new Error('Web Audio is not available in this browser');
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('microphone needs HTTPS');
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false }
+  });
+  const c = new AC();
+  if(c.state !== 'running') await c.resume();
+  const src = c.createMediaStreamSource(stream);
+  const bp = c.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 80; bp.Q.value = 1;   // footfall "thump" band
+  const an = c.createAnalyser();
+  an.fftSize = 2048;
+  src.connect(bp); bp.connect(an);
+  const sink = c.createGain(); sink.gain.value = 0;                 // keeps analyser pulled, silent output
+  an.connect(sink); sink.connect(c.destination);
+  Object.assign(SENS, { ctx:c, mic:stream, analyser:an, buf:new Float32Array(an.fftSize) });
+  audioLoop();
+}
+
+function audioLoop(){
+  if(!SENS.running || !SENS.analyser) return;
+  SENS.audioRaf = requestAnimationFrame(audioLoop);
+  SENS.analyser.getFloatTimeDomainData(SENS.buf);
+  let s = 0;
+  for(let i = 0; i < SENS.buf.length; i++) s += SENS.buf[i]*SENS.buf[i];
+  const rms = Math.sqrt(s / SENS.buf.length);
+  $('tw-meter').style.width = clamp(rms*1000, 0, 100) + '%';
+  $('tw-rms').textContent = rms.toFixed(3);
+  const now = performance.now();
+  if(rms > .02 && now - SENS.audioLast > 300){
+    SENS.audioLast = now;
+    onImpulse('audio', now);
+  }
+}
+
+function onMotion(ev){
+  if(!SENS.running) return;
+  const a = ev.accelerationIncludingGravity;
+  if(!a || a.x == null || a.y == null || a.z == null) return;   // no data = sensor absent, not zero
+  if(SENS.motSt !== 'LIVE'){ SENS.motSt = 'LIVE'; ui(); }
+  const dyn = Math.abs(Math.hypot(a.x, a.y, a.z) - 9.8);         // remove gravity
+  const now = performance.now();
+  if(dyn > 3 && now - SENS.imuLast > 300){
+    SENS.imuLast = now;
+    onImpulse('imu', now);
+  }
+}
+
+// Pair an audio impulse with a motion impulse within 150 ms; each pairing counts once
+function onImpulse(src, now){
+  if(!fused()) return;
+  const other = src === 'audio' ? SENS.imuAt : SENS.audioAt;
+  if(other && now - other < 150){
+    SENS.audioAt = 0; SENS.imuAt = 0;
+    registerStep(now);
+    return;
+  }
+  if(src === 'audio') SENS.audioAt = now; else SENS.imuAt = now;
+}
+
+function registerStep(now){
+  SENS.steps++;
+  if(SENS.lastStep){
+    const iv = now - SENS.lastStep;
+    if(iv > 250 && iv < 2000){                                      // reject implausible gaps
+      SENS.intervals.push(iv);
+      if(SENS.intervals.length > 5) SENS.intervals.shift();
+      const avg = SENS.intervals.reduce((a,b) => a+b, 0) / SENS.intervals.length;
+      SENS.cadence = Math.round(60000 / avg);
+    }
+  }
+  SENS.lastStep = now;
+  ui();
+  if(twin){
+    twin.position.y = 1.2;
+    setTimeout(() => { if(twin) twin.position.y = .8; }, 100);
+  }
+  ledger('GAIT_STRIDE', `steps=${SENS.steps} cadence=${fused() && SENS.cadence ? SENS.cadence : 'n/a'} SPM`);
+}
+
+function stopSensors(reason){
+  if(!SENS.running && !SENS.mic) return;
+  SENS.running = false;
+  if(SENS.onMotion) window.removeEventListener('devicemotion', SENS.onMotion);
+  SENS.onMotion = null;
+  cancelAnimationFrame(SENS.audioRaf);
+  if(SENS.mic) SENS.mic.getTracks().forEach(t => t.stop());
+  if(SENS.ctx) SENS.ctx.close().catch(()=>{});
+  Object.assign(SENS, { mic:null, ctx:null, analyser:null, buf:null, audioAt:0, imuAt:0, micSt:'OFF', motSt:'OFF' });
+  $('tw-consent-box').checked = false;                              // consent is per session
+  $('tw-meter').style.width = '0%';
+  $('tw-rms').textContent = '0.000';
+  ledger('SESSION_STOP', reason || 'user revoked consent');
+  ui();
+}
+
+$('tw-start').addEventListener('click', async () => {
+  err('');
+  if(SENS.running) return;
+  if(!$('tw-consent-box').checked){ err('Tick the consent box to start.'); return; }
+
+  // iOS: motion permission must be requested inside the tap, before any await
+  const hasMotion = typeof DeviceMotionEvent !== 'undefined';
+  const motionReq = hasMotion && typeof DeviceMotionEvent.requestPermission === 'function'
+    ? DeviceMotionEvent.requestPermission().catch(() => 'denied')
+    : null;
+
+  Object.assign(SENS, { running:true, steps:0, cadence:0, lastStep:0, intervals:[],
+    audioAt:0, imuAt:0, micSt:'OFF', motSt: hasMotion ? 'WAITING' : 'ABSENT' });
+  ledger('CONSENT_GRANTED', 'gait-sensing · session only');
+  ui();
+
+  let motionOk = hasMotion;
+  if(motionReq){
+    const p = await motionReq;
+    motionOk = p === 'granted';
+    if(!motionOk){ SENS.motSt = 'ABSENT'; ledger('MOTION_ABSENT', 'permission ' + p); }
+  }
+  if(motionOk){
+    SENS.onMotion = onMotion;
+    window.addEventListener('devicemotion', SENS.onMotion);
+  }
+
+  try {
+    await startAudio();
+    SENS.micSt = 'LIVE';
+  } catch(e){
+    SENS.micSt = 'ABSENT';
+    err('Microphone: ' + e.message);
+    ledger('MIC_ABSENT', e.message);
+  }
+  ui();
+});
+
+$('tw-stop').addEventListener('click', () => stopSensors('user revoked consent'));
+
+// Leaving the module releases the mic and motion listener
+new MutationObserver(() => {
+  if(document.body.dataset.module !== 'twin') stopSensors('left twin module');
+}).observe(document.body, { attributes:true, attributeFilter:['data-module'] });
+
+/* ==========================================================================
+   3D TWIN  (Three.js r128: no CapsuleGeometry, so the body is built from
+   a cylinder plus two hemispheres)
+   ========================================================================== */
+let renderer = null, scene = null, camera = null, twin = null, lastW = 0, lastH = 0;
+
+function init3D(){
+  const stage = $('tw-stage');
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x05070a, .05);
+  camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
+  camera.position.set(0, 2, 5);
+  camera.lookAt(0, .8, 0);
+  renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  stage.insertBefore(renderer.domElement, stage.firstChild);
+
+  scene.add(new THREE.AmbientLight(0xffffff, .5));
+  const dir = new THREE.DirectionalLight(0xf59e0b, 1);
+  dir.position.set(2, 5, 2);
+  scene.add(dir);
+  scene.add(new THREE.GridHelper(20, 20, 0x6b6d7a, 0x21242f));
+
+  const mat = new THREE.MeshStandardMaterial({ color:0x06b6d4, emissive:0x06b6d4, emissiveIntensity:.2 });
+  twin = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(.28, .28, 1, 16), mat);
+  const top = new THREE.Mesh(new THREE.SphereGeometry(.28, 16, 8), mat); top.position.y = .5;
+  const bot = new THREE.Mesh(new THREE.SphereGeometry(.28, 16, 8), mat); bot.position.y = -.5;
+  twin.add(body, top, bot);
+  twin.position.y = .8;
+  scene.add(twin);
+  frame();
+}
+
+function fit(){
+  const stage = $('tw-stage');
+  const w = stage.clientWidth, h = stage.clientHeight;
+  if(!w || !h || (w === lastW && h === lastH)) return;
+  lastW = w; lastH = h;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+function frame(){
+  requestAnimationFrame(frame);
+  if(document.body.dataset.module !== 'twin') return;   // idle when not visible
+  fit();
+  if(twin) twin.rotation.y += .01;
+  renderer.render(scene, camera);
+}
+
+if(window.THREE) init3D();
+else ui();
+
+/* ==========================================================================
+   BUILD PROCEDURE  (checklist with gates; progress saved in this browser)
+   ========================================================================== */
+const PROC_KEY = 'vvu.twin.procedure.v1';
+
+const BLOCKERS = [
+  { id:'b1', t:'Identity, biometrics and health are separate purposes. The notes tie a bank-card registration (Stitch / Paystack) to a KYC facial scan and facial expression capture. Facial geometry is biometric data, and POPIA treats it as special personal information. Each purpose needs its own lawful basis and consent record.' },
+  { id:'b2', t:'Field list justified. BMI, sex and demographic fields are not needed for a face avatar. Remove each unless a written purpose requires it. Where sex or race is held, treat it as special personal information.' },
+  { id:'b3', t:"Sharing blocked. No public link may show a live twin driven by another person's respiration or heart rate." },
+  { id:'b4', t:'Cross-border analysis first. If the renderer, telemetry processor or log store sits outside South Africa, complete the Section 72 transfer analysis before the first production write.' },
+  { id:'b5', t:'Legal review. A South African privacy lawyer checks the citations and the sharing model before any build.' }
+];
+
+const PHASES = [
+  { t:'Phase 1 · Identity and consent (separate from the avatar)', items:[
+    { id:'1.1', t:'Register the payment instrument via Stitch (EFT) and Paystack. Payment does not gate or depend on the face capture.', ext:1 },
+    { id:'1.2', t:'KYC facial check: the provider performs the match and returns approve or reject. VVU stores the outcome and a salted hash, never the raw face image.', ext:1 },
+    { id:'1.3', t:'Record a revocable, per-viewer consent receipt for the avatar purpose, separately from KYC.' }
+  ]},
+  { t:'Phase 2 · Capture (avatar purpose only, after consent)', items:[
+    { id:'2.1', t:'Lighting: dark room, torch off, no screen reflection on the face. Check for specular reflection before each take.', ext:1 },
+    { id:'2.2', t:'Device path. iOS: TrueDepth camera for depth and expression. Android: YOLO (v8) face detection with a wireframe mesh fit.', ext:1 },
+    { id:'2.3', t:'Expression set, one take each: neutral, smile, look left, look right, look up and nod, smile for the camera (KYC expression check).', ext:1 },
+    { id:'2.4', t:'Log every capture as a WORM entry with device ID, timestamp and sensor source. Discard any frame where the sensor is absent. Do not interpolate.' }
+  ]},
+  { t:'Phase 3 · Geometry', items:[
+    { id:'3.1', t:'Fit the wax wireframe to the depth or mesh output.', ext:1 },
+    { id:'3.2', t:'Export images to an image editor. Generate facial sketches and light edits in layers.', ext:1 },
+    { id:'3.3', t:'Import the curve data and map facial displacement as coordinates on the extrusion plane.', ext:1 },
+    { id:'3.4', t:'Bake textures and frames. Record the source asset hash for each output.' }
+  ]},
+  { t:'Phase 4 · Avatar and telemetry binding', items:[
+    { id:'4.1', t:'Build one canonical skeleton. Parent organ or face meshes to bone transforms.' },
+    { id:'4.2', t:'Bind telemetry: respiration and heart rate first. Every visual parameter names the sensor and timestamp behind it.' },
+    { id:'4.3', t:'Fail closed. A missing or stale sensor shows SENSOR_ABSENT, never a default or an interpolated value. The sensor-fusion tab already follows this rule.' }
+  ]},
+  { t:'Phase 5 · Validation', items:[
+    { id:'5.1', t:'Scale against anthropometric references.' },
+    { id:'5.2', t:'Audit that every visual state maps to a logged input, and that no default appears when a sensor is absent.' },
+    { id:'5.3', t:'Check the licence manifest for every mesh source (BodyParts3D and Z-Anatomy share-alike terms) before distribution.' }
+  ]},
+  { t:'Phase 6 · Sharing (gated)', items:[
+    { id:'6.1', t:'Default is no sharing of live health-driven views.' },
+    { id:'6.2', t:'Anatomy-level or synthetic telemetry only, unless the data subject gives explicit, per-viewer, revocable consent.' },
+    { id:'6.3', t:'Health-driven views sit behind authentication, not public URLs.' },
+    { id:'6.4', t:'Log every share and every view as a WORM entry visible to the data subject.' }
+  ]}
+];
+
+let proc = loadProc();
+
+function loadProc(){
+  try {
+    const s = JSON.parse(localStorage.getItem(PROC_KEY) || 'null');
+    if(s && typeof s === 'object') return { ack:!!s.ack, blk:s.blk || {}, items:s.items || {} };
+  } catch(_){}
+  return { ack:false, blk:{}, items:{} };
+}
+function saveProc(){
+  try { localStorage.setItem(PROC_KEY, JSON.stringify(proc)); } catch(_){}
+}
+function gateOpen(){
+  return proc.ack && BLOCKERS.every(b => proc.blk[b.id]);
+}
+function renderProc(){
+  const open = gateOpen();
+  const cleared = BLOCKERS.filter(b => proc.blk[b.id]).length;
+  const gate = $('tw-proc-gate');
+  gate.classList.toggle('open', open);
+  gate.textContent = open
+    ? 'PHASES UNLOCKED · planning checklist only. A build still needs sign-off.'
+    : 'PHASES LOCKED · ' + cleared + '/' + BLOCKERS.length + ' blockers cleared (and step 0 acknowledged)';
+
+  const ack = $('tw-proc').querySelector('[data-ack]');
+  if(ack) ack.checked = proc.ack;
+
+  $('tw-blockers').innerHTML = BLOCKERS.map(b =>
+    '<label class="tw-check"><input type="checkbox" data-blk="' + b.id + '"' + (proc.blk[b.id] ? ' checked' : '') + '><span>' + b.t + '</span></label>'
+  ).join('');
+
+  $('tw-phases').innerHTML = PHASES.map(p =>
+    '<div class="tw-panel tw-phase' + (open ? '' : ' locked') + '"><div class="tw-title">' + p.t + '</div>' +
+    p.items.map(it =>
+      '<label class="tw-check"><input type="checkbox" data-item="' + it.id + '"' +
+      (proc.items[it.id] ? ' checked' : '') + (open ? '' : ' disabled') + '><span><b>' + it.id + '</b> ' + it.t +
+      (it.ext ? ' <span class="tw-ext">(outside this console)</span>' : '') + '</span></label>'
+    ).join('') + '</div>'
+  ).join('');
+}
+
+$('tw-proc').addEventListener('change', e => {
+  const t = e.target;
+  if(t.hasAttribute('data-ack')) proc.ack = t.checked;
+  else if(t.hasAttribute('data-blk')) proc.blk[t.dataset.blk] = t.checked;
+  else if(t.hasAttribute('data-item')) proc.items[t.dataset.item] = t.checked;
+  else return;
+  saveProc();
+  renderProc();
+});
+$('tw-proc-reset').addEventListener('click', () => {
+  proc = { ack:false, blk:{}, items:{} };
+  saveProc();
+  renderProc();
+});
+
+/* ---------- init ---------- */
+renderProc();
+ui();
+renderLedger();
 
 })();
 </script>
