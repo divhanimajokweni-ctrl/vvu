@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sensor Mesh — Big Screen · ProofBridge Field Demo</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #06080a; color: #c9d4bd; display: flex; flex-direction: column; min-height: 100vh;
+  }
+  header {
+    display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;
+    padding: 14px 20px; border-bottom: 1px solid #1c2417;
+  }
+  .brand { font-size: 10px; letter-spacing: 2px; color: #7a8a6e; }
+  h1 { font-size: 16px; color: #f3e38a; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 3px; }
+  .pill {
+    font-size: 9px; letter-spacing: 1.5px; border: 1px solid #2a3a28; border-radius: 999px;
+    padding: 4px 10px; color: #a8c46a;
+  }
+  .spacer { flex: 1; }
+  .chainbox { text-align: right; font-size: 9px; letter-spacing: 1px; color: #7a8a6e; line-height: 1.8; }
+  .chainbox b { color: #d7e6c4; font-weight: 400; }
+  button.verify {
+    font: inherit; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    background: #c8ff00; color: #000; border: 1px solid #000; border-radius: 8px;
+    padding: 10px 16px; cursor: pointer; box-shadow: 3px 3px 0 0 #000; min-height: 40px;
+  }
+  button.verify:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 0 #000; }
+  .verify-out { font-size: 10px; letter-spacing: 1px; padding: 8px 20px; border-bottom: 1px solid #1c2417; color: #8dff5e; display: none; }
+  .verify-out.bad { color: #ff8a7a; }
+
+  .layout { flex: 1; display: flex; gap: 0; min-height: 0; }
+  aside {
+    width: 340px; flex-shrink: 0; border-right: 1px solid #1c2417; padding: 18px;
+    display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+  }
+  .qrbox { border: 1px dashed #2a3a28; border-radius: 10px; padding: 14px; text-align: center; }
+  .qrbox img { width: 230px; height: 230px; image-rendering: pixelated; background: #fff; border-radius: 6px; }
+  .qrbox .cap { font-size: 9px; letter-spacing: 1.5px; color: #7a8a6e; margin-top: 10px; line-height: 1.8; }
+  .qrbox .url { font-size: 10px; color: #d7e6c4; word-break: break-all; margin-top: 6px; }
+  .beats { font-size: 10px; line-height: 2; color: #8fa083; border: 1px solid #1e2818; border-radius: 10px; padding: 12px 14px; }
+  .beats .h { font-size: 9px; letter-spacing: 2px; color: #7a8a6e; margin-bottom: 4px; }
+  .beats li { margin-left: 16px; }
+  .note { font-size: 9px; color: #55624b; letter-spacing: .5px; line-height: 1.8; }
+
+  main { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .empty {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: #55624b; font-size: 11px; letter-spacing: 2px; text-align: center; line-height: 2.2;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .card { border: 1px solid #26301e; border-radius: 12px; background: #0a0e08; overflow: hidden; }
+  .card.leaving { opacity: .35; transition: opacity .3s; }
+  .card h3 {
+    display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 12px;
+    color: #f3e38a; letter-spacing: 1.5px; border-bottom: 1px solid #1c2417; font-weight: 700;
+  }
+  .card h3 .since { margin-left: auto; font-size: 8px; color: #6d7d61; font-weight: 400; letter-spacing: 1px; }
+  .badge {
+    font-size: 8px; letter-spacing: 1px; border-radius: 4px; padding: 2px 6px;
+    border: 1px solid #5a4a1e; color: #ffb84b; font-weight: 400;
+  }
+  .rows { padding: 6px 0; }
+  .row {
+    display: grid; grid-template-columns: 82px 1fr; gap: 10px; align-items: center;
+    padding: 8px 14px; font-size: 11px; border-bottom: 1px solid #10160c;
+  }
+  .row:last-child { border-bottom: none; }
+  .row .name { font-size: 9px; letter-spacing: 1.5px; color: #7a8a6e; }
+  .row .val { color: #d7e6c4; word-break: break-word; }
+  .row .undef { color: #ffb38a; }
+  .row .why { display: block; color: #6d7d61; font-size: 8px; letter-spacing: 1px; margin-top: 2px; }
+  .row.live { border-left: 2px solid #8dff5e; }
+  .row.dead { border-left: 2px dashed #3a4634; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .dot.live { background: #8dff5e; box-shadow: 0 0 6px rgba(141,255,94,.7); }
+  .dot.undef { background: transparent; border: 1px dashed #6d7d61; }
+
+  .events { border-top: 1px solid #1c2417; padding: 10px 20px 14px; max-height: 150px; overflow-y: auto; }
+  .events .h { font-size: 9px; letter-spacing: 2px; color: #7a8a6e; margin-bottom: 6px; }
+  .events .line { font-size: 10px; color: #8fa083; line-height: 1.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .events .line b { color: #d7e6c4; font-weight: 400; }
+
+  footer { border-top: 1px solid #1c2417; padding: 8px 20px; font-size: 9px; color: #55624b; letter-spacing: 1px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .conn { margin-left: auto; }
+  .conn.bad { color: #ff8a7a; }
+
+  @media (max-width: 860px) {
+    .layout { flex-direction: column; }
+    aside { width: 100%; border-right: none; border-bottom: 1px solid #1c2417; }
+    .qrbox img { width: 190px; height: 190px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="brand">PROOFBRIDGE FIELD DEMO · LOCAL SERVER · PORT 3007</div>
+    <h1>Sensor mesh — big screen</h1>
+  </div>
+  <span class="pill">LOCAL-ONLY · NOTHING LEFT THIS ROOM</span>
+  <div class="spacer"></div>
+  <div class="chainbox">
+    CHAIN <b id="head">…</b><br>
+    <b id="entries">0</b> ENTRIES · GENESIS-LINKED
+  </div>
+  <button class="verify" id="verify">Verify chain</button>
+</header>
+<div class="verify-out" id="vout"></div>
+
+<div class="layout">
+  <aside>
+    <div class="qrbox">
+      <img id="qr" alt="QR code — local join URL for guest phones (rendered locally, no third-party service)">
+      <div class="cap">GUESTS SCAN THIS — PHONE BECOMES A SENSOR NODE</div>
+      <div class="url" id="joinurl"></div>
+    </div>
+    <div class="beats">
+      <div class="h">DEMO BEATS</div>
+      <ol>
+        <li>Scan → your card appears here</li>
+        <li>Cover your camera → CAMERA flips to <b>UNDEFINED</b> in ≤5s</li>
+        <li>Tap STOP on the phone → card disappears, event logged</li>
+        <li>VERIFY CHAIN → every reading counted from genesis</li>
+      </ol>
+    </div>
+    <div class="note">
+      Missing sensor ⇒ UNDEFINED, never a guess. The QR carries a plain join
+      URL — a reference, not a secret (TEMPLATE_QR_BRIDGE §1) — and it is
+      rendered by the local server (§8). noindex on every endpoint (§9).
+      Separate rail from the pairing bridge (§15).
+    </div>
+  </aside>
+
+  <main>
+    <div class="empty" id="empty">NO NODES YET<br>SCAN THE QR WITH A PHONE</div>
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<div class="events">
+  <div class="h">JOURNAL — LIVE TAIL (EVERY LINE IS HASH-CHAINED ON DISK)</div>
+  <div id="evlines"></div>
+</div>
+
+<footer>
+  <span>PROOFBRIDGE FIELD DEMO · SENSOR MESH</span>
+  <span>SHA-256 HASH-CHAINED JOURNAL · /verify WALKS FROM GENESIS</span>
+  <span class="conn" id="conn">LINK: …</span>
+</footer>
+
+<script>
+'use strict';
+// Gateway-aware base — same rule as the phone page: derive everything from
+// the origin this dashboard was opened from (never hardcoded).
+var PATH = location.pathname.replace(/\/+$/, '').replace(/\/(join|dashboard)$/, '');
+var GATE = new URLSearchParams(location.search).get('XTransformPort');
+var Q = GATE ? '?XTransformPort=' + GATE : '';
+var WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + PATH + '/ws' + Q;
+// API() must merge — not append — query params: '/qr.svg?d=…' needs
+// '&XTransformPort=…', not a second '?', or the gateway misses the route.
+function API(p) {
+  if (!GATE) return PATH + p;
+  return PATH + p + (p.indexOf('?') >= 0 ? '&' : '?') + 'XTransformPort=' + GATE;
+}
+
+var CH = [
+  { key: 'camera',  name: 'CAMERA'  },
+  { key: 'mic',     name: 'MIC'     },
+  { key: 'gps',     name: 'GPS'     },
+  { key: 'motion',  name: 'MOTION'  },
+  { key: 'battery', name: 'BATTERY' }
+];
+
+// ── QR panel: local render only (§8 — the reference never leaves this host) ──
+var joinUrl = location.origin + PATH + '/join' + Q;
+document.getElementById('joinurl').textContent = joinUrl;
+document.getElementById('qr').src = API('/qr.svg?d=' + encodeURIComponent(joinUrl));
+
+var ws = null, wsAlive = false, pollTimer = null;
+var lastNodes = new Map();   // id → label, to detect joins/leaves for the card flash
+
+function fmtVal(key, c) {
+  var v = c && c.value;
+  switch (key) {
+    case 'camera':  return v && v.luma != null ? 'LUMA ' + v.luma + (v.w ? ' · ' + v.w + '×' + v.h : '') : null;
+    case 'mic':     return v && v.dbfs != null ? v.dbfs + ' dBFS' : null;
+    case 'gps':     return v && v.lat != null ? v.lat + ', ' + v.lon + ' ±' + v.acc + 'm' : null;
+    case 'motion':  return v && v.ax != null ? 'a(' + v.ax + ',' + v.ay + ',' + v.az + ') r(' + v.ra + ',' + v.rb + ',' + v.rg + ')' : null;
+    case 'battery': return v && v.level != null ? v.level + '%' + (v.charging ? ' ⚡' : '') : null;
+  }
+  return null;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (m) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+  });
+}
+
+function render(state) {
+  document.getElementById('head').textContent = String(state.chain.head || '').slice(0, 10) + '…';
+  document.getElementById('entries').textContent = state.chain.entries;
+  var grid = document.getElementById('grid');
+  var empty = document.getElementById('empty');
+  empty.style.display = state.nodes.length ? 'none' : 'flex';
+
+  // flash leaves: nodes present last tick but gone now
+  var nowIds = new Set(state.nodes.map(function (n) { return n.id; }));
+  lastNodes.forEach(function (label, id) {
+    if (!nowIds.has(id)) console.log('[mesh] node left:', label);
+  });
+  lastNodes = new Map(state.nodes.map(function (n) { return [n.id, n.label]; }));
+
+  grid.innerHTML = state.nodes.map(function (n) {
+    var rows = CH.map(function (c) {
+      var st = n.channels[c.key] || { state: 'undefined', reason: 'NO_DATA' };
+      var live = st.state === 'live';
+      var dot = live ? '<span class="dot live"></span>' : '<span class="dot undef"></span>';
+      var body = live
+        ? dot + esc(fmtVal(c.key, st) || '—')
+        : '<span class="undef">' + dot + 'UNDEFINED</span><span class="why">' + esc(st.reason || 'NO_DATA') + '</span>';
+      return '<div class="row ' + (live ? 'live' : 'dead') + '"><span class="name">' + c.name + '</span><span class="val">' + body + '</span></div>';
+    }).join('');
+    var simBadge = n.sim ? ' <span class="badge">SIMULATED · QA AGENT</span>' : '';
+    var since = new Date(n.joinedAt).toLocaleTimeString();
+    var silent = n.silentMs > 15000 ? ' · NO DATA ' + Math.round(n.silentMs / 1000) + 's' : '';
+    return '<div class="card"><h3>' + esc(n.label) + simBadge +
+      '<span class="since">JOINED ' + esc(since) + silent + '</span></h3>' +
+      '<div class="rows">' + rows + '</div></div>';
+  }).join('');
+
+  var ev = document.getElementById('evlines');
+  ev.innerHTML = (state.events || []).map(function (e) {
+    var t = new Date(e.ts).toLocaleTimeString();
+    var bits = ['<b>#' + e.seq + '</b> ' + esc(t) + ' ' + esc(e.type)];
+    if (e.node) bits.push(esc(e.node));
+    if (e.ch) bits.push(esc(e.ch));
+    if (e.state) bits.push(esc(e.state));
+    if (e.reason) bits.push('(' + esc(e.reason) + ')');
+    return '<div class="line">' + bits.join(' · ') + '</div>';
+  }).join('');
+}
+
+function connect() {
+  try { ws = new WebSocket(WS_URL); } catch (e) { setConn('BLOCKED', true); return; }
+  ws.onopen = function () { wsAlive = true; setConn('LIVE', false); };
+  ws.onmessage = function (ev) {
+    try {
+      var m = JSON.parse(ev.data);
+      if (m.type === 'state') render(m.state);
+    } catch (e) {}
+  };
+  ws.onclose = function () {
+    wsAlive = false;
+    setConn('RECONNECTING…', true);
+    setTimeout(connect, 3000);
+  };
+}
+function setConn(txt, bad) {
+  var el = document.getElementById('conn');
+  el.textContent = 'LINK: ' + txt;
+  el.className = 'conn' + (bad ? ' bad' : '');
+}
+// polling fallback — the spec's "subscribes every second" also holds if WS dies
+function poll() {
+  if (wsAlive) return;
+  fetch(API('/state')).then(function (r) { return r.json(); })
+    .then(function (state) { render(state); })
+    .catch(function () { setConn('OFFLINE', true); });
+}
+pollTimer = setInterval(poll, 1000);
+
+document.getElementById('verify').addEventListener('click', function () {
+  var out = document.getElementById('vout');
+  out.style.display = 'block';
+  out.className = 'verify-out';
+  out.textContent = 'WALKING CHAIN FROM GENESIS…';
+  fetch(API('/verify')).then(function (r) { return r.json(); }).then(function (v) {
+    if (v.valid) {
+      out.className = 'verify-out';
+      out.textContent = 'CHAIN VALID ✓ — ' + v.entries + ' ENTRIES · HEAD ' + String(v.head).slice(0, 16) + '… · RECOMPUTED IN ' + v.duration_ms + 'MS';
+    } else {
+      out.className = 'verify-out bad';
+      out.textContent = 'CHAIN BROKEN AT SEQ ' + v.break_at_seq + ' — ' + v.reason;
+    }
+  }).catch(function () {
+    out.className = 'verify-out bad';
+    out.textContent = 'VERIFY FAILED — SERVICE UNREACHABLE';
+  });
+});
+
+connect();
+</script>
+</body>
+</html>

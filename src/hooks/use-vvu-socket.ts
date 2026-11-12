@@ -125,11 +125,12 @@ let bootstrapped = false;
 /** Mount once (in Providers) — creates the singleton socket connection. */
 export function useVvuSocketBootstrap() {
   useEffect(() => {
-    if (bootstrapped) return;
-    bootstrapped = true;
-
-    // NEVER hardcode the port — the gateway needs XTransformPort in the query.
-    const socket = io('/?XTransformPort=3003', {
+    // Connect directly to the telemetry mini-service on port 3003.
+    // In production, the Caddy gateway on :81 proxies /?XTransformPort=3003.
+    // In dev (localhost:3000), we connect to :3003 directly.
+    const isDev = typeof window !== 'undefined' && window.location.port === '3000';
+    const socketUrl = isDev ? 'http://localhost:3003' : '/';
+    const socket = io(isDev ? socketUrl : '/?XTransformPort=3003', {
       transports: ['websocket', 'polling'],
       forceNew: true,
       reconnection: true,

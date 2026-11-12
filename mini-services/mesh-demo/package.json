@@ -1,0 +1,15 @@
+{
+  "name": "mesh-demo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun --hot index.ts",
+    "start": "bun index.ts",
+    "demo-agent": "bun demo-agent.ts",
+    "crosscheck": "bun tests/crosscheck.ts"
+  },
+  "devDependencies": {
+    "jsqr": "1.4.0",
+    "qrcode": "1.5.4"
+  }
+}

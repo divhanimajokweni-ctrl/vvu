@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Join the mesh — ProofBridge Field Demo</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #06080a; color: #c9d4bd; min-height: 100vh; min-height: 100dvh;
+    display: flex; flex-direction: column; padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 16px);
+  }
+  header { padding: 18px 0 10px; }
+  .brand { font-size: 10px; letter-spacing: 2px; color: #7a8a6e; }
+  h1 { font-size: 17px; margin-top: 6px; color: #f3e38a; letter-spacing: 1px; text-transform: uppercase; }
+  .pill {
+    display: inline-block; margin-top: 8px; font-size: 9px; letter-spacing: 1.5px;
+    border: 1px solid #2a3a28; border-radius: 999px; padding: 4px 10px; color: #a8c46a;
+  }
+  main { flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 8px 0 16px; }
+  .explain { font-size: 11px; line-height: 1.7; color: #8fa083; border: 1px dashed #24301f; border-radius: 8px; padding: 12px; }
+  .explain b { color: #c9d4bd; }
+  label { display: block; font-size: 9px; letter-spacing: 1.5px; color: #7a8a6e; text-transform: uppercase; margin-bottom: 6px; }
+  input[type="text"] {
+    width: 100%; background: #0b0f0a; border: 1px solid #2a3a28; border-radius: 8px;
+    color: #f3e38a; font: inherit; font-size: 15px; padding: 12px; outline: none;
+  }
+  input[type="text"]:focus { border-color: #c8ff00; }
+  button.start, button.stop {
+    width: 100%; min-height: 56px; font: inherit; font-size: 13px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; border-radius: 10px; cursor: pointer;
+    border: 1px solid #000; transition: transform .06s ease, box-shadow .06s ease;
+  }
+  button.start { background: #c8ff00; color: #000; box-shadow: 4px 4px 0 0 #000; }
+  button.start:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 0 #000; }
+  button.stop { background: #ff4d3d; color: #000; box-shadow: 4px 4px 0 0 #000; }
+  button.stop:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 0 #000; }
+  .status-line { font-size: 10px; letter-spacing: 1px; color: #7a8a6e; text-align: center; }
+  .status-line.bad { color: #ff8a7a; }
+  .chans { display: flex; flex-direction: column; gap: 8px; }
+  .chan {
+    display: grid; grid-template-columns: 74px 1fr; gap: 10px; align-items: center;
+    border: 1px solid #1e2818; border-radius: 8px; padding: 10px 12px; font-size: 11px;
+  }
+  .chan .name { font-size: 9px; letter-spacing: 1.5px; color: #7a8a6e; }
+  .chan .val { color: #d7e6c4; word-break: break-word; }
+  .chan .val .undef { color: #ffb38a; }
+  .chan .val .why { color: #6d7d61; font-size: 9px; display: block; margin-top: 2px; letter-spacing: 1px; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .dot.live { background: #8dff5e; box-shadow: 0 0 6px rgba(141,255,94,.7); }
+  .dot.undef { background: transparent; border: 1px dashed #6d7d61; }
+  video, canvas { display: none; }
+  footer { font-size: 9px; color: #55624b; letter-spacing: 1px; line-height: 1.6; text-align: center; }
+  .stopped { text-align: center; padding: 26px 0; }
+  .stopped .big { font-size: 15px; color: #f3e38a; letter-spacing: 2px; margin-bottom: 8px; }
+  .stopped .sub { font-size: 10px; color: #8fa083; line-height: 1.8; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">PROOFBRIDGE FIELD DEMO · SENSOR MESH</div>
+  <h1>Join the room mesh</h1>
+  <span class="pill">LOCAL-ONLY · NOTHING LEAVES THIS ROOM</span>
+</header>
+
+<main id="setup">
+  <div class="explain">
+    Your phone becomes a <b>sensor node</b> on the demo mesh. When you tap start,
+    this page asks for <b>camera</b>, <b>microphone</b>, <b>location</b>,
+    <b>motion</b> and <b>battery</b> access. Readings stream to the laptop
+    screen once per second — and into a <b>hash chain</b> you can verify before
+    you leave. Missing or denied sensors are shown as <b>UNDEFINED</b>, never
+    guessed. Tap <b>STOP SHARING</b> any time — your card disappears and the
+    stop is logged.
+  </div>
+  <div>
+    <label for="label">Your name on the big screen</label>
+    <input id="label" type="text" maxlength="24" autocomplete="off" spellcheck="false">
+  </div>
+  <button class="start" id="start">Start sharing</button>
+  <div class="status-line" id="status">Sensors are OFF until you tap start.</div>
+</main>
+
+<main id="live" hidden>
+  <div class="chans" id="chans"></div>
+  <button class="stop" id="stop">■ Stop sharing</button>
+  <div class="status-line" id="wstatus"></div>
+  <div class="status-line" id="onbig">…</div>
+</main>
+
+<main id="done" hidden>
+  <div class="stopped">
+    <div class="big">SHARING STOPPED</div>
+    <div class="sub">
+      Your card is off the big screen and the stop is written to the chain.<br>
+      Camera and microphone tracks are released. Close this tab whenever you like.
+    </div>
+  </div>
+</main>
+
+<footer>
+  PROOFBRIDGE FIELD DEMO · SEPARATE RAIL (§15) · QR CARRIES A JOIN URL — A
+  REFERENCE, NEVER A SECRET · RENDERED &amp; SERVED LOCALLY
+</footer>
+
+<video id="camv" playsinline muted></video>
+<canvas id="camc" width="24" height="18"></canvas>
+
+<script>
+'use strict';
+// Gateway-aware base: works at http://laptop:3007/join AND through the gateway
+// at /mesh-demo/join?XTransformPort=3007 (origin-derived, never hardcoded).
+var PATH = location.pathname.replace(/\/+$/, '').replace(/\/join$/, '');
+var GATE = new URLSearchParams(location.search).get('XTransformPort');
+var Q = GATE ? '?XTransformPort=' + GATE : '';
+var WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + PATH + '/ws' + Q;
+
+var CH = [
+  { key: 'camera', name: 'CAMERA' },
+  { key: 'mic',    name: 'MIC'    },
+  { key: 'gps',    name: 'GPS'    },
+  { key: 'motion', name: 'MOTION' },
+  { key: 'battery',name: 'BATTERY'}
+];
+var LUMA_COVER = 4; // below this average luminance the lens is covered → UNDEFINED (no usable image, no guess)
+
+var id = (crypto.randomUUID ? crypto.randomUUID() : 'p-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8));
+var labelInput = document.getElementById('label');
+labelInput.value = 'GUEST-' + Math.random().toString(36).slice(2, 5).toUpperCase();
+var statusEl = document.getElementById('status');
+var wstatusEl = document.getElementById('wstatus');
+var onbigEl = document.getElementById('onbig');
+
+var ws = null, wsTimer = null, sharing = false;
+var cam = { stream: null, v: null, c: null, ctx: null, last: null };
+var mic = { stream: null, ctx: null, analyser: null, buf: null };
+var gps = { watch: null, last: null, err: null };
+var motion = { last: null, saw: false, perm: null };
+var battery = { last: null, unsupported: false };
+var chans = {};   // key → {state, value, reason}
+var tickTimer = null;
+
+function send(obj) {
+  if (ws && ws.readyState === 1) {
+    try { ws.send(JSON.stringify(obj)); } catch (e) {}
+  }
+}
+function connectWS() {
+  try { ws = new WebSocket(WS_URL); } catch (e) { wstatusEl.textContent = 'WS BLOCKED'; wstatusEl.className = 'status-line bad'; return; }
+  wstatusEl.textContent = 'LINK: CONNECTING…'; wstatusEl.className = 'status-line';
+  ws.onopen = function () {
+    wstatusEl.textContent = 'LINK: LIVE'; wstatusEl.className = 'status-line';
+    send({ type: 'hello', id: id, label: labelInput.value.trim() || labelInput.value });
+  };
+  ws.onclose = function () {
+    if (!sharing) return;
+    wstatusEl.textContent = 'LINK: RETRYING IN 3S…'; wstatusEl.className = 'status-line bad';
+    clearTimeout(wsTimer); wsTimer = setTimeout(connectWS, 3000);
+  };
+  ws.onmessage = function (ev) {
+    try {
+      var m = JSON.parse(ev.data);
+      if (m.type === 'state') {
+        onbigEl.textContent = 'ON THE BIG SCREEN · ' + m.state.nodes.length + ' NODE' + (m.state.nodes.length === 1 ? '' : 'S') + ' LIVE · CHAIN #' + m.state.chain.entries;
+      }
+      if (m.type === 'stopped') finish();
+    } catch (e) {}
+  };
+}
+
+function setChan(key, state, value, reason) {
+  chans[key] = { state: state, value: value, reason: reason };
+  send({ type: 'reading', ch: key, state: state, value: value === undefined ? null : value, reason: reason || '' });
+}
+
+async function startSharing() {
+  sharing = true;
+  document.getElementById('setup').hidden = true;
+  document.getElementById('live').hidden = false;
+  statusEl.textContent = '';
+  connectWS();
+
+  // CAMERA + MIC (separate requests so one denial doesn't kill the other)
+  try {
+    cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    cam.v = document.getElementById('camv');
+    cam.v.srcObject = cam.stream;
+    await cam.v.play();
+    cam.c = document.getElementById('camc');
+    cam.ctx = cam.c.getContext('2d', { willReadFrequently: true });
+    cam.stream.getVideoTracks()[0].addEventListener('ended', function () {
+      setChan('camera', 'undefined', null, 'TRACK_ENDED');
+    });
+    statusEl.textContent = 'CAMERA: OK';
+  } catch (e) {
+    setChan('camera', 'undefined', null, 'PERMISSION_DENIED');
+  }
+  try {
+    mic.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    var AC = window.AudioContext || window.webkitAudioContext;
+    mic.ctx = new AC();
+    var src = mic.ctx.createMediaStreamSource(mic.stream);
+    mic.analyser = mic.ctx.createAnalyser();
+    mic.analyser.fftSize = 512;
+    src.connect(mic.analyser);
+    mic.buf = new Float32Array(mic.analyser.fftSize);
+  } catch (e) {
+    setChan('mic', 'undefined', null, 'PERMISSION_DENIED');
+  }
+
+  // GPS
+  if (navigator.geolocation) {
+    gps.watch = navigator.geolocation.watchPosition(
+      function (p) {
+        gps.last = { lat: +p.coords.latitude.toFixed(5), lon: +p.coords.longitude.toFixed(5), acc: Math.round(p.coords.accuracy) };
+        setChan('gps', 'live', gps.last);
+      },
+      function (err) { setChan('gps', 'undefined', null, err.code === 1 ? 'PERMISSION_DENIED' : 'NO_FIX'); },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 12000 }
+    );
+  } else {
+    setChan('gps', 'undefined', null, 'UNSUPPORTED');
+  }
+
+  // MOTION (iOS needs an explicit permission gesture)
+  try {
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      motion.perm = await DeviceMotionEvent.requestPermission();
+      if (motion.perm !== 'granted') { setChan('motion', 'undefined', null, 'PERMISSION_DENIED'); }
+    }
+  } catch (e) { setChan('motion', 'undefined', null, 'PERMISSION_DENIED'); }
+  window.addEventListener('devicemotion', function (e) {
+    motion.saw = true;
+    var a = e.accelerationIncludingGravity || {};
+    var r = e.rotationRate || {};
+    motion.last = {
+      ax: a.x == null ? null : +a.x.toFixed(2), ay: a.y == null ? null : +a.y.toFixed(2), az: a.z == null ? null : +a.z.toFixed(2),
+      ra: r.alpha == null ? null : +r.alpha.toFixed(0), rb: r.beta == null ? null : +r.beta.toFixed(0), rg: r.gamma == null ? null : +r.gamma.toFixed(0)
+    };
+  });
+
+  // BATTERY
+  if (navigator.getBattery) {
+    navigator.getBattery().then(function (b) {
+      var upd = function () { battery.last = { level: Math.round(b.level * 100), charging: b.charging }; };
+      upd();
+      b.addEventListener('levelchange', upd);
+      b.addEventListener('chargingchange', upd);
+    }).catch(function () { setChan('battery', 'undefined', null, 'UNAVAILABLE'); });
+  } else {
+    battery.unsupported = true;
+  }
+
+  setTimeout(sampleOnce, 1500);   // give sensors a moment, then first honest read
+  tickTimer = setInterval(sampleOnce, 1000);
+}
+
+function sampleOnce() {
+  if (!sharing) return;
+  // CAMERA — average luminance of a 24×18 downsample. Covered lens (<4) →
+  // UNDEFINED: no usable image, so NO reading is fabricated (the measured
+  // luma travels in the reason, visibly).
+  if (cam.stream && cam.ctx) {
+    try {
+      cam.ctx.drawImage(cam.v, 0, 0, cam.c.width, cam.c.height);
+      var d = cam.ctx.getImageData(0, 0, cam.c.width, cam.c.height).data;
+      var sum = 0, n = d.length / 4;
+      for (var i = 0; i < d.length; i += 4) sum += (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000;
+      var luma = +(sum / n).toFixed(1);
+      if (luma < LUMA_COVER) setChan('camera', 'undefined', { luma: luma }, 'LENS_COVERED');
+      else setChan('camera', 'live', { luma: luma, w: cam.v.videoWidth, h: cam.v.videoHeight });
+    } catch (e) { setChan('camera', 'undefined', null, 'SAMPLE_FAILED'); }
+  } else if (!chans.camera) {
+    setChan('camera', 'undefined', null, 'PERMISSION_DENIED');
+  }
+  // MIC — RMS → dBFS
+  if (mic.analyser) {
+    try {
+      mic.analyser.getFloatTimeDomainData(mic.buf);
+      var s = 0;
+      for (var j = 0; j < mic.buf.length; j++) s += mic.buf[j] * mic.buf[j];
+      var rms = Math.sqrt(s / mic.buf.length);
+      var db = rms <= 0 ? -100 : Math.max(-100, +(20 * Math.log10(rms)).toFixed(1));
+      setChan('mic', 'live', { dbfs: db });
+    } catch (e) { setChan('mic', 'undefined', null, 'SAMPLE_FAILED'); }
+  } else if (!chans.mic) {
+    setChan('mic', 'undefined', null, 'PERMISSION_DENIED');
+  }
+  // GPS — last fix, or honest undefined
+  if (gps.last) setChan('gps', 'live', gps.last);
+  else if (!chans.gps) setChan('gps', 'undefined', null, 'NO_FIX');
+  // MOTION — no events at all ⇒ no sensor (desktops); stale sample ⇒ undefined
+  if (!motion.saw) setChan('motion', 'undefined', null, 'NO_SENSOR');
+  else if (motion.last) setChan('motion', 'live', motion.last);
+  else setChan('motion', 'undefined', null, 'NO_SAMPLE');
+  // BATTERY
+  if (battery.last) setChan('battery', 'live', battery.last);
+  else if (battery.unsupported) setChan('battery', 'undefined', null, 'UNSUPPORTED');
+  else if (!chans.battery) setChan('battery', 'undefined', null, 'PENDING');
+  renderLocal();
+}
+
+function fmtVal(key, c) {
+  var v = c.value;
+  switch (key) {
+    case 'camera': return v && v.luma != null ? 'LUMA ' + v.luma + (v.w ? ' · ' + v.w + '×' + v.h : '') : '—';
+    case 'mic': return v && v.dbfs != null ? v.dbfs + ' dBFS' : '—';
+    case 'gps': return v && v.lat != null ? v.lat + ', ' + v.lon + ' ±' + v.acc + 'm' : '—';
+    case 'motion': return v && v.ax != null ? 'a(' + v.ax + ', ' + v.ay + ', ' + v.az + ') r(' + v.ra + ', ' + v.rb + ', ' + v.rg + ')' : '—';
+    case 'battery': return v && v.level != null ? v.level + '%' + (v.charging ? ' ⚡' : '') : '—';
+  }
+  return '—';
+}
+
+function renderLocal() {
+  var host = document.getElementById('chans');
+  host.innerHTML = '';
+  CH.forEach(function (c) {
+    var st = chans[c.key];
+    var live = st && st.state === 'live';
+    var div = document.createElement('div');
+    div.className = 'chan';
+    var dot = live ? '<span class="dot live"></span>' : '<span class="dot undef"></span>';
+    var val = live
+      ? '<span class="val">' + dot + fmtVal(c.key, st) + '</span>'
+      : '<span class="val"><span class="undef">' + dot + 'UNDEFINED</span><span class="why">' + ((st && st.reason) || 'NO_DATA') + '</span></span>';
+    div.innerHTML = '<span class="name">' + c.name + '</span>' + val;
+    host.appendChild(div);
+  });
+}
+
+function stopSharing() {
+  if (!sharing) return;
+  sharing = false;
+  clearInterval(tickTimer);
+  send({ type: 'unshare' });   // server logs node.leave and broadcasts the card off
+  releaseAll();
+  // if the server never acks (dead link), still show stopped locally
+  setTimeout(finish, 1200);
+}
+function releaseAll() {
+  if (cam.stream) cam.stream.getTracks().forEach(function (t) { t.stop(); });
+  if (mic.stream) mic.stream.getTracks().forEach(function (t) { t.stop(); });
+  if (mic.ctx) { try { mic.ctx.close(); } catch (e) {} }
+  if (gps.watch != null) navigator.geolocation.clearWatch(gps.watch);
+  window.removeEventListener('devicemotion', function () {}, true);
+}
+function finish() {
+  sharing = false;
+  clearInterval(tickTimer);
+  releaseAll();
+  document.getElementById('live').hidden = true;
+  document.getElementById('done').hidden = false;
+  if (ws) { try { ws.close(); } catch (e) {} }
+}
+
+document.getElementById('start').addEventListener('click', startSharing);
+document.getElementById('stop').addEventListener('click', stopSharing);
+</script>
+</body>
+</html>
