@@ -1,0 +1,179 @@
+{
+  "metadata": {
+    "title": "Top 5 Biggest Kasi (Township) Locations in South Africa - Terrain & Building Specifications",
+    "crs": "EPSG:4326 (WGS84)",
+    "source": "Planetary Digital Twin Architecture Spatial Index"
+  },
+  "kasi_locations": [
+    {
+      "rank": 1,
+      "name": "Soweto",
+      "municipality": "City of Johannesburg Metropolitan Municipality",
+      "province": "Gauteng",
+      "center": {
+        "lat": -26.2485,
+        "lon": 27.854
+      },
+      "bbox": [
+        27.78,
+        -26.31,
+        27.93,
+        -26.18
+      ],
+      "terrain_profile": {
+        "min_elevation_m": 1580,
+        "max_elevation_m": 1740,
+        "mean_elevation_m": 1650,
+        "topography": "Highveld undulating plateau with moderate ridges (Orlando East / Ridge) and natural drainage basins (Klipspruit)."
+      },
+      "building_specifications": {
+        "estimated_building_count": 220000,
+        "dominant_typology": "Single-storey detached brick dwellings ('matchbox' houses), informal backroom extensions, multi-storey social housing developments.",
+        "height_distribution": {
+          "1_storey_pct": 82.0,
+          "2_storey_pct": 14.0,
+          "3_to_5_storey_pct": 4.0
+        },
+        "avg_building_height_m": 4.2,
+        "max_building_height_m": 24.5,
+        "building_density_per_sqkm": 1100
+      }
+    },
+    {
+      "rank": 2,
+      "name": "Khayelitsha",
+      "municipality": "City of Cape Town Metropolitan Municipality",
+      "province": "Western Cape",
+      "center": {
+        "lat": -34.0378,
+        "lon": 18.6747
+      },
+      "bbox": [
+        18.63,
+        -34.07,
+        18.72,
+        -34.0
+      ],
+      "terrain_profile": {
+        "min_elevation_m": 5,
+        "max_elevation_m": 35,
+        "mean_elevation_m": 15,
+        "topography": "Flat coastal dune sandveld terrain (Cape Flats) with sandy soil, high groundwater table, and wind exposure."
+      },
+      "building_specifications": {
+        "estimated_building_count": 145000,
+        "dominant_typology": "High-density formal single-storey RDP units, corrugated iron informal structures, formal community nodes.",
+        "height_distribution": {
+          "1_storey_pct": 91.0,
+          "2_storey_pct": 7.0,
+          "3_to_4_storey_pct": 2.0
+        },
+        "avg_building_height_m": 3.6,
+        "max_building_height_m": 16.0,
+        "building_density_per_sqkm": 2800
+      }
+    },
+    {
+      "rank": 3,
+      "name": "Umlazi",
+      "municipality": "eThekwini Metropolitan Municipality (Durban)",
+      "province": "KwaZulu-Natal",
+      "center": {
+        "lat": -29.9678,
+        "lon": 30.8833
+      },
+      "bbox": [
+        30.83,
+        -30.01,
+        30.94,
+        -29.93
+      ],
+      "terrain_profile": {
+        "min_elevation_m": 40,
+        "max_elevation_m": 210,
+        "mean_elevation_m": 120,
+        "topography": "Steep coastal hills and valley topography, coastal subtropical climate with high erosion vulnerability."
+      },
+      "building_specifications": {
+        "estimated_building_count": 115000,
+        "dominant_typology": "Hilly terrain single-family masonry housing, multi-level terraced backroom structures, hostel conversions.",
+        "height_distribution": {
+          "1_storey_pct": 78.0,
+          "2_storey_pct": 18.0,
+          "3_to_6_storey_pct": 4.0
+        },
+        "avg_building_height_m": 4.5,
+        "max_building_height_m": 22.0,
+        "building_density_per_sqkm": 1400
+      }
+    },
+    {
+      "rank": 4,
+      "name": "Tembisa",
+      "municipality": "City of Ekurhuleni Metropolitan Municipality",
+      "province": "Gauteng",
+      "center": {
+        "lat": -25.9961,
+        "lon": 28.2268
+      },
+      "bbox": [
+        28.17,
+        -26.04,
+        28.27,
+        -25.95
+      ],
+      "terrain_profile": {
+        "min_elevation_m": 1520,
+        "max_elevation_m": 1630,
+        "mean_elevation_m": 1575,
+        "topography": "Gauteng Highveld plains with gentle slopes toward Kaalspruit stream."
+      },
+      "building_specifications": {
+        "estimated_building_count": 98000,
+        "dominant_typology": "Formal residential plots with dense rental backyard micro-structures, commercial retail centers.",
+        "height_distribution": {
+          "1_storey_pct": 84.0,
+          "2_storey_pct": 13.0,
+          "3_to_5_storey_pct": 3.0
+        },
+        "avg_building_height_m": 4.0,
+        "max_building_height_m": 18.5,
+        "building_density_per_sqkm": 1750
+      }
+    },
+    {
+      "rank": 5,
+      "name": "Mdantsane",
+      "municipality": "Buffalo City Metropolitan Municipality (East London)",
+      "province": "Eastern Cape",
+      "center": {
+        "lat": -32.9322,
+        "lon": 27.7318
+      },
+      "bbox": [
+        27.67,
+        -32.97,
+        27.79,
+        -32.89
+      ],
+      "terrain_profile": {
+        "min_elevation_m": 110,
+        "max_elevation_m": 310,
+        "mean_elevation_m": 220,
+        "topography": "Rolling coastal hills dissected by the Nahoon and Buffalo river catchments."
+      },
+      "building_specifications": {
+        "estimated_building_count": 75000,
+        "dominant_typology": "Detached masonry houses (NU 1 to NU 18 zones), suburban infill, central commercial plazas.",
+        "height_distribution": {
+          "1_storey_pct": 88.0,
+          "2_storey_pct": 10.0,
+          "3_to_4_storey_pct": 2.0
+        },
+        "avg_building_height_m": 3.9,
+        "max_building_height_m": 15.0,
+        "building_density_per_sqkm": 950
+      }
+    }
+  ]
+}

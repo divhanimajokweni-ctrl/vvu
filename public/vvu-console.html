@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,800;0,9..144,900;1,9..144,400&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <!-- SafeGrid Relay libraries (pinned) -->
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
 <!-- Sensor Twin 3D (pinned r128) -->
@@ -1534,6 +1534,119 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
   .tw-body{overflow:visible}
 }
 
+/* ==========================================================================
+   STUDIO · WAVE EDITOR (scoped .we-*; overlay is moved to <body> at init)
+   ========================================================================== */
+.we-overlay{
+  --st-bg:#05070a; --st-surface:#0b0f16; --st-surface-2:#121821;
+  --st-border:#1c2533; --st-border-mid:#243044;
+  --st-cyan:#00e5ff; --st-yellow:#ffe066; --st-red:#ff4d4d;
+  --st-text:#e6edf5; --st-muted:#5a6b84; --st-dim:#8fa0b8;
+  position:fixed; inset:0; z-index:900;
+  display:none; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.82); backdrop-filter:blur(8px); padding:16px;
+}
+.we-overlay *{box-sizing:border-box}
+.we-overlay.open{display:flex}
+.we-shell{
+  width:100%; max-width:1120px; max-height:92vh;
+  display:flex; flex-direction:column;
+  background:var(--st-surface); border:1px solid var(--st-border-mid);
+  border-radius:16px; overflow:hidden;
+  box-shadow:0 0 0 1px rgba(0,229,255,.1), 0 40px 120px rgba(0,0,0,.8);
+  font-family:var(--mono); color:var(--st-text);
+}
+.we-head{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:10px 14px; border-bottom:1px solid var(--st-border);
+  background:var(--st-bg); font-size:11px; letter-spacing:.1em;
+}
+.we-title{color:var(--st-text); font-weight:700}
+.we-meta{color:var(--st-muted); font-size:10px}
+.we-head .spacer{flex:1}
+.we-btn{
+  font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+  padding:6px 12px; border-radius:6px;
+  background:transparent; border:1px solid var(--st-border-mid);
+  color:var(--st-dim); cursor:pointer; transition:all .15s; text-transform:uppercase;
+}
+.we-btn:hover:not(:disabled){color:var(--st-cyan); border-color:var(--st-cyan)}
+.we-btn:disabled{opacity:.35; cursor:not-allowed}
+.we-close{width:28px; height:28px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-size:16px}
+.we-close:hover{color:var(--st-red); border-color:var(--st-red)}
+
+.we-toolbar{
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:8px 14px; border-bottom:1px solid var(--st-border);
+  background:var(--st-surface); font-size:10px;
+}
+.we-tool-group{display:inline-flex; gap:2px; padding:2px; border-radius:6px; background:var(--st-bg); border:1px solid var(--st-border)}
+.we-tool{
+  font-family:var(--mono); font-size:10px; letter-spacing:.08em;
+  padding:5px 10px; border-radius:4px;
+  background:transparent; border:none; color:var(--st-muted);
+  cursor:pointer; text-transform:uppercase;
+}
+.we-tool:hover{color:var(--st-text)}
+.we-tool.active{background:var(--st-cyan); color:#000; font-weight:700}
+.we-zoom{display:flex; align-items:center; gap:6px; color:var(--st-muted); font-size:9.5px; letter-spacing:.1em}
+.we-zoom input[type="range"]{width:100px; height:4px; accent-color:var(--st-cyan); cursor:pointer}
+.we-time{font-family:var(--mono); font-size:10px; color:var(--st-muted)}
+.we-toolbar .spacer{flex:1}
+
+.we-canvas-wrap{flex:1; min-height:280px; padding:8px 12px; background:#070A0F}
+.we-canvas{width:100%; height:100%; display:block; cursor:crosshair; touch-action:none}
+.we-overview{height:44px; padding:0 12px 6px; background:#070A0F}
+.we-overview canvas{width:100%; height:100%; display:block; cursor:pointer; border-radius:6px}
+
+.we-tools-row{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  padding:10px 14px; border-top:1px solid var(--st-border); background:var(--st-bg);
+}
+.we-action{
+  font-family:var(--mono); font-size:9.5px; letter-spacing:.08em;
+  padding:6px 11px; border-radius:6px;
+  background:var(--st-surface-2); border:1px solid var(--st-border-mid);
+  color:var(--st-dim); cursor:pointer; text-transform:uppercase; transition:all .15s;
+}
+.we-action:hover:not(:disabled){color:var(--st-cyan); border-color:var(--st-cyan)}
+.we-action:disabled{opacity:.35; cursor:not-allowed}
+.we-action.primary{background:var(--st-cyan); color:#000; border-color:var(--st-cyan); font-weight:700}
+.we-action.primary:hover{filter:brightness(1.1); color:#000}
+.we-tools-row .spacer{flex:1}
+.we-sel-info{
+  font-family:var(--mono); font-size:9.5px; letter-spacing:.08em;
+  color:var(--st-muted); padding:4px 10px;
+  border:1px dashed var(--st-border-mid); border-radius:6px;
+}
+.we-sel-info.has-sel{color:var(--st-cyan); border-style:solid}
+
+@media (max-width:760px){
+  .we-shell{max-height:96vh}
+  .we-canvas-wrap{min-height:200px}
+  .we-zoom input[type="range"]{width:70px}
+}
+
+
+#vvuGate{display:none;position:fixed;inset:var(--nav-h) 0 0 0;z-index:900;background:var(--bg);align-items:center;justify-content:center;text-align:center;padding:24px}
+body.vvu-locked[data-module=org] #vvuGate,body.vvu-locked[data-module=golive] #vvuGate{display:flex}
+body.vvu-locked #module-org,body.vvu-locked #module-golive{display:none!important}
+#orgHost{display:block}
+@media(max-width:900px){nav{flex-wrap:nowrap;gap:8px;padding:8px 10px;min-height:0}.logo{font-size:0;gap:0;flex:0 0 auto}.logo small{display:none}
+ .nav-links{flex:1;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}.nav-links::-webkit-scrollbar{display:none}
+ .nav-links button .nav-label{display:inline!important}.nav-links button{flex:0 0 auto;padding:9px 11px;min-height:40px;font-size:10px}.theme-btn{width:28px;height:28px}.theme-toggle{flex:0 0 auto}}
+@media(min-width:901px) and (max-width:1560px){.nav-links{flex-wrap:nowrap;gap:2px}.nav-links button{padding:8px 9px;letter-spacing:.03em}}
+.gl{max-width:1100px;margin:0 auto;padding:36px 20px 80px}.gl h2{font-family:var(--serif);font-size:34px;margin-bottom:6px}.gl p.lead{color:var(--fg-dim);margin-bottom:22px;line-height:1.6}
+.gl-warn{border:1px solid var(--accent-4);background:rgba(255,94,98,.08);color:var(--fg);padding:12px 14px;border-radius:8px;margin-bottom:18px;font-size:13px;line-height:1.5}
+.gl-row{display:grid;grid-template-columns:200px 1fr 110px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.gl-row label{font-size:13px;font-weight:600}.gl-row small{display:block;color:var(--muted);font-weight:400;font-family:var(--mono);font-size:10px;margin-top:2px}
+.gl-row input{width:100%;background:var(--bg-card);border:1px solid var(--border-strong);color:var(--fg);padding:9px 10px;border-radius:6px;font-family:var(--mono);font-size:12px}
+.gl-st{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-align:center;padding:5px 8px;border-radius:4px;background:rgba(255,94,98,.12);color:var(--accent-4)}
+.gl-st.ok{background:rgba(77,212,172,.14);color:var(--accent-3)}.gl-st.mid{background:rgba(245,158,11,.14);color:var(--accent)}
+.gl-bar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.gl-bar button{background:var(--bg-card);color:var(--fg);border:1px solid var(--border-strong);padding:9px 14px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:12px}
+.gl details{margin-top:22px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px 16px}.gl summary{cursor:pointer;font-weight:600}
+.gl pre{white-space:pre-wrap;font-family:var(--mono);font-size:11px;color:var(--fg-dim);margin-top:10px;line-height:1.55}
+@media(max-width:720px){.gl-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body data-module="home">
@@ -1557,6 +1670,8 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
     <button data-module-link="relay"><i class="fas fa-video"></i><span class="nav-label">Relay</span></button>
     <button data-module-link="twin"><i class="fas fa-person-walking"></i><span class="nav-label">Twin</span></button>
     <button data-module-link="validation" title="Validation dashboard"><svg class="vd-rings" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="3.6"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(120 12 12)"/></svg><span class="nav-label">Validation</span></button>
+    <button data-module-link="org" title="Command: mail, teams, contacts, portals"><i class="fas fa-briefcase"></i><span class="nav-label">Command</span></button>
+    <button data-module-link="golive" title="Go-Live readiness"><i class="fas fa-rocket"></i><span class="nav-label">Go-Live</span></button>
   </div>
   <div class="theme-toggle" role="group" aria-label="Theme selector">
     <button class="theme-btn active" data-theme="dark" title="Dark" aria-label="Dark theme"><i class="fas fa-moon"></i></button>
@@ -1790,6 +1905,8 @@ details.ref pre{padding:22px; margin:0; font-family:var(--mono); font-size:11.5p
         <a data-module-link="relay">SafeGrid Relay</a>
         <a data-module-link="twin">Sensor Twin &amp; Procedure</a>
         <a data-module-link="validation">Validation Dashboard</a>
+        <a data-module-link="org">Command Centre</a>
+        <a data-module-link="golive">Go-Live Readiness</a>
       </div>
       <div class="footer-col">
         <h4>Ecosystem</h4>
@@ -2794,6 +2911,48 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     </main>
   </div>
 </div>
+<!-- Wave editor overlay (moved to <body> at runtime) -->
+<div class="we-overlay" id="we-overlay" aria-hidden="true">
+  <div class="we-shell" role="dialog" aria-label="Wave editor">
+    <header class="we-head">
+      <span class="we-title" id="we-title">WAVE</span>
+      <span class="we-meta" id="we-meta">—</span>
+      <span class="spacer"></span>
+      <button class="we-btn" id="we-undo" disabled>⟲ UNDO</button>
+      <button class="we-btn" id="we-redo" disabled>↻ REDO</button>
+      <button class="we-btn we-close" id="we-close" aria-label="Close">×</button>
+    </header>
+
+    <div class="we-toolbar">
+      <div class="we-tool-group">
+        <button class="we-tool active" data-tool="select" title="Drag to select, click ruler to place playhead">▤ SELECT</button>
+        <button class="we-tool" data-tool="pan" title="Drag to move viewport, wheel to zoom">✥ PAN</button>
+      </div>
+      <label class="we-zoom">ZOOM H <input type="range" id="we-zoom-h" min="1" max="20" step="0.1" value="1"></label>
+      <label class="we-zoom">ZOOM V <input type="range" id="we-zoom-v" min="0.5" max="8" step="0.1" value="1"></label>
+      <span class="spacer"></span>
+      <span class="we-time" id="we-time">0.00 / 0.00</span>
+    </div>
+
+    <div class="we-canvas-wrap"><canvas class="we-canvas" id="we-canvas"></canvas></div>
+    <div class="we-overview"><canvas id="we-overview"></canvas></div>
+
+    <div class="we-tools-row">
+      <button class="we-action primary" id="we-play">▶ PLAY FROM PLAYHEAD</button>
+      <button class="we-action" id="we-chop">✂ CHOP SELECTION</button>
+      <button class="we-action" id="we-trim">✂ TRIM TO SELECTION</button>
+      <button class="we-action" id="we-split">◫ SPLIT AT PLAYHEAD</button>
+      <button class="we-action" id="we-fade">⌒ FADE</button>
+      <button class="we-action" id="we-norm">▲ NORMALIZE</button>
+      <button class="we-action" id="we-rev">↔ REVERSE</button>
+      <button class="we-action" id="we-delay">+ DELAY 0.5s</button>
+      <button class="we-action" id="we-advance">− ADVANCE 0.5s</button>
+      <span class="spacer"></span>
+      <span class="we-sel-info" id="we-sel-info">NO SELECTION</span>
+    </div>
+  </div>
+</div>
+
 
 <!-- ==========================================================================
      MODULE · SAFEGRID RELAY (universal camera ingest · WebRTC + HLS)
@@ -2963,16 +3122,340 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 <!-- ==========================================================================
      MODULE · VALIDATION (placeholder: dashboard lives elsewhere)
      ========================================================================== -->
-<div class="module" id="module-validation">
-  <section style="min-height:calc(100dvh - var(--nav-h));display:flex;align-items:center;justify-content:center;padding:40px 20px;text-align:center">
-    <div style="max-width:440px">
-      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.2" style="margin-bottom:18px"><ellipse cx="12" cy="12" rx="9" ry="3.6"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(120 12 12)"/></svg>
-      <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Validation</div>
-      <h2 class="font-display" style="font-size:34px;margin-bottom:14px">Dashboard <em class="italic-serif" style="color:var(--accent)">placeholder</em></h2>
-      <p style="color:var(--fg-dim);line-height:1.6">This is a placeholder. The validation dashboard already exists and will be linked into this module later.</p>
+<div class="module" id="module-validation"><div id="vdHost"></div></div>
+
+<!-- ==========================================================================
+     MODULE · COMMAND (org: dashboard / mail / teams / contacts / portals) — Shadow DOM isolated
+     ========================================================================== -->
+<div class="module" id="module-org"><div id="orgHost"></div>
+<template id="orgTpl"><style>
+  
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+.org-body{--sidebar-w:260px;--panel:var(--bg-card);--panel-hi:var(--bg-card-2);--text:var(--fg);--blue:var(--accent-2);--green:var(--accent-3);--red:var(--accent-4);--font:var(--sans);font-family:var(--font);background:var(--bg);color:var(--text);height:calc(100dvh - var(--nav-h));overflow:hidden;display:flex;font-size:13px}
+  
+  .org-body.resizing * { user-select: none !important; cursor: col-resize !important; }
+
+  /* --- SIDEBAR --- */
+  aside { 
+    width: var(--sidebar-w); 
+    background: var(--panel); 
+    border-right: 1px solid var(--border); 
+    display: flex; 
+    flex-direction: column; 
+    flex-shrink: 0; 
+    position: relative;
+    overflow: hidden;
+    transition: width 0.1s ease-out; /* Smooth transition for double-tap snap */
+  }
+
+  /* Hide text gracefully when sidebar is small */
+  aside.collapsed .text-content { display: none; }
+  aside.collapsed .brand { justify-content: center; padding: 20px 0; }
+  aside.collapsed .nav-item { justify-content: center; padding: 12px 0; }
+  aside.collapsed .nav-label { display: none; }
+  
+  /* The Drag Handle */
+  .resize-handle {
+    position: absolute;
+    top: 0; 
+    right: 0; /* Keep it inside the border */
+    bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    z-index: 20;
+    background: transparent;
+    transition: background 0.2s;
+  }
+  .resize-handle:hover, .resize-handle.dragging {
+    background: var(--accent);
+  }
+
+  .brand { padding: 20px; font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); letter-spacing: -0.5px; white-space: nowrap; }
+  .brand i { color: var(--accent); flex-shrink: 0; }
+  
+  .nav-group { padding: 20px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .nav-label { font-size: 10px; text-transform: uppercase; color: var(--muted); font-weight: 600; letter-spacing: 1px; padding: 0 10px; margin-bottom: 8px; white-space: nowrap; }
+  .nav-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 6px; cursor: pointer; color: var(--muted); transition: background 0.2s, color 0.2s; text-decoration: none; white-space: nowrap; }
+  .nav-item:hover { background: var(--panel-hi); color: var(--text); }
+  .nav-item.active { background: rgba(245, 158, 11, 0.1); color: var(--accent); font-weight: 500; }
+  .nav-item i { width: 16px; text-align: center; flex-shrink: 0; }
+
+  /* --- MAIN CONTENT --- */
+  main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  header { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: var(--panel); flex-shrink: 0; }
+  .header-title { font-weight: 600; font-size: 16px; }
+  .header-actions { display: flex; gap: 12px; }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+
+  .view-container { flex: 1; overflow-y: auto; padding: 24px; display: none; }
+  .view-container.active { display: block; }
+
+  /* --- DASHBOARD --- */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+  .stat-title { font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 600; margin-bottom: 8px; }
+  .stat-value { font-size: 24px; font-weight: 700; font-family: var(--mono); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.blue { color: var(--blue); }
+
+  .table-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; }
+  table { width: 100%; border-collapse: collapse; text-align: left; }
+  th { padding: 12px 20px; font-size: 11px; color: var(--muted); text-transform: uppercase; border-bottom: 1px solid var(--border); font-weight: 600; }
+  td { padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--panel-hi); }
+  .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; font-family: var(--mono); }
+  .badge-warn { background: rgba(245, 158, 11, 0.1); color: var(--accent); }
+  .badge-ok { background: rgba(16, 185, 129, 0.1); color: var(--green); }
+
+  /* --- OUTLOOK (MAIL) --- */
+  .mail-layout { display: flex; height: 100%; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); overflow: hidden; }
+  .mail-sidebar { width: 200px; border-right: 1px solid var(--border); padding: 16px 10px; background: var(--bg); flex-shrink: 0; }
+  .mail-btn { background: var(--blue); color: #fff; border: none; padding: 10px; border-radius: 6px; width: 100%; font-weight: 600; cursor: pointer; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .mail-folder { padding: 8px 12px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; color: var(--muted); }
+  .mail-folder.active { background: var(--panel-hi); color: var(--text); font-weight: 600; }
+  .mail-list { width: 300px; border-right: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; }
+  .mail-item { padding: 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s; }
+  .mail-item:hover, .mail-item.active { background: var(--panel-hi); }
+  .mail-subject { font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mail-preview { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mail-content { flex: 1; padding: 24px; display: flex; flex-direction: column; overflow-y: auto; min-width: 0; }
+  .mail-header { border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 16px; }
+  .mail-to { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .mail-body { font-family: var(--mono); font-size: 13px; white-space: pre-wrap; line-height: 1.6; color: #d1d5db; flex: 1; }
+
+  /* --- TEAMS (CHAT) --- */
+  .teams-layout { display: flex; height: 100%; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); overflow: hidden; }
+  .teams-sidebar { width: 220px; border-right: 1px solid var(--border); background: var(--bg); padding: 16px 10px; flex-shrink: 0; }
+  .channel { padding: 8px 12px; border-radius: 4px; cursor: pointer; display: flex; gap: 8px; align-items: center; color: var(--muted); }
+  .channel:hover, .channel.active { background: var(--panel-hi); color: var(--text); }
+  .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .chat-header { padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 600; display: flex; gap: 8px; align-items: center; }
+  .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .message { display: flex; gap: 12px; }
+  .msg-avatar { width: 32px; height: 32px; border-radius: 4px; background: var(--panel-hi); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; flex-shrink: 0; }
+  .msg-content { flex: 1; }
+  .msg-meta { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+  .msg-name { font-weight: 600; font-size: 13px; }
+  .msg-time { font-size: 11px; color: var(--muted); }
+  .msg-text { font-size: 13px; line-height: 1.5; }
+  .chat-input { padding: 16px; border-top: 1px solid var(--border); display: flex; gap: 12px; }
+  .chat-input input { flex: 1; background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 6px; color: white; outline: none; }
+  .chat-input input:focus { border-color: var(--blue); }
+  .chat-input button { background: var(--blue); color: white; border: none; padding: 0 20px; border-radius: 6px; cursor: pointer; }
+
+  /* --- CONTACTS --- */
+  .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .contact-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; position: relative; }
+  .contact-name { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+  .contact-role { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .contact-company { font-family: var(--mono); font-size: 11px; color: var(--accent); margin-bottom: 12px; }
+  .contact-email { font-family: var(--mono); font-size: 12px; color: var(--blue); word-break: break-all; }
+  .contact-btn { position: absolute; top: 20px; right: 20px; background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+  .contact-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* --- PORTALS / TASKS --- */
+  .task-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  .task-title { font-weight: 600; margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
+  .task-list { display: flex; flex-direction: column; gap: 8px; }
+  .task-item { display: flex; gap: 12px; align-items: flex-start; padding: 8px; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+  .task-item:hover { background: var(--panel-hi); }
+  .task-item input[type="checkbox"] { margin-top: 4px; accent-color: var(--accent); cursor: pointer; }
+  .task-text { font-size: 13px; color: var(--text); }
+  .task-text.completed { text-decoration: line-through; color: var(--muted); }
+
+  /* --- MODALS --- */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 24px; width: 400px; }
+  .modal h3 { margin-bottom: 16px; font-weight: 600; }
+  .modal input, .modal select { width: 100%; padding: 10px; margin-bottom: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: white; outline: none; }
+  .modal input:focus, .modal select:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+  .btn-primary { background: var(--accent); border: none; color: black; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+
+.gx{display:flex;flex-direction:column;height:100%;min-height:0;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.gx-bar{display:flex;gap:6px;align-items:center;padding:8px;border-bottom:1px solid var(--border);overflow-x:auto;flex:0 0 auto}
+.gx-bar button{min-width:38px;height:36px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;flex:0 0 auto;font-size:13px}
+.gx-q{flex:1;min-width:90px;height:36px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:0 10px;font-size:16px;outline:none}
+.gx-cnt{font-family:var(--mono);font-size:10px;color:var(--muted);flex:0 0 auto;padding:0 4px}
+.gx-scroll{flex:1;overflow:auto;min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.gx-grid{display:grid;width:max-content;min-width:100%;font-size:13px}
+.gx-h,.gx-corner{position:sticky;top:0;z-index:3;background:var(--panel-hi);border-bottom:1px solid var(--border-strong);border-right:1px solid var(--border);height:40px;display:flex;align-items:center;padding:0 10px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;white-space:nowrap}
+.gx-corner{left:0;z-index:4;justify-content:center;padding:0}
+.gx-l{overflow:hidden;text-overflow:ellipsis;cursor:pointer;flex:1;min-width:0}
+.gx-ch{position:absolute;right:0;top:0;bottom:0;width:18px;cursor:col-resize;touch-action:none;z-index:5}
+.gx-ch::after{content:'';position:absolute;right:0;top:22%;bottom:22%;width:3px;background:var(--border-strong);border-radius:2px}
+.gx-ch:hover::after,.gx-ch:active::after{background:var(--accent)}
+.gx-n{position:sticky;left:0;z-index:2;background:var(--panel-hi);border-bottom:1px solid var(--border);border-right:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;user-select:none}
+.gx-rh{position:absolute;left:0;right:0;bottom:0;height:18px;cursor:row-resize;touch-action:none;z-index:2}
+.gx-rh::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:3px;border-radius:2px;background:var(--border-strong)}
+.gx-rh:hover::after,.gx-rh:active::after{background:var(--accent)}
+.gx-c{border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:0 10px;display:flex;align-items:center;overflow:hidden;min-width:0}
+.gx-c.wrap{align-items:flex-start;padding-top:8px}.gx-c.wrap .gx-t{white-space:normal;overflow:auto}
+.gx-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;max-width:100%}
+.gx-c:hover,.gx-n:hover{background:var(--panel-hi)}.gx-c.ed{cursor:text}
+.gx-in{width:100%;height:100%;background:var(--bg);color:var(--text);border:2px solid var(--accent);padding:0 6px;font:inherit;font-size:16px;outline:none}
+.gx-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 10px;cursor:pointer;min-height:32px}.gx-btn.d:hover{border-color:var(--red);color:var(--red)}
+#dash-grid{height:min(62dvh,560px)}.sm{display:none}
+#view-mail.active,#view-contacts.active{display:flex;flex-direction:column}
+.mail-layout{position:relative;flex:1;min-height:0}.mail-main{flex:1;min-width:0;display:flex;flex-direction:column;padding:8px;gap:8px}
+.mail-top{display:flex;gap:8px;align-items:center;overflow-x:auto;flex:0 0 auto}.mail-top .mail-btn{width:auto;margin:0;padding:0 14px;height:36px;flex:0 0 auto}
+.mail-chips button{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:99px;padding:0 12px;height:32px;cursor:pointer;flex:0 0 auto}.mail-chips{display:flex;gap:6px}.mail-chips button.on{background:var(--panel-hi);color:var(--accent);border-color:var(--accent)}
+#mail-grid{flex:1;min-height:0}.mail-content{width:42%;max-width:460px;flex:0 0 auto;border-left:1px solid var(--border)}.mail-back{display:none}
+#contact-grid{flex:1;min-height:0}
+.org-tabs{display:none}
+@media(max-width:720px){
+ .org-body{flex-direction:column}aside{display:none}
+ header{padding:0 12px;height:52px}.header-title{font-size:15px}.header-actions{gap:6px;align-items:center}.btn-primary{padding:8px 12px;font-size:13px}.hm{display:none}.sm{display:inline}
+ #org-mode{font-size:8px;padding:3px 5px;max-width:84px;text-align:center}
+ .view-container{padding:8px}.stats-grid{grid-template-columns:1fr 1fr;gap:8px}.stat-card{padding:12px}.stat-value{font-size:20px}
+ #view-mail,#view-contacts{padding:6px}.table-header{padding:10px 12px;font-size:12px}.table-header span+span{display:none}
+ .mail-content{position:absolute;inset:0;width:auto;max-width:none;z-index:30;background:var(--panel);display:none;border:0;padding:16px}.mail-content.open{display:flex}.mail-back{display:inline-flex;margin-bottom:12px;align-self:flex-start}
+ .teams-layout{flex-direction:column}.teams-sidebar{display:flex;width:auto;overflow-x:auto;gap:6px;padding:8px;border-right:0;border-bottom:1px solid var(--border)}.teams-sidebar .nav-label{display:none}.channel{flex:0 0 auto;border:1px solid var(--border);border-radius:99px;padding:8px 14px}
+ .chat-input input{font-size:16px}.chat-input button{min-width:52px}
+ .modal-backdrop{align-items:flex-end}.modal{width:100%!important;border-radius:14px 14px 0 0;max-height:92dvh;overflow:auto}.modal input,.modal select,.modal textarea{font-size:16px!important}
+ .org-tabs{display:flex;flex:0 0 auto;background:var(--panel);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom)}
+ .org-tabs button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;background:transparent;border:0;color:var(--muted);font-size:10px;cursor:pointer}.org-tabs button i{font-size:16px}.org-tabs button.active{color:var(--accent)}
+}
+
+.org-body .badge-off{background:rgba(255,94,98,.12);color:var(--accent-4)}.org-body .badge-live{background:rgba(77,212,172,.12);color:var(--accent-3)}.org-body .mail-item .tag{font-size:9px;color:var(--accent);margin-left:6px}</style><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"><div class="org-body" id="orgBody">
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div class="brand"><i class="fas fa-cube"></i> <span class="text-content">VVU COMMAND</span></div>
+  <div class="nav-group">
+    <div class="nav-label text-content">Workspace</div>
+    <a class="nav-item active" data-view="dashboard" onclick="org_switchView('dashboard')"><i class="fas fa-chart-pie"></i> <span class="text-content">Dashboard</span></a>
+    <a class="nav-item" data-view="mail" onclick="org_switchView('mail')"><i class="fas fa-envelope"></i> <span class="text-content">Outlook Mail</span></a>
+    <a class="nav-item" data-view="teams" onclick="org_switchView('teams')"><i class="fas fa-comments"></i> <span class="text-content">Teams Chat</span></a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label text-content">Management</div>
+    <a class="nav-item" data-view="contacts" onclick="org_switchView('contacts')"><i class="fas fa-users"></i> <span class="text-content">Contacts</span></a>
+    <a class="nav-item" data-view="portals" onclick="org_switchView('portals')"><i class="fas fa-list-check"></i> <span class="text-content">Portal Tasks</span></a>
+  </div>
+  
+  <!-- Draggable Resizer Handle -->
+  <div class="resize-handle" id="dragHandle" title="Drag to resize · Double-click to snap"></div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main>
+  <header>
+    <div class="header-title" id="header-title">Dashboard</div>
+    <div class="header-actions">
+      <button class="btn-primary" onclick="org_openModal('contact')"><i class="fas fa-plus"></i> <span class="hm">Add Member</span><span class="sm">Add</span></button>
+      <span class="badge badge-off" id="org-mode">SAMPLE DATA</span><div class="avatar" id="org-avatar">OP</div>
     </div>
-  </section>
+  </header>
+
+  <div class="view-container active" id="view-dashboard">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-title">Target Contacts</div><div class="stat-value blue" id="stat-contacts">12</div></div>
+      <div class="stat-card"><div class="stat-title">Unverified Emails</div><div class="stat-value red" id="stat-unverified">5</div></div>
+      <div class="stat-card"><div class="stat-title">Portals Active</div><div class="stat-value green" id="stat-portals">–</div></div>
+      <div class="stat-card"><div class="stat-title">Emails Sent</div><div class="stat-value" id="stat-sent">–</div></div>
+    </div>
+    <div class="table-card">
+      <div class="table-header"><span>Enterprise Targets</span><span style="font-size: 12px; color: var(--muted); font-weight: normal;">Strategy: Admissible Evidence</span></div>
+      <div id="dash-grid"></div>
+    </div>
+  </div>
+
+  <div class="view-container" id="view-mail"><div class="mail-layout"><div class="mail-main"><div class="mail-top"><button class="mail-btn" onclick="org_openMailCompose()"><i class="fas fa-pen"></i> New</button><div class="mail-chips"><button class="on" data-act="mf" data-f="all">All</button><button data-act="mf" data-f="in">Inbox</button><button data-act="mf" data-f="sent">Sent</button><button data-act="mf" data-f="draft">Drafts</button></div><span class="gx-cnt" id="mail-count"></span></div><div id="mail-grid"></div></div><div class="mail-content" id="mail-content"><div style="color:var(--muted);text-align:center;margin-top:50px">Select a message</div></div></div></div>
+
+  <div class="view-container" id="view-teams">
+    <div class="teams-layout">
+      <div class="teams-sidebar">
+        <div class="nav-label" style="padding: 0 8px; margin-bottom: 8px;">Channels</div>
+        <div class="channel active" onclick="org_switchChannel('sales', this)"><i class="fas fa-hashtag"></i> sales</div>
+        <div class="channel" onclick="org_switchChannel('engineering', this)"><i class="fas fa-hashtag"></i> engineering</div>
+        <div class="channel" onclick="org_switchChannel('hostafrica', this)"><i class="fas fa-hashtag"></i> hostafrica-deal</div>
+      </div>
+      <div class="chat-area">
+        <div class="chat-header" id="chat-header"><i class="fas fa-hashtag"></i> sales</div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input">
+          <input type="text" id="chat-input-field" placeholder="Type a message..." onkeypress="org_handleChatEnter(event)">
+          <button onclick="org_sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="view-container" id="view-contacts">
+    <div id="contact-grid"></div>
+  </div>
+
+  <div class="view-container" id="view-portals"><div id="portal-groups"></div>
+  </div>
+</main>
+<div class="org-tabs" id="org-tabs"><button data-view="dashboard" class="active"><i class="fas fa-chart-pie"></i>Home</button><button data-view="mail"><i class="fas fa-envelope"></i>Mail</button><button data-view="teams"><i class="fas fa-comments"></i>Chat</button><button data-view="contacts"><i class="fas fa-users"></i>Contacts</button><button data-view="portals"><i class="fas fa-list-check"></i>Tasks</button></div>
+
+<div class="modal-backdrop" id="modal-add-contact">
+  <div class="modal">
+    <h3>Add New Member</h3>
+    <input type="text" id="new-name" placeholder="Full Name">
+    <input type="text" id="new-role" placeholder="Role / Title">
+    <input type="text" id="new-company" placeholder="Company">
+    <input type="email" id="new-email" placeholder="Email Address">
+    <select id="new-confidence">
+      <option value="Unverified">Unverified (Needs Check)</option>
+      <option value="Published">Published (Official)</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="org_closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="org_saveContact()">Save Contact</button>
+    </div>
+  </div>
 </div>
+
+<div class="modal-backdrop" id="modal-compose">
+  <div class="modal" style="width: 600px;">
+    <h3>New Message</h3>
+    <input type="email" id="compose-to" placeholder="To:">
+    <input type="text" id="compose-subject" placeholder="Subject:">
+    <textarea id="compose-body" style="width: 100%; height: 200px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: white; padding: 10px; font-family: var(--mono); outline: none; resize: none;" placeholder="Message body..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="org_closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="org_sendEmail()"><i class="fas fa-paper-plane"></i> Send</button>
+    </div>
+  </div>
+</div>
+
+
+
+</div></template></div>
+
+<div class="module" id="module-golive"><div class="gl">
+ <div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Operations</div>
+ <h2>Go-Live <em style="color:var(--accent)">readiness</em></h2>
+ <p class="lead">Every placeholder in this console, its status, and a safe connectivity test. Values saved here apply to <b>this browser only</b>; to ship them to everyone, copy “Export” into the <code>vvu-config</code> block in the HTML and redeploy.</p>
+ <div id="glAuthWarn"></div><div id="glRows"></div>
+ <div class="gl-bar"><button id="glPing">Test all connections</button><button id="glExport">Export config JSON</button><button id="glReset">Reset browser overrides</button></div>
+ <details><summary>Backend contract (what each endpoint must return)</summary><pre>auth.checkUrl     GET  → 200 if session valid (cookies, credentials:include), else 401/403
+endpoints.health  GET  → 200
+contacts          GET  → [{id,name,role,company,email,confidence:"Published"|"Unverified"}]
+                  POST {name,role,company,email,confidence} → created contact incl. id
+                  PATCH  {contacts}/{id} {field:value} → 2xx  (inline cell edit)
+                  DELETE {contacts}/{id} → 2xx
+mailList          GET  → [{id,from?,to?,subject,preview,body,time}]
+mailSend          POST {to,subject,body} → 2xx {id?}   (UI says "sent" ONLY on 2xx)
+teamsList         GET ?channel=sales → {messages:[{name,text,time}]}
+teamsPost         POST {channel,text} → 2xx
+portalTasks       GET  → [{id,group,items:[{id,text,done}]}]
+                  POST {group,id,done} → 2xx
+contact           POST {name,email,message} → {message}|{error}
+validationDashboardUrl  https:// page, must allow framing from this origin
+CORS: allow this origin + credentials, or serve API same-origin (recommended).
+Secrets (Graph/Teams/SMTP keys) stay server-side. Never in this file.</pre></details>
+</div></div>
+<div id="vvuGate"><div style="max-width:420px"><i class="fas fa-lock" style="font-size:34px;color:var(--accent);margin-bottom:16px"></i><h2 style="font-family:var(--serif);margin-bottom:10px">Sign-in required</h2><p style="color:var(--fg-dim);line-height:1.6;margin-bottom:18px">Admin modules fail closed: the session check did not pass.</p><a id="vvuLogin" class="btn-primary" href="#">Sign in</a></div></div>
 </main>
 
 <div class="toast" id="toast">
@@ -2980,6 +3463,71 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   <span id="toastMsg">Done</span>
 </div>
 
+
+<script type="application/json" id="vvu-config">{
+ "_readme": "PLACEHOLDERS: empty string = not configured. Runner: fill these, redeploy. Never put secrets/API keys here (this file is public); keep them server-side.",
+ "env": "production",
+ "apiBase": "",
+ "auth": {
+  "checkUrl": "",
+  "loginUrl": "",
+  "logoutUrl": ""
+ },
+ "endpoints": {
+  "health": "",
+  "contact": "/api/contact",
+  "contacts": "",
+  "mailList": "",
+  "mailSend": "",
+  "teamsList": "",
+  "teamsPost": "",
+  "portalTasks": ""
+ },
+ "validationDashboardUrl": "",
+ "peer": {
+  "host": "",
+  "port": 443,
+  "path": "/",
+  "secure": true,
+  "key": "peerjs"
+ },
+ "iceServers": [],
+ "operator": {
+  "name": "",
+  "initials": ""
+ },
+ "contactEmail": "hello@venturevisionubuntu.co.za"
+}</script>
+<script>
+/* VVU runtime: config (inline JSON + per-browser override), API client, auth gate. */
+window.VVU=(function(){
+ const base=JSON.parse(document.getElementById('vvu-config').textContent), OK='vvu-config-override';
+ let ov={}; try{ov=JSON.parse(localStorage.getItem(OK)||'{}');}catch(e){}
+ const isO=x=>x&&typeof x==='object'&&!Array.isArray(x);
+ const merge=(a,b)=>{const o=Array.isArray(a)?a.slice():Object.assign({},a);for(const k in b)o[k]=isO(b[k])&&isO(a[k])?merge(a[k],b[k]):b[k];return o;};
+ const V={cfg:merge(base,ov)};
+ V.url=n=>{const e=V.cfg.endpoints[n]; if(!e)return ''; if(/^https?:\/\//.test(e))return e; const b=(V.cfg.apiBase||'').replace(/\/$/,''); return b+'/'+e.replace(/^\//,'');};
+ V.call=async(n,o)=>{o=o||{}; const u=V.url(n); if(!u)return{ok:false,offline:true,reason:'unset'};
+  const c=new AbortController(),t=setTimeout(()=>c.abort(),o.timeout||8000);
+  try{const r=await fetch(u+(o.suffix||'')+(o.query||''),{method:o.method||'GET',credentials:'include',signal:c.signal,
+    headers:o.body?{'Content-Type':'application/json'}:{},body:o.body?JSON.stringify(o.body):undefined});
+   let d=null; try{d=await r.json();}catch(e){} return{ok:r.ok,status:r.status,data:d};}
+  catch(e){return{ok:false,offline:true,reason:e.name==='AbortError'?'timeout':'network'};} finally{clearTimeout(t);}};
+ V.ping=async(u,nocors)=>{if(!u)return'unset';const c=new AbortController(),t=setTimeout(()=>c.abort(),6000);
+  try{const r=await fetch(u,{credentials:nocors?'omit':'include',mode:nocors?'no-cors':'cors',signal:c.signal}); return nocors||r.ok?'LIVE':'HTTP '+r.status;}
+  catch(e){return'DOWN';}finally{clearTimeout(t);}};
+ V.setOverride=(path,val)=>{const k=path.split('.');let o=ov,c=V.cfg;k.forEach((p,i)=>{if(i<k.length-1){o=o[p]=o[p]||{};c=c[p]=c[p]||{};}else{o[p]=val;c[p]=val;}});
+  try{localStorage.setItem(OK,JSON.stringify(ov));}catch(e){}};
+ V.resetOverrides=()=>{try{localStorage.removeItem(OK);}catch(e){} location.reload();};
+ V.peerOpts=()=>{const p=V.cfg.peer||{},o={}; if(p.host){o.host=p.host;o.port=p.port;o.path=p.path;o.secure=p.secure!==false;o.key=p.key;}
+  if(V.cfg.iceServers&&V.cfg.iceServers.length)o.config={iceServers:V.cfg.iceServers}; return o;};
+ V.authConfigured=!!V.cfg.auth.checkUrl;
+ /* FAIL-CLOSED: if a check URL is set, any non-2xx or network error locks the admin modules. */
+ V.ready=(async()=>{if(!V.authConfigured)return true; try{return (await fetch(V.cfg.auth.checkUrl,{credentials:'include'})).ok;}catch(e){return false;}})();
+ V.ready.then(ok=>document.body.classList.toggle('vvu-locked',!ok));
+ return V;
+})();
+</script>
 <script type="importmap">
 {
   "imports": {
@@ -3037,7 +3585,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   /* ---- module router ---- */
-  const MODULES = ['home','onboarding','compiler','auth','pools','proof','studio','relay','twin','validation'];
+  const MODULES = ['home','onboarding','compiler','auth','pools','proof','studio','relay','twin','validation','org','golive'];
 
   function setModule(name, push){
     if(!MODULES.includes(name)) name = 'home';
@@ -3883,7 +4431,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       status.className = 'contact-status';
       status.textContent = '';
       try{
-        const res = await fetch('/api/contact', {
+        const res = await fetch(VVU.url('contact') || '/api/contact', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify({
@@ -3903,7 +4451,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         }
       }catch(err){
         status.className = 'contact-status err';
-        status.textContent = 'No contact backend attached to this static build — nothing was sent.';
+        status.textContent = 'Could not reach the contact service — nothing was sent. Please email ' + VVU.cfg.contactEmail + ' instead.';
       }finally{
         submit.disabled = false;
         submit.textContent = 'Send message';
@@ -4603,13 +5151,14 @@ function trackCard(t){
   const name = mk('span', 'st-track-name'); name.textContent = t.name; name.title = t.name;
   const tag = mk('span', 'st-tag'); tag.textContent = t.type.toUpperCase();
   head.append(name, tag, mk('span','st-spacer'),
-    miniBtn('MUTE','mute',t.mute), miniBtn('SOLO','solo',t.solo), miniBtn('✕','del',false));
+    miniBtn('✎ EDIT','edit',false), miniBtn('MUTE','mute',t.mute), miniBtn('SOLO','solo',t.solo), miniBtn('✕','del',false));
   head.addEventListener('click', e => {
     const b = e.target.closest('[data-act]');
     if(!b) return;
     const a = b.dataset.act;
     if(a === 'mute'){ t.mute = !t.mute; liveTrack(t); b.classList.toggle('on-mute', t.mute); }
     if(a === 'solo'){ t.solo = !t.solo; liveAll(); renderTracks(); }
+    if(a === 'edit'){ weOpen(t.id); }
     if(a === 'del'){ removeTrack(t); }
   });
 
@@ -4664,6 +5213,9 @@ function renderTimeline(){
     const cv = mk('canvas','st-lane-canvas');
     lane.append(lab, cv);
     w.appendChild(lane);
+    cv.style.cursor = 'pointer';
+    cv.title = 'Click to open wave editor';
+    cv.addEventListener('click', () => weOpen(t.id));
     pending.push([cv, t]);
   });
   pending.forEach(([cv,t]) => drawWave(cv, t.buffer));
@@ -5001,6 +5553,487 @@ function buildEQPanel(){
   });
 }
 
+/* ---------- Wave Editor (adapted to this Studio's names) ---------- */
+const WE = {
+  el:null, canvas:null, overview:null, titleEl:null, metaEl:null, timeEl:null, selInfoEl:null,
+  undoBtn:null, redoBtn:null, zoomHEl:null, zoomVEl:null, toolEls:[],
+  track:null, buffer:null, zoomH:1, zoomV:1, panX:0,
+  selStart:0, selEnd:0, playhead:0, tool:'select', drag:null,
+  undoStack:[], redoStack:[], previewSrc:null
+};
+
+/* --- Buffer primitives: each returns a new AudioBuffer --- */
+function sliceBuffer(buffer, startSec, endSec){
+  const sr = buffer.sampleRate;
+  const s0 = Math.max(0, Math.floor(startSec * sr));
+  const s1 = Math.min(buffer.length, Math.floor(endSec * sr));
+  const len = Math.max(1, s1 - s0);
+  const nb = ctx.createBuffer(buffer.numberOfChannels, len, sr);
+  for(let ch = 0; ch < buffer.numberOfChannels; ch++){
+    nb.copyToChannel(buffer.getChannelData(ch).subarray(s0, s1), ch);
+  }
+  return nb;
+}
+function concatBuffers(a, b){
+  const nb = ctx.createBuffer(Math.max(a.numberOfChannels, b.numberOfChannels), a.length + b.length, a.sampleRate);
+  for(let ch = 0; ch < nb.numberOfChannels; ch++){
+    const dst = nb.getChannelData(ch);
+    const s1 = a.numberOfChannels > ch ? a.getChannelData(ch) : new Float32Array(a.length);
+    const s2 = b.numberOfChannels > ch ? b.getChannelData(ch) : new Float32Array(b.length);
+    dst.set(s1, 0); dst.set(s2, a.length);
+  }
+  return nb;
+}
+function fadeBuffer(buffer, inSec, outSec){
+  const sr = buffer.sampleRate;
+  const iN = Math.floor(inSec * sr), oN = Math.floor(outSec * sr);
+  const nb = ctx.createBuffer(buffer.numberOfChannels, buffer.length, sr);
+  for(let ch = 0; ch < buffer.numberOfChannels; ch++){
+    const src = buffer.getChannelData(ch), dst = nb.getChannelData(ch);
+    dst.set(src);
+    if(iN > 0) for(let i = 0; i < iN; i++) dst[i] *= (i / iN);
+    if(oN > 0) for(let i = 0; i < oN; i++) dst[buffer.length - 1 - i] *= (i / oN);
+  }
+  return nb;
+}
+function normalizeBuffer(buffer){
+  let peak = 0;
+  for(let ch = 0; ch < buffer.numberOfChannels; ch++){
+    const d = buffer.getChannelData(ch);
+    for(let i = 0; i < d.length; i++){ const v = Math.abs(d[i]); if(v > peak) peak = v; }
+  }
+  if(peak < 0.001) return buffer;
+  const scale = 0.99 / peak;
+  const nb = ctx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+  for(let ch = 0; ch < buffer.numberOfChannels; ch++){
+    const src = buffer.getChannelData(ch), dst = nb.getChannelData(ch);
+    for(let i = 0; i < src.length; i++) dst[i] = src[i] * scale;
+  }
+  return nb;
+}
+function reverseBuffer(buffer){
+  const nb = ctx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+  for(let ch = 0; ch < buffer.numberOfChannels; ch++){
+    const src = buffer.getChannelData(ch), dst = nb.getChannelData(ch);
+    for(let i = 0; i < src.length; i++) dst[i] = src[src.length - 1 - i];
+  }
+  return nb;
+}
+function shiftBuffer(buffer, seconds){
+  const sr = buffer.sampleRate;
+  if(seconds === 0) return buffer;
+  if(seconds > 0){
+    const pad = Math.floor(seconds * sr);
+    const nb = ctx.createBuffer(buffer.numberOfChannels, buffer.length + pad, sr);
+    for(let ch = 0; ch < buffer.numberOfChannels; ch++) nb.getChannelData(ch).set(buffer.getChannelData(ch), pad);
+    return nb;
+  }
+  return sliceBuffer(buffer, -seconds, buffer.duration);
+}
+
+/* --- View helpers --- */
+function weView(){
+  const dur = WE.buffer ? WE.buffer.duration : 0;
+  const viewDur = dur / WE.zoomH;
+  const maxPan = Math.max(0, dur - viewDur);
+  return { dur, viewDur, maxPan, viewStart: WE.panX * maxPan };
+}
+function weTickStep(viewDur){
+  const steps = [0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10,20,30,60];
+  const target = viewDur / 8;
+  for(const s of steps) if(s >= target) return s;
+  return 60;
+}
+
+/* --- Open / close --- */
+function weOpen(trackId){
+  const t = tracks.find(x => x.id === trackId);
+  if(!t || !t.buffer){ note('Load audio into this track first', true); return; }
+  try { ensureCtx(); } catch(err){ note(err.message, true); return; }
+  if(ctx.state === 'suspended') ctx.resume();
+  WE.track = t; WE.buffer = t.buffer;
+  WE.zoomH = 1; WE.zoomV = 1; WE.panX = 0;
+  WE.selStart = 0; WE.selEnd = 0; WE.playhead = 0;
+  WE.undoStack = []; WE.redoStack = [];
+  WE.el.classList.add('open');
+  WE.el.setAttribute('aria-hidden', 'false');
+  WE.titleEl.textContent = t.name;
+  WE.zoomHEl.value = 1; WE.zoomVEl.value = 1;
+  weUpdateUndo();
+  requestAnimationFrame(() => { weDraw(); weDrawOverview(); weUpdateInfo(); weUpdateSelInfo(); });
+}
+function weClose(){
+  WE.el.classList.remove('open');
+  WE.el.setAttribute('aria-hidden', 'true');
+  if(WE.previewSrc){ try { WE.previewSrc.stop(); } catch(_){} WE.previewSrc = null; }
+  WE.track = null; WE.buffer = null; WE.drag = null;
+}
+
+/* --- Info strip --- */
+function weUpdateInfo(){
+  if(!WE.buffer) return;
+  WE.metaEl.textContent = WE.buffer.duration.toFixed(2) + 's · ' + WE.buffer.sampleRate + 'Hz · ' +
+    WE.buffer.numberOfChannels + 'ch · ' + Math.round(WE.zoomH*100) + '% H · ' + Math.round(WE.zoomV*100) + '% V';
+  WE.timeEl.textContent = WE.playhead.toFixed(2) + ' / ' + WE.buffer.duration.toFixed(2);
+}
+function weUpdateSelInfo(){
+  const has = WE.selEnd > WE.selStart + 0.001;
+  WE.selInfoEl.classList.toggle('has-sel', has);
+  WE.selInfoEl.textContent = has
+    ? 'SEL ' + WE.selStart.toFixed(2) + 's → ' + WE.selEnd.toFixed(2) + 's (' + (WE.selEnd - WE.selStart).toFixed(2) + 's)'
+    : 'NO SELECTION';
+}
+function weUpdateUndo(){
+  WE.undoBtn.disabled = WE.undoStack.length === 0;
+  WE.redoBtn.disabled = WE.redoStack.length === 0;
+}
+
+/* --- Main canvas --- */
+function weDraw(){
+  if(!WE.canvas || !WE.buffer) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = WE.canvas.clientWidth, h = WE.canvas.clientHeight;
+  if(w < 2 || h < 2) return;
+  WE.canvas.width = w * dpr; WE.canvas.height = h * dpr;
+  const c = WE.canvas.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, w, h);
+
+  const rulerH = 26, waveH = h - rulerH - 8;
+  const { viewDur, viewStart } = weView();
+  const timeToX = t => ((t - viewStart) / viewDur) * w;
+
+  c.fillStyle = '#070A0F'; c.fillRect(0, 0, w, h);
+  c.fillStyle = '#0B0F16'; c.fillRect(0, 0, w, rulerH);
+  c.strokeStyle = '#1C2533';
+  c.beginPath(); c.moveTo(0, rulerH + .5); c.lineTo(w, rulerH + .5); c.stroke();
+
+  const step = weTickStep(viewDur);
+  c.fillStyle = '#5A6B84';
+  c.font = '9px "JetBrains Mono", monospace';
+  c.textBaseline = 'middle'; c.textAlign = 'left';
+  for(let t = Math.ceil(viewStart / step) * step; t <= viewStart + viewDur; t += step){
+    const x = timeToX(t);
+    if(x < -10 || x > w + 10) continue;
+    c.strokeStyle = '#1A2535';
+    c.beginPath(); c.moveTo(x + .5, rulerH); c.lineTo(x + .5, h); c.stroke();
+    c.fillText(t.toFixed(step < 1 ? 2 : 1) + 's', x + 3, rulerH / 2);
+  }
+
+  const chans = WE.buffer.numberOfChannels, chanH = waveH / chans, sr = WE.buffer.sampleRate;
+  for(let ch = 0; ch < chans; ch++){
+    const data = WE.buffer.getChannelData(ch);
+    const sStart = Math.max(0, Math.floor(viewStart * sr));
+    const sEnd = Math.min(data.length, Math.floor((viewStart + viewDur) * sr));
+    const spp = Math.max(1, (sEnd - sStart) / w);
+    const chMid = rulerH + chanH * ch + chanH / 2;
+    const scale = (chanH / 2) * WE.zoomV * .9;
+    c.strokeStyle = '#1A2535';
+    c.beginPath(); c.moveTo(0, chMid); c.lineTo(w, chMid); c.stroke();
+    c.strokeStyle = ch === 0 ? '#00E5FF' : '#C47A2A';
+    c.lineWidth = 1.1;
+    c.beginPath();
+    for(let x = 0; x < w; x++){
+      const a = Math.floor(sStart + x * spp);
+      const b = Math.min(data.length, Math.floor(sStart + (x + 1) * spp));
+      let mn = 0, mx = 0;
+      for(let s = a; s < b; s++){ const v = data[s]; if(v < mn) mn = v; if(v > mx) mx = v; }
+      c.moveTo(x + .5, chMid - mx * scale);
+      c.lineTo(x + .5, chMid - mn * scale);
+    }
+    c.stroke();
+  }
+
+  if(WE.selEnd > WE.selStart + 0.001){
+    const sx = timeToX(WE.selStart), ex = timeToX(WE.selEnd);
+    c.fillStyle = 'rgba(0,229,255,0.14)';
+    c.fillRect(sx, rulerH, ex - sx, h - rulerH);
+    c.strokeStyle = 'rgba(0,229,255,0.8)'; c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(sx + .5, rulerH); c.lineTo(sx + .5, h);
+    c.moveTo(ex - .5, rulerH); c.lineTo(ex - .5, h);
+    c.stroke();
+    c.fillStyle = '#00E5FF';
+    c.fillRect(sx - 4, rulerH + 6, 8, 12);
+    c.fillRect(ex - 4, rulerH + 6, 8, 12);
+  }
+
+  const px = timeToX(WE.playhead);
+  if(px >= -2 && px <= w + 2){
+    c.strokeStyle = '#FFE066'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(px + .5, rulerH); c.lineTo(px + .5, h); c.stroke();
+    c.fillStyle = '#FFE066';
+    c.beginPath();
+    c.moveTo(px - 6, rulerH); c.lineTo(px + 6, rulerH); c.lineTo(px, rulerH + 8);
+    c.closePath(); c.fill();
+  }
+}
+
+/* --- Overview strip --- */
+function weDrawOverview(){
+  if(!WE.overview || !WE.buffer) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = WE.overview.clientWidth, h = WE.overview.clientHeight;
+  if(w < 2 || h < 2) return;
+  WE.overview.width = w * dpr; WE.overview.height = h * dpr;
+  const c = WE.overview.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, w, h);
+  const dur = WE.buffer.duration, data = WE.buffer.getChannelData(0);
+  const spp = Math.max(1, data.length / w), mid = h / 2;
+  c.fillStyle = '#0B0F16'; c.fillRect(0, 0, w, h);
+  c.strokeStyle = '#1A2535';
+  c.beginPath(); c.moveTo(0, mid); c.lineTo(w, mid); c.stroke();
+  c.strokeStyle = '#00E5FF'; c.lineWidth = 1;
+  c.beginPath();
+  for(let x = 0; x < w; x++){
+    const a = Math.floor(x * spp), b = Math.min(data.length, Math.floor((x + 1) * spp));
+    let mn = 0, mx = 0;
+    for(let s = a; s < b; s++){ const v = data[s]; if(v < mn) mn = v; if(v > mx) mx = v; }
+    c.moveTo(x + .5, mid - mx * (h / 2) * .9);
+    c.lineTo(x + .5, mid - mn * (h / 2) * .9);
+  }
+  c.stroke();
+  const { viewDur, viewStart } = weView();
+  const vx0 = (viewStart / dur) * w, vx1 = ((viewStart + viewDur) / dur) * w;
+  c.fillStyle = 'rgba(0,229,255,0.14)';
+  c.fillRect(vx0, 0, vx1 - vx0, h);
+  c.strokeStyle = 'rgba(0,229,255,0.8)'; c.lineWidth = 1;
+  c.strokeRect(vx0 + .5, .5, Math.max(1, vx1 - vx0 - 1), h - 1);
+}
+
+/* --- Pointer interactions --- */
+function weHandlePointer(e, kind){
+  if(!WE.canvas || !WE.buffer) return;
+  const r = WE.canvas.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top, w = r.width;
+  const { dur, viewDur, viewStart, maxPan } = weView();
+  const timeToX = t => ((t - viewStart) / viewDur) * w;
+  const xToTime = xx => Math.max(0, Math.min(dur, viewStart + (xx / w) * viewDur));
+
+  if(kind === 'down'){
+    e.preventDefault();
+    try { WE.canvas.setPointerCapture(e.pointerId); } catch(_){}
+    if(WE.tool === 'pan' || e.button === 1 || e.shiftKey){
+      WE.drag = { kind:'pan', startX:x, startPan:WE.panX }; return;
+    }
+    if(y < 26){
+      WE.playhead = xToTime(x); WE.drag = { kind:'playhead' };
+      weUpdateInfo(); weDraw(); return;
+    }
+    if(WE.selEnd > WE.selStart + 0.001){
+      if(Math.abs(x - timeToX(WE.selStart)) < 7){ WE.drag = { kind:'selL' }; return; }
+      if(Math.abs(x - timeToX(WE.selEnd)) < 7){ WE.drag = { kind:'selR' }; return; }
+    }
+    const t = xToTime(x);
+    WE.selStart = t; WE.selEnd = t; WE.playhead = t;
+    WE.drag = { kind:'select', startT:t };
+    weUpdateInfo(); weUpdateSelInfo(); weDraw(); weDrawOverview();
+    return;
+  }
+
+  if(kind === 'move' && WE.drag){
+    e.preventDefault();
+    if(WE.drag.kind === 'select'){
+      const t = xToTime(x);
+      WE.selStart = Math.min(WE.drag.startT, t);
+      WE.selEnd = Math.max(WE.drag.startT, t);
+    } else if(WE.drag.kind === 'selL'){
+      WE.selStart = Math.max(0, Math.min(WE.selEnd - .005, xToTime(x)));
+    } else if(WE.drag.kind === 'selR'){
+      WE.selEnd = Math.min(dur, Math.max(WE.selStart + .005, xToTime(x)));
+    } else if(WE.drag.kind === 'pan'){
+      if(maxPan > 0){
+        const dxNorm = (x - WE.drag.startX) / w;
+        WE.panX = Math.max(0, Math.min(1, WE.drag.startPan - dxNorm * (viewDur / maxPan)));
+      }
+    } else if(WE.drag.kind === 'playhead'){
+      WE.playhead = xToTime(x);
+    }
+    weUpdateInfo(); weUpdateSelInfo(); weDraw(); weDrawOverview();
+    return;
+  }
+
+  if(kind === 'up') WE.drag = null;
+}
+
+/* --- Edits --- */
+function weSnapshot(){
+  WE.undoStack.push(WE.buffer);
+  if(WE.undoStack.length > 40) WE.undoStack.shift();
+  WE.redoStack = [];
+  weUpdateUndo();
+}
+function weCommit(newBuffer){
+  WE.buffer = newBuffer;
+  WE.track.buffer = newBuffer;
+  if(WE.playhead > newBuffer.duration) WE.playhead = newBuffer.duration;
+  WE.selStart = 0; WE.selEnd = 0;
+  renderAll();
+  weUpdateInfo(); weUpdateSelInfo(); weUpdateUndo();
+  weDraw(); weDrawOverview();
+}
+function weAction(kind){
+  if(!WE.buffer) return;
+  const dur = WE.buffer.duration;
+  const hasSel = WE.selEnd > WE.selStart + .005;
+
+  if(kind === 'chop' || kind === 'trim'){
+    if(!hasSel){ note('Drag a selection on the wave first', true); return; }
+    weSnapshot();
+    if(kind === 'chop'){
+      const before = sliceBuffer(WE.buffer, 0, WE.selStart);
+      const after = sliceBuffer(WE.buffer, WE.selEnd, dur);
+      weCommit(concatBuffers(before, after));
+      note('Chopped ' + (WE.selEnd - WE.selStart).toFixed(2) + 's', false);
+    } else {
+      const trimmed = sliceBuffer(WE.buffer, WE.selStart, WE.selEnd);
+      weCommit(trimmed);
+      note('Trimmed to ' + trimmed.duration.toFixed(2) + 's', false);
+    }
+    return;
+  }
+  if(kind === 'split'){
+    if(WE.playhead < .05 || WE.playhead > dur - .05){ note('Place the playhead inside the wave first', true); return; }
+    weSnapshot();
+    const left = sliceBuffer(WE.buffer, 0, WE.playhead);
+    const right = sliceBuffer(WE.buffer, WE.playhead, dur);
+    const src = WE.track;
+    const nt = newTrack({ name: src.name + ' B', type: src.type, buffer: right,
+      gain: src.gain, freq: src.freq, q: src.q, bell: src.bell, pan: src.pan });
+    tracks.push(nt);
+    ensureNodes(nt);
+    weCommit(left);
+    note('Split — "B" added as a new lane', false);
+    return;
+  }
+  if(kind === 'fade'){
+    weSnapshot();
+    const f = hasSel ? (WE.selEnd - WE.selStart) * .15 : Math.min(.3, dur * .1);
+    weCommit(fadeBuffer(WE.buffer, f, f));
+    note('Faded ' + f.toFixed(2) + 's in/out', false);
+    return;
+  }
+  if(kind === 'normalize'){ weSnapshot(); weCommit(normalizeBuffer(WE.buffer)); note('Normalized to 99% peak', false); return; }
+  if(kind === 'reverse'){ weSnapshot(); weCommit(reverseBuffer(WE.buffer)); note('Reversed', false); return; }
+  if(kind === 'delay'){ weSnapshot(); weCommit(shiftBuffer(WE.buffer, .5)); note('Delayed +0.5s (silence prepended)', false); return; }
+  if(kind === 'advance'){ weSnapshot(); weCommit(shiftBuffer(WE.buffer, -.5)); note('Advanced −0.5s', false); return; }
+}
+function weUndo(){
+  if(!WE.undoStack.length) return;
+  WE.redoStack.push(WE.buffer);
+  WE.buffer = WE.undoStack.pop();
+  WE.track.buffer = WE.buffer;
+  WE.selStart = 0; WE.selEnd = 0;
+  if(WE.playhead > WE.buffer.duration) WE.playhead = WE.buffer.duration;
+  renderAll(); weUpdateInfo(); weUpdateSelInfo(); weUpdateUndo(); weDraw(); weDrawOverview();
+}
+function weRedo(){
+  if(!WE.redoStack.length) return;
+  WE.undoStack.push(WE.buffer);
+  WE.buffer = WE.redoStack.pop();
+  WE.track.buffer = WE.buffer;
+  WE.selStart = 0; WE.selEnd = 0;
+  if(WE.playhead > WE.buffer.duration) WE.playhead = WE.buffer.duration;
+  renderAll(); weUpdateInfo(); weUpdateSelInfo(); weUpdateUndo(); weDraw(); weDrawOverview();
+}
+function wePreview(){
+  if(!WE.buffer) return;
+  if(ctx.state === 'suspended') ctx.resume();
+  if(WE.previewSrc){ try { WE.previewSrc.stop(); } catch(_){} WE.previewSrc = null; }
+  const src = ctx.createBufferSource();
+  src.buffer = WE.buffer;
+  const g = ctx.createGain(); g.gain.value = .9;
+  src.connect(g); g.connect(masterIn);
+  src.start(0, WE.playhead);
+  WE.previewSrc = src;
+  setTimeout(() => { if(WE.previewSrc === src){ try { src.stop(); } catch(_){} WE.previewSrc = null; } },
+    (WE.buffer.duration - WE.playhead) * 1000 + 150);
+  note('Playing from ' + WE.playhead.toFixed(2) + 's', false);
+}
+
+/* --- Init --- */
+(function weInit(){
+  WE.el = document.getElementById('we-overlay');
+  if(!WE.el) return;
+  WE.canvas = document.getElementById('we-canvas');
+  WE.overview = document.getElementById('we-overview');
+  WE.titleEl = document.getElementById('we-title');
+  WE.metaEl = document.getElementById('we-meta');
+  WE.timeEl = document.getElementById('we-time');
+  WE.selInfoEl = document.getElementById('we-sel-info');
+  WE.undoBtn = document.getElementById('we-undo');
+  WE.redoBtn = document.getElementById('we-redo');
+  WE.zoomHEl = document.getElementById('we-zoom-h');
+  WE.zoomVEl = document.getElementById('we-zoom-v');
+  WE.toolEls = Array.from(document.querySelectorAll('.we-tool'));
+
+  // Escape the studio's stacking context: move to <body> so it sits above the nav
+  document.body.appendChild(WE.el);
+
+  document.getElementById('we-close').addEventListener('click', weClose);
+  WE.undoBtn.addEventListener('click', weUndo);
+  WE.redoBtn.addEventListener('click', weRedo);
+  document.getElementById('we-play').addEventListener('click', wePreview);
+  document.getElementById('we-chop').addEventListener('click', () => weAction('chop'));
+  document.getElementById('we-trim').addEventListener('click', () => weAction('trim'));
+  document.getElementById('we-split').addEventListener('click', () => weAction('split'));
+  document.getElementById('we-fade').addEventListener('click', () => weAction('fade'));
+  document.getElementById('we-norm').addEventListener('click', () => weAction('normalize'));
+  document.getElementById('we-rev').addEventListener('click', () => weAction('reverse'));
+  document.getElementById('we-delay').addEventListener('click', () => weAction('delay'));
+  document.getElementById('we-advance').addEventListener('click', () => weAction('advance'));
+
+  WE.toolEls.forEach(btn => btn.addEventListener('click', () => {
+    WE.tool = btn.dataset.tool;
+    WE.toolEls.forEach(b => b.classList.toggle('active', b === btn));
+  }));
+
+  WE.zoomHEl.addEventListener('input', e => { WE.zoomH = parseFloat(e.target.value); weUpdateInfo(); weDraw(); weDrawOverview(); });
+  WE.zoomVEl.addEventListener('input', e => { WE.zoomV = parseFloat(e.target.value); weUpdateInfo(); weDraw(); });
+
+  WE.canvas.addEventListener('pointerdown', e => weHandlePointer(e, 'down'));
+  WE.canvas.addEventListener('pointermove', e => weHandlePointer(e, 'move'));
+  WE.canvas.addEventListener('pointerup', e => weHandlePointer(e, 'up'));
+  WE.canvas.addEventListener('pointercancel', e => weHandlePointer(e, 'up'));
+
+  WE.canvas.addEventListener('wheel', e => {
+    if(!WE.buffer) return;
+    e.preventDefault();
+    if(e.ctrlKey || e.metaKey){
+      WE.zoomV = Math.max(.5, Math.min(8, WE.zoomV * (1 - e.deltaY * .001)));
+      WE.zoomVEl.value = WE.zoomV;
+    } else {
+      WE.zoomH = Math.max(1, Math.min(20, WE.zoomH * (1 - e.deltaY * .001)));
+      WE.zoomHEl.value = WE.zoomH;
+    }
+    weUpdateInfo(); weDraw(); weDrawOverview();
+  }, { passive:false });
+
+  WE.overview.addEventListener('click', e => {
+    if(!WE.buffer) return;
+    const r = WE.overview.getBoundingClientRect();
+    const t = ((e.clientX - r.left) / r.width) * WE.buffer.duration;
+    const { viewDur, maxPan } = weView();
+    if(maxPan <= 0) return;
+    WE.panX = Math.max(0, Math.min(1, (t - viewDur / 2) / maxPan));
+    weDraw(); weDrawOverview();
+  });
+
+  document.addEventListener('keydown', e => {
+    if(!WE.el.classList.contains('open')) return;
+    if(e.key === 'Escape'){ weClose(); return; }
+    if((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z'){ e.preventDefault(); weUndo(); }
+    if((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z'){ e.preventDefault(); weRedo(); }
+    if(e.key === 'Delete' || e.key === 'Backspace'){ e.preventDefault(); weAction('chop'); }
+  });
+
+  window.addEventListener('resize', () => {
+    if(WE.el.classList.contains('open')){ weDraw(); weDrawOverview(); }
+  });
+})();
+
+
 /* ---------- pills + render ---------- */
 function updatePills(){
   const st = ctx ? ctx.state : 'idle';
@@ -5252,7 +6285,7 @@ function startRemote(ch){
   if(peers[ch]){ peers[ch].destroy(); delete peers[ch]; }
   const status = $('rl-qr-status');
   status.textContent = 'Starting hub…';
-  const p = new Peer(peerId);
+  const p = new Peer(peerId, VVU.peerOpts());
   peers[ch] = p;
   p.on('open', () => { status.textContent = 'Waiting for scan…'; });
   p.on('error', err => { status.textContent = 'Peer error: ' + err.type; });
@@ -5318,7 +6351,7 @@ async function initSender(){
     });
     v.srcObject = s;
     say('Camera ready · connecting to hub…');
-    const peer = new Peer();
+    const peer = new Peer(undefined, VVU.peerOpts());
     peer.on('open', () => {
       const call = peer.call(target, s);
       say('Connected · streaming live to SafeGrid');
@@ -5731,5 +6764,282 @@ renderLedger();
 })();
 </script>
 
+
+<script>
+(function(){
+ const g=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o);
+ const ITEMS=[['apiBase','API base URL','text'],['auth.checkUrl','Auth session check','get'],['auth.loginUrl','Login page URL','text'],['endpoints.health','Health','get'],
+  ['endpoints.contact','Public contact form','write'],['endpoints.contacts','Contacts API','get'],['endpoints.mailList','Mail · list','get'],['endpoints.mailSend','Mail · send','write'],
+  ['endpoints.teamsList','Teams · list','get'],['endpoints.teamsPost','Teams · post','write'],['endpoints.portalTasks','Portal tasks','get'],
+  ['validationDashboardUrl','Validation dashboard (https)','page'],['peer.host','PeerJS signalling host','text'],['iceServers','TURN/ICE servers (JSON)','json'],
+  ['operator.name','Operator name','text'],['operator.initials','Operator initials','text'],['contactEmail','Fallback contact email','text']];
+ const val=p=>{const v=g(VVU.cfg,p);return typeof v==='string'?v:JSON.stringify(v==null?'':v);};
+ const set=p=>{const v=g(VVU.cfg,p);return Array.isArray(v)?v.length>0:!!v;};
+ const resolve=(p,k)=>p.startsWith('endpoints.')?VVU.url(p.slice(10)):(p==='auth.checkUrl'?VVU.cfg.auth.checkUrl:(p==='validationDashboardUrl'?VVU.cfg.validationDashboardUrl:''));
+ const rows=document.getElementById('glRows'),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ function draw(){rows.innerHTML=ITEMS.map(([p,l,k],i)=>`<div class="gl-row"><label>${l}<small>${p}</small></label><input data-i="${i}" value="${esc(val(p))}" placeholder="PLACEHOLDER — not configured"><span class="gl-st ${set(p)?'mid':''}" id="gs${i}">${set(p)?'SET':'PLACEHOLDER'}</span></div>`).join('');
+  document.getElementById('glAuthWarn').innerHTML=VVU.authConfigured?'':'<div class="gl-warn"><b>Auth gate not configured.</b> Admin modules (Command, Go-Live) are open to anyone who can load this page. Set <code>auth.checkUrl</code> and/or protect the deployment (e.g. Vercel Password/SSO Protection) before real contact data is used.</div>';}
+ rows.addEventListener('change',e=>{const i=e.target.dataset.i; if(i==null)return; const [p,,k]=ITEMS[i]; let v=e.target.value.trim();
+  if(k==='json'){try{v=v?JSON.parse(v):[];}catch(x){return showToast('Invalid JSON — not saved');}}
+  if((k==='page'&&v&&!/^https:\/\//.test(v)))return showToast('Must start with https://');
+  VVU.setOverride(p,v); draw(); showToast('Saved to this browser');});
+ document.getElementById('glPing').onclick=async()=>{for(let i=0;i<ITEMS.length;i++){const [p,,k]=ITEMS[i],el=document.getElementById('gs'+i); if(!set(p))continue;
+   if(k==='write'){el.textContent='WRITE · NOT PINGED';continue;} if(k==='text'||k==='json'){continue;}
+   el.textContent='…'; const r=await VVU.ping(resolve(p),k==='page'); el.textContent=r; el.className='gl-st '+(r==='LIVE'?'ok':'');}};
+ document.getElementById('glExport').onclick=()=>{const t=JSON.stringify(VVU.cfg,null,1); (navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>showToast('Config JSON copied'),()=>prompt('Copy:',t)))||prompt('Copy:',t);};
+ document.getElementById('glReset').onclick=()=>confirm('Clear browser overrides and reload?')&&VVU.resetOverrides();
+ const lg=document.getElementById('vvuLogin'); if(VVU.cfg.auth.loginUrl)lg.href=VVU.cfg.auth.loginUrl+(VVU.cfg.auth.loginUrl.includes('?')?'&':'?')+'next='+encodeURIComponent(location.href); else lg.style.display='none';
+ draw();
+ /* Validation dashboard: lazy iframe from config, https-only */
+ const vm=document.getElementById('module-validation'); let loaded=false;
+ function vd(){ if(loaded||document.body.dataset.module!=='validation')return; const u=VVU.cfg.validationDashboardUrl,h=document.getElementById('vdHost'); if(!h)return;
+  if(!/^https:\/\//.test(u||'')){h.innerHTML='<div style="padding:60px 20px;text-align:center;color:var(--fg-dim)"><div style="font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Validation</div><h2 style="font-family:var(--serif);font-size:30px;margin-bottom:12px">Dashboard <em style="color:var(--accent)">not linked</em></h2><p style="max-width:420px;margin:0 auto 16px;line-height:1.6">PLACEHOLDER: set <code>validationDashboardUrl</code> (https) in Go-Live.</p><a data-module-link="golive" class="btn-secondary" style="cursor:pointer">Open Go-Live</a></div>';return;}
+  const f=document.createElement('iframe'); f.src=u; f.title='Validation dashboard'; f.referrerPolicy='no-referrer'; f.setAttribute('sandbox','allow-scripts allow-same-origin allow-forms allow-popups');
+  f.style.cssText='width:100%;height:calc(100dvh - var(--nav-h));border:0;display:block'; h.replaceChildren(f); loaded=true;}
+ new MutationObserver(vd).observe(document.body,{attributes:true,attributeFilter:['data-module']}); vd();
+})();
+</script>
+<script>
+(function(){'use strict';
+const host=document.getElementById('orgHost');
+const R=host.attachShadow({mode:'open'});
+R.appendChild(document.getElementById('orgTpl').content.cloneNode(true));
+const W=R.getElementById('orgBody');
+// --- SIDEBAR DRAG & SNAP LOGIC ---
+  const resizer = R.getElementById('dragHandle');
+  const sidebar = R.getElementById('sidebar');
+  const DEFAULT_WIDTH = 260;
+  const COLLAPSED_WIDTH = 68; // Enough to show icons only
+  
+  let isResizing = false;
+  let startX, startWidth;
+
+  // Mouse/Touch start
+  function initDrag(e) {
+    isResizing = true;
+    startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+    startWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+    
+    W.classList.add('resizing');
+    resizer.classList.add('dragging');
+    
+    // Disable transition during drag for instant feedback
+    sidebar.style.transition = 'none'; 
+
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('touchmove', drag, {passive: false});
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchend', stopDrag);
+  }
+
+  // Dragging
+  function drag(e) {
+    if (!isResizing) return;
+    const currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+    const dx = currentX - startX;
+    let newWidth = startWidth + dx;
+
+    // Constraints: Cannot be smaller than COLLAPSED_WIDTH, max 500px
+    if (newWidth < COLLAPSED_WIDTH) newWidth = COLLAPSED_WIDTH;
+    if (newWidth > 500) newWidth = 500;
+
+    W.style.setProperty('--sidebar-w', `${newWidth}px`);
+
+    // Dynamically toggle the 'collapsed' class based on width to hide text
+    if (newWidth < 150) {
+      sidebar.classList.add('collapsed');
+    } else {
+      sidebar.classList.remove('collapsed');
+    }
+  }
+
+  // Drag end
+  function stopDrag() {
+    isResizing = false;
+    W.classList.remove('resizing');
+    resizer.classList.remove('dragging');
+    
+    // Re-enable smooth transition
+    sidebar.style.transition = 'width 0.1s ease-out';
+
+    document.removeEventListener('mousemove', drag);
+    document.removeEventListener('touchmove', drag);
+    document.removeEventListener('mouseup', stopDrag);
+    document.removeEventListener('touchend', stopDrag);
+  }
+
+  resizer.addEventListener('mousedown', initDrag);
+  resizer.addEventListener('touchstart', initDrag, {passive: true});
+  
+  // Prevent window scrolling while dragging on touch devices
+  resizer.addEventListener('touchmove', (e) => {
+    if(isResizing) e.preventDefault();
+  }, { passive: false });
+
+
+  // --- DOUBLE CLICK / TAP TO MAXIMIZE/MINIMIZE ---
+  function toggleSidebar() {
+    const currentWidth = parseInt(document.defaultView.getComputedStyle(sidebar).width, 10);
+    
+    if (currentWidth > COLLAPSED_WIDTH) {
+      // Close it
+      W.style.setProperty('--sidebar-w', `${COLLAPSED_WIDTH}px`);
+      sidebar.classList.add('collapsed');
+    } else {
+      // Maximize it
+      W.style.setProperty('--sidebar-w', `${DEFAULT_WIDTH}px`);
+      sidebar.classList.remove('collapsed');
+    }
+  }
+
+  // Mouse Double Click
+  resizer.addEventListener('dblclick', toggleSidebar);
+
+  // Mobile Double Tap support (since 'dblclick' is sometimes flaky on mobile)
+  let lastTap = 0;
+  resizer.addEventListener('touchend', (e) => {
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTap;
+    if (tapLength < 300 && tapLength > 0) {
+      toggleSidebar();
+      e.preventDefault(); // Prevent accidental clicks
+    }
+    lastTap = currentTime;
+  });
+
+  
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>R.getElementById(id), toast=m=>window.showToast&&window.showToast(m), KEY='vvu-org-state';
+const S={contacts:[
+ {id:'s1',name:'Michael Osterloh',role:'Founder & CEO',company:'HostAfrica',email:'michael@hostafrica.com',confidence:'Published'},
+ {id:'s2',name:'Adekeye Tomiwa',role:'Sales Supervisor',company:'HostAfrica',email:'adekeye@hostafrica.co.za',confidence:'Unverified'},
+ {id:'s3',name:'Christiane Zorn',role:'Chairperson & MD',company:'Volkswagen Group Africa',email:'c.zorn@vw.co.za',confidence:'Published'},
+ {id:'s4',name:'Billy Tom',role:'CEO & MD',company:'Isuzu SA',email:'billy.tom@isuzu.co.za',confidence:'Published'},
+ {id:'s5',name:'Tim Abbott',role:'Managing Director',company:'BMW Group SA',email:'tim.abbott@bmw.co.za',confidence:'Unverified'}],
+ emails:[{id:'e1',from:'sales@hostafrica.com',subject:'Re: IT Partner Programme application',preview:'Thanks for reaching out...',body:'Hi Divhani,\n\nWe have received your application.\n\nBest,\nHostAfrica',time:'10:42 AM'},
+ {id:'e2',to:'sales@hostafrica.com',subject:'IT Partner Programme application',preview:'Hi HOSTAFRICA team...',body:"I'm applying...",time:'Yesterday'}],
+ chats:{sales:[{name:'Mihle',text:"I've updated the pitch.",time:'09:00 AM'}],engineering:[],hostafrica:[]},
+ tasks:[{id:'t1',group:'URGENT: TISAX Registration (BMW / VW)',items:[{id:'t1a',text:'Register on ENX portal',done:true},{id:'t1b',text:'Complete Information Security Assessment (ISA)',done:false}]}]};
+const live={}; let channel='sales';
+try{const o=JSON.parse(localStorage.getItem(KEY)||'null'); if(o) Object.assign(S,o);}catch(e){}
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+const unset=r=>r.offline&&r.reason==='unset';
+const fail=(r,what)=>toast(what+' failed ('+(r.status||r.reason)+') — nothing changed');
+function mode(){const n=Object.keys(live).length; const m=$('org-mode'); m.textContent=n?('LIVE · '+n+' source'+(n>1?'s':'')):'SAMPLE DATA · NOT SYNCED'; m.className='badge '+(n?'badge-live':'badge-off');}
+async function load(){
+ const op=VVU.cfg.operator||{}; $('org-avatar').textContent=(op.initials||'OP').slice(0,3);
+ const [c,m,t]=await Promise.all([VVU.call('contacts'),VVU.call('mailList'),VVU.call('portalTasks')]);
+ if(c.ok&&Array.isArray(c.data)){S.contacts=c.data;live.contacts=1;}
+ if(m.ok&&Array.isArray(m.data)){S.emails=m.data;live.mail=1;}
+ if(t.ok&&Array.isArray(t.data)){S.tasks=t.data;live.tasks=1;}
+ mode(); renderAll();
+}
+const TITLES={dashboard:'Dashboard',mail:'Mail',teams:'Teams Chat',contacts:'Contacts',portals:'Portal Onboarding'};
+function org_switchView(v){R.querySelectorAll('.view-container').forEach(x=>x.classList.remove('active'));R.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));
+ $('view-'+v).classList.add('active'); $('header-title').textContent=TITLES[v]; if(v==='teams')loadChat();}
+
+const EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/* Spreadsheet grid: drag column edges / row edges (touch or mouse) to resize, tap # to minimise a row,
+   double-tap header edge to auto-fit, tap header to sort, double-tap an editable cell to edit. Sizes persist. */
+function Grid(host,o){
+ const K='vvu-grid-'+o.id; let st={w:o.cols.map(c=>c.w),h:{},m:{},d:o.rowH||44},q='',sort=null,rows=[],drag=null,lastH=null,lastT=0,lastC=null,lastCT=0;
+ try{const x=JSON.parse(localStorage.getItem(K)||'null'); if(x&&x.w&&x.w.length===o.cols.length)st=Object.assign(st,x);}catch(e){}
+ const save=()=>{try{localStorage.setItem(K,JSON.stringify(st));}catch(e){}};
+ const txt=(c,r)=>String(c.t?c.t(r):(r[c.k]==null?'':r[c.k]));
+ const rh=id=>st.m[id]?26:(st.h[id]||st.d), tpl=()=>'46px '+st.w.map(w=>w+'px').join(' ');
+ host.innerHTML='<div class="gx"><div class="gx-bar"><input class="gx-q" placeholder="Filter rows…"><button data-g="s" title="Compact">S</button><button data-g="m" title="Normal">M</button><button data-g="l" title="Tall">L</button><button data-g="fit" title="Fit columns">↔</button><button data-g="min" title="Minimise all rows">▁</button><button data-g="max" title="Expand all rows">▣</button><span class="gx-cnt"></span></div><div class="gx-scroll"><div class="gx-grid"></div></div></div>';
+ const G=host.querySelector('.gx-grid'),SC=host.querySelector('.gx-scroll'),CNT=host.querySelector('.gx-cnt');
+ const view=()=>{let v=rows.slice(); if(q)v=v.filter(r=>o.cols.some(c=>txt(c,r).toLowerCase().includes(q))); if(sort){const c=o.cols[sort.i];v.sort((a,b)=>txt(c,a).localeCompare(txt(c,b),undefined,{numeric:true})*sort.d);} return v;};
+ function draw(){const v=view(); G.style.gridTemplateColumns=tpl();
+  G.innerHTML='<div class="gx-corner">#</div>'+o.cols.map((c,i)=>`<div class="gx-h"><span class="gx-l" data-i="${i}">${esc(c.l)}${sort&&sort.i===i?(sort.d>0?' ▲':' ▼'):''}</span><i class="gx-ch" data-i="${i}"></i></div>`).join('')+
+  v.map((r,n)=>{const id=esc(r.id),h=rh(r.id);return `<div class="gx-n" data-r="${id}" style="height:${h}px">${st.m[r.id]?'▸':n+1}<i class="gx-rh" data-r="${id}"></i></div>`+o.cols.map((c,i)=>`<div class="gx-c${h>70?' wrap':''}${c.e?' ed':''}" data-r="${id}" data-i="${i}" style="height:${h}px"><span class="gx-t">${c.h?c.h(r):esc(txt(c,r))}</span></div>`).join('');}).join('');
+  CNT.textContent=v.length+'/'+rows.length;}
+ const find=id=>rows.find(r=>String(r.id)===String(id));
+ function fit(i){const c=o.cols[i]; if(c.fit===false)return; st.w[i]=Math.max(c.min||56,Math.min(520,Math.ceil(Math.max(c.l.length+2,...rows.slice(0,200).map(r=>txt(c,r).length))*7.4+24)));}
+ function edit(cell,r,c){const old=txt(c,r),i=document.createElement('input'); i.className='gx-in'; i.value=old; cell.replaceChildren(i); i.focus(); i.select(); let done=false;
+  const end=async ok=>{if(done)return; done=true; if(ok&&i.value.trim()!==old&&o.save)await o.save(r,c.k,i.value.trim()); draw();};
+  i.addEventListener('keydown',e=>{if(e.key==='Enter')end(true); if(e.key==='Escape')end(false);}); i.addEventListener('blur',()=>end(true));}
+ host.addEventListener('pointerdown',e=>{const t=e.target,now=Date.now();
+  if(t.classList.contains('gx-ch')){const i=+t.dataset.i; if(lastH===t&&now-lastT<320){fit(i);save();draw();lastH=null;return;} lastH=t;lastT=now; drag={t:'c',i,x:e.clientX,w:st.w[i]};}
+  else if(t.classList.contains('gx-rh')){const id=t.dataset.r; if(lastH===t&&now-lastT<320){delete st.h[id];delete st.m[id];save();draw();lastH=null;return;} lastH=t;lastT=now; drag={t:'r',id,y:e.clientY,h:rh(id)};}
+  else return; e.preventDefault(); t.setPointerCapture(e.pointerId);});
+ host.addEventListener('pointermove',e=>{if(!drag)return;
+  if(drag.t==='c'){st.w[drag.i]=Math.max(o.cols[drag.i].min||56,Math.min(640,drag.w+e.clientX-drag.x)); G.style.gridTemplateColumns=tpl();}
+  else{const h=Math.max(26,Math.min(420,Math.round(drag.h+e.clientY-drag.y))); st.h[drag.id]=h; delete st.m[drag.id];
+   G.querySelectorAll('[data-r="'+CSS.escape(drag.id)+'"]').forEach(x=>{x.style.height=h+'px'; x.classList.toggle('wrap',h>70&&x.classList.contains('gx-c'));});}});
+ const up=()=>{if(drag){drag=null;save();}}; host.addEventListener('pointerup',up); host.addEventListener('pointercancel',up);
+ host.querySelector('.gx-q').addEventListener('input',e=>{q=e.target.value.trim().toLowerCase();draw();});
+ host.addEventListener('click',e=>{const t=e.target,g=t.closest('[data-g]');
+  if(g){const k=g.dataset.g; if('sml'.includes(k)&&k.length===1&&k!=='fit'){st.d={s:30,m:44,l:80}[k];st.h={};st.m={};} else if(k==='fit')o.cols.forEach((c,i)=>fit(i)); else if(k==='min')rows.forEach(r=>st.m[r.id]=1); else if(k==='max')st.m={}; save();draw();return;}
+  const l=t.closest('.gx-l'); if(l){const i=+l.dataset.i; sort=sort&&sort.i===i?(sort.d>0?{i,d:-1}:null):{i,d:1}; draw();return;}
+  const n=t.closest('.gx-n'); if(n&&!t.classList.contains('gx-rh')){const id=n.dataset.r; st.m[id]?delete st.m[id]:st.m[id]=1; save();draw();return;}
+  const c=t.closest('.gx-c'); if(!c||t.closest('button'))return; const r=find(c.dataset.r),col=o.cols[+c.dataset.i]; if(!r)return;
+  if(col.e){const now=Date.now(); if(lastC===c&&now-lastCT<420){lastC=null;edit(c,r,col);return;} lastC=c;lastCT=now;}
+  if(o.open)o.open(r);});
+ return{set(r){rows=r;draw();}};
+}
+const gDash=Grid($('dash-grid'),{id:'dash',cols:[{l:'Company',k:'company',w:160},{l:'Target buyer',k:'name',w:170},{l:'Role',k:'role',w:160},{l:'Status',k:'confidence',w:110,h:r=>`<span class="badge ${r.confidence==='Unverified'?'badge-warn':'badge-ok'}">${esc(r.confidence)}</span>`},{l:'Action',k:'email',w:84,fit:false,t:()=>'',h:r=>`<button class="gx-btn" data-act="compose" data-email="${esc(r.email)}">Email</button>`}]});
+const gMail=Grid($('mail-grid'),{id:'mail',rowH:52,open:r=>openMail(r.id),cols:[{l:'From / To',w:150,t:e=>e.from||('→ '+(e.to||''))},{l:'Subject',k:'subject',w:230,h:e=>esc(e.subject)+(e.draft?' <b style="color:var(--accent);font-size:9px">LOCAL DRAFT · NOT SENT</b>':'')},{l:'Preview',k:'preview',w:260},{l:'Time',k:'time',w:90}]});
+async function updContact(r,k,v){ if(k==='email'&&!EMAIL.test(v))return toast('Invalid email'); if(k==='name'&&!v)return toast('Name required');
+ const x=await VVU.call('contacts',{method:'PATCH',suffix:'/'+encodeURIComponent(r.id),body:{[k]:v}}); if(!x.ok&&!unset(x))return fail(x,'Update');
+ r[k]=v; persist(); renderDashboard(); toast(x.ok?'Saved':'Edited locally — contacts backend not configured');}
+const gCon=Grid($('contact-grid'),{id:'contacts',save:updContact,cols:[{l:'Name',k:'name',w:170,e:1},{l:'Role',k:'role',w:150,e:1},{l:'Company',k:'company',w:170,e:1},{l:'Email',k:'email',w:230,e:1},{l:'Status',k:'confidence',w:110,h:r=>`<span class="badge ${r.confidence==='Unverified'?'badge-warn':'badge-ok'}">${esc(r.confidence)}</span>`},{l:'',k:'id',w:70,fit:false,min:60,t:()=>'',h:r=>`<button class="gx-btn d" data-act="del" data-id="${esc(r.id)}" aria-label="Delete"><i class="fas fa-trash"></i></button>`}]});
+let mailF='all';
+
+function renderDashboard(){gDash.set(S.contacts);
+ $('stat-contacts').textContent=S.contacts.length; $('stat-unverified').textContent=S.contacts.filter(c=>c.confidence==='Unverified').length;
+ $('stat-sent').textContent=S.emails.filter(e=>e.to&&!e.draft).length;
+ const all=S.tasks.flatMap(g=>g.items); $('stat-portals').textContent=all.filter(i=>i.done).length+' / '+all.length;}
+function renderMail(){const f={all:()=>1,in:e=>!e.to,sent:e=>e.to&&!e.draft,draft:e=>e.draft}[mailF]; const v=S.emails.filter(f); gMail.set(v); $('mail-count').textContent=v.length;}
+function openMail(id){const e=S.emails.find(x=>String(x.id)===String(id)); if(!e)return; const p=$('mail-content');
+ p.innerHTML=`<button class="btn-secondary mail-back" data-act="mback">← Back</button><div class="mail-header"><h2 style="font-size:18px;margin-bottom:12px">${esc(e.subject)}</h2><div class="mail-to">To: ${esc(e.to||'me')} | From: ${esc(e.from||'me')}</div></div><div class="mail-body">${esc(e.body)}</div>`; p.classList.add('open');}
+function org_openMailCompose(to){ if(to&&typeof to==='string')$('compose-to').value=to; $('modal-compose').classList.add('open');}
+async function org_sendEmail(){
+ const to=$('compose-to').value.trim(),subject=$('compose-subject').value.trim(),body=$('compose-body').value;
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)||!subject) return toast('Valid To address and Subject required');
+ const r=await VVU.call('mailSend',{method:'POST',body:{to,subject,body}});
+ const rec={id:(r.data&&r.data.id)||('l'+Date.now()),to,subject,preview:body.slice(0,50)+'...',body,time:'Just now'};
+ if(r.ok){S.emails.unshift(rec); toast('Email sent');}
+ else if(unset(r)){rec.draft=true; S.emails.unshift(rec); toast('Saved as LOCAL DRAFT — mail backend not configured, NOT sent');}
+ else return fail(r,'Send');
+ persist(); renderMail(); renderDashboard(); org_closeModal();}
+function org_switchChannel(c,el){R.querySelectorAll('.channel').forEach(x=>x.classList.remove('active')); el.classList.add('active'); channel=c;
+ $('chat-header').innerHTML='<i class="fas fa-hashtag"></i> '+esc(c); renderChat(); loadChat();}
+async function loadChat(){const r=await VVU.call('teamsList',{query:'?channel='+encodeURIComponent(channel)});
+ if(r.ok&&r.data&&Array.isArray(r.data.messages)){S.chats[channel]=r.data.messages;live.teams=1;mode();renderChat();}}
+function renderChat(){const el=$('chat-messages'); el.innerHTML=(S.chats[channel]||[]).map(m=>`<div class="message"><div class="msg-avatar">${esc(m.name).slice(0,2).toUpperCase()}</div><div class="msg-content"><div class="msg-meta"><span class="msg-name">${esc(m.name)}</span><span class="msg-time">${esc(m.time)}${m.local?' · local':''}</span></div><div class="msg-text">${esc(m.text)}</div></div></div>`).join(''); el.scrollTop=el.scrollHeight;}
+async function org_sendChatMessage(){const i=$('chat-input-field'),text=i.value.trim(); if(!text)return;
+ const r=await VVU.call('teamsPost',{method:'POST',body:{channel,text}});
+ if(!r.ok&&!unset(r)) return fail(r,'Post');
+ (S.chats[channel]=S.chats[channel]||[]).push({name:(VVU.cfg.operator||{}).name||'You',text,time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),local:!r.ok});
+ i.value=''; persist(); renderChat(); if(!r.ok)toast('Posted locally — Teams backend not configured');}
+function org_handleChatEnter(e){if(e.key==='Enter')org_sendChatMessage();}
+function renderContacts(){gCon.set(S.contacts);}
+async function org_saveContact(){
+ const v=k=>$('new-'+k).value.trim(), c={name:v('name'),role:v('role'),company:v('company'),email:v('email'),confidence:$('new-confidence').value};
+ if(!c.name||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return toast('Name and a valid email are required');
+ const r=await VVU.call('contacts',{method:'POST',body:c});
+ if(r.ok) c.id=(r.data&&r.data.id)||('c'+Date.now()); else if(unset(r)) c.id='l'+Date.now(); else return fail(r,'Save');
+ S.contacts.push(r.ok&&r.data&&r.data.name?r.data:c); persist(); renderContacts(); renderDashboard(); org_closeModal();
+ toast(r.ok?'Member added':'Added locally — contacts backend not configured');}
+async function delContact(id){ if(!confirm('Remove this contact?'))return;
+ const r=await VVU.call('contacts',{method:'DELETE',suffix:'/'+encodeURIComponent(id)});
+ if(!r.ok&&!unset(r)) return fail(r,'Delete');
+ S.contacts=S.contacts.filter(c=>String(c.id)!==String(id)); persist(); renderContacts(); renderDashboard(); toast('Contact removed');}
+function renderPortals(){$('portal-groups').innerHTML=S.tasks.map(g=>`<div class="task-card"><div class="task-title"><i class="fas fa-shield-halved" style="color:var(--red)"></i> ${esc(g.group)}</div><div class="task-list">${g.items.map(i=>`<label class="task-item"><input type="checkbox" data-act="task" data-g="${esc(g.id)}" data-id="${esc(i.id)}" ${i.done?'checked':''}> <span class="task-text ${i.done?'completed':''}">${esc(i.text)}</span></label>`).join('')}</div></div>`).join('');}
+async function toggleTask(g,id,done){const grp=S.tasks.find(x=>String(x.id)===g),it=grp&&grp.items.find(x=>String(x.id)===id); if(!it)return;
+ const r=await VVU.call('portalTasks',{method:'POST',body:{group:g,id,done}});
+ if(!r.ok&&!unset(r)){fail(r,'Update');return renderPortals();} it.done=done; persist(); renderPortals(); renderDashboard();}
+function org_openModal(t){ if(t==='contact')$('modal-add-contact').classList.add('open'); }
+function org_closeModal(){R.querySelectorAll('.modal-backdrop').forEach(m=>m.classList.remove('open')); R.querySelectorAll('.modal input,.modal textarea').forEach(i=>i.value='');}
+function renderAll(){renderDashboard();renderMail();renderContacts();renderChat();renderPortals();}
+R.addEventListener('click',e=>{const tb=e.target.closest('.org-tabs [data-view]'); if(tb){org_switchView(tb.dataset.view);return;} const t=e.target.closest('[data-act]'); if(!t)return; const a=t.dataset.act;
+ if(a==='compose')org_openMailCompose(t.dataset.email); else if(a==='mf'){mailF=t.dataset.f;R.querySelectorAll('.mail-chips button').forEach(b=>b.classList.toggle('on',b===t));renderMail();} else if(a==='mback')$('mail-content').classList.remove('open'); else if(a==='del')delContact(t.dataset.id);});
+R.addEventListener('change',e=>{const t=e.target; if(t.dataset&&t.dataset.act==='task')toggleTask(t.dataset.g,t.dataset.id,t.checked);});
+Object.assign(window,{org_switchView,org_openMailCompose,org_sendEmail,org_switchChannel,org_sendChatMessage,org_handleChatEnter,org_saveContact,org_openModal,org_closeModal});
+mode(); renderAll(); VVU.ready.then(ok=>{ if(ok) load(); });
+
+})();
+</script>
 </body>
 </html>

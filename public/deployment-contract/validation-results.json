@@ -1,0 +1,87 @@
+{
+  "seed": 42,
+  "n": 684098,
+  "fraudCount": 222,
+  "fraudRate": 0.0003245149086826741,
+  "ladder": [
+    {
+      "model": "rules",
+      "auc": 0.4428300726079313,
+      "partialAuc": 0.0040198533955546935,
+      "fnrAtFivePctFpr": 1
+    },
+    {
+      "model": "bprime",
+      "auc": 0.5727850707236601,
+      "partialAuc": 0.010710971793911624,
+      "fnrAtFivePctFpr": 0.8771929824561404
+    },
+    {
+      "model": "flat",
+      "auc": 0.5786292870374717,
+      "partialAuc": 0.008948594672372589,
+      "fnrAtFivePctFpr": 0.9035087719298246
+    },
+    {
+      "model": "temporal",
+      "auc": 0.651065107018647,
+      "partialAuc": 0.014347384172483112,
+      "fnrAtFivePctFpr": 0.8245614035087719
+    },
+    {
+      "model": "calibrated",
+      "auc": 0.5,
+      "partialAuc": 0.005000000000000001,
+      "fnrAtFivePctFpr": 1
+    }
+  ],
+  "controls": [
+    {
+      "control": "label-shuffle",
+      "auc": 0.4935605301531604,
+      "delta": 0.15750457686548652
+    },
+    {
+      "control": "order-shuffle",
+      "auc": 0.6410988269610526,
+      "delta": 0.009966280057594368
+    },
+    {
+      "control": "timing-noise",
+      "auc": 0.651044840521911,
+      "delta": 0.00002026649673592118
+    },
+    {
+      "control": "positive",
+      "auc": 0.978350650233784,
+      "delta": 0.478350650233784,
+      "nullDelta": 0.007368268490167806
+    }
+  ],
+  "calibration": {
+    "eceRaw": 0.01400003859232525,
+    "eceCalibrated": 0.000017541346414434722,
+    "brierRaw": 0.0005293361478068665,
+    "brierCalibrated": 0.0003331748103100972
+  },
+  "behavior": {
+    "p1Burst": 0.5002432741745132,
+    "p2Velocity": 0.4813644697402864,
+    "p3Graph": 0.39494018962080424,
+    "p4Drift": 0.55,
+    "composite": 1.926547933535604
+  },
+  "distribution": {
+    "ksDistance": 0.28136192910368985,
+    "wasserstein": 0.000027121374833189186,
+    "spearman": 0.009551919742105097,
+    "circularConcentrationFraud": 0.13829581760913479,
+    "circularConcentrationClean": 0.3836643592753371
+  },
+  "chain": {
+    "genesis": "PROOFBRIDGE_GENESIS_v1",
+    "count": 684099,
+    "root": "2a6beaf4be6d3297eae917a12f3a9e7ac52e664c4dd774f5921ca2625d68d95a",
+    "valid": true
+  }
+}

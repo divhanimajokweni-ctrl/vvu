@@ -1,0 +1,53 @@
+{
+  "adapter": "proofbridge/adapters/mbd.py",
+  "work_order": "ProofBridge Delivery Round — Deliverable 1 (real-data fraud validation)",
+  "dataset": {
+    "id": "ai-lab/MBD-mini",
+    "url": "https://huggingface.co/datasets/ai-lab/MBD-mini",
+    "revision": "4b0d5b4c0b014e02af6c2e6b7b27851e6fb0d5c3",
+    "note": "official reduced subset of ai-lab/MBD (same schema); full detail table is 38 GB",
+    "download": "huggingface resolve URLs, detail.tar.gz 1968727441 bytes"
+  },
+  "selection": {
+    "fold": 0,
+    "clients_requested": 2000,
+    "clients_selected": 2000,
+    "rule": "client_split fold=0 ORDER BY client_id LIMIT 2000",
+    "selection_sha256": "65682695f65e684d103005eb6634027cce81e05c9df78b0e119f5a611bbae155"
+  },
+  "counts": {
+    "trx_rows": 688328,
+    "trx_rows_used": 684098,
+    "trx_rows_skipped_no_counterparty": 4230,
+    "dialog_rows": 4235,
+    "clients_with_dialogs": 887,
+    "geo_rows": 1408637,
+    "clients_with_geo": 1475,
+    "distinct_geohash_5_cells": 15271,
+    "distinct_payees": 121,
+    "positives": 222,
+    "positive_clients": 118,
+    "positive_rate": 0.0003245149086826741
+  },
+  "label_rule": {
+    "disclosed_rule": "inbound contact within 24h of payment and no payment_review navigation between payee_add and payment = positive",
+    "payment": "every trx row (direction not expressible in anonymised MBD schema)",
+    "payee_add": "counterparty (dst_type11,dst_type12) first seen for the client within the preceding 30 days",
+    "inbound_contact": "any dialog event in [t-24h, t) (before-side; direction not expressible)",
+    "payment_review": "any dialog event in [t-2h, t) (quiet-window proxy; dialog navigation types not expressible)",
+    "positive": "recently-added payee AND contact-24h-before AND no-dialog-2h-before"
+  },
+  "sample_proxies": {
+    "channel": "constant 'online' (no channel dimension in MBD)",
+    "ringMerchant": "0 (generator ground truth; absent in MBD)",
+    "propensity": "= label (oracle diagnostic only)",
+    "gapDraw": "real seconds since previous same-client trx; first event 30d",
+    "merchantId": "dense code of (dst_type11, dst_type12)",
+    "hour": "native wall-clock hour, no timezone conversion"
+  },
+  "geo_note": "geo rows are loaded and counted (sequences built from all three tables) but enter neither labels nor samples; the disclosed rule's observables are trx+dialog only",
+  "determinism": "pinned revision + fold + client count => byte-identical outputs; no wall-clock reads",
+  "samples_file": "samples.json",
+  "samples_sha256": "c2a6276b8da7e6a26d5d6443b09031446281732f6e9100fad679079b827ef995",
+  "samples_rows": 684098
+}

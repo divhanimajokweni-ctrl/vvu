@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VVU · MAP · MapLibre 3D</title>
+<script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#050505;--panel:rgba(8,10,8,.9);--lime:#c8ff00;--sage:#8fb35a;
+  --ink:#c9d4bd;--dim:#5a6a50;--rose:#e5484d;--amber:#ffaa00;
+  --mono:'SF Mono','JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:11px}
+#map3d{position:fixed;inset:0;z-index:1}
+.hud{position:fixed;z-index:10;pointer-events:none;opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s}
+.hud.visible{opacity:1;transform:translateY(0);pointer-events:auto}
+.hud .panel-box{background:var(--panel);backdrop-filter:blur(20px);border:1px solid rgba(200,255,0,.2);border-radius:6px;padding:8px 10px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.hud .title{color:var(--lime);font-size:8px;letter-spacing:.1em;font-weight:700;text-transform:uppercase;margin-bottom:5px}
+.hud .row{display:flex;justify-content:space-between;gap:10px;margin:2px 0;font-size:9px}
+.hud .lbl{color:var(--dim)}.hud .val{color:var(--lime);font-variant-numeric:tabular-nums}
+.hud .val.rose{color:var(--rose)}.hud .val.amber{color:var(--amber)}
+#sys02{top:50px;left:12px;width:210px}
+#nodes{bottom:42px;left:12px;width:200px}
+#fsm{bottom:42px;right:12px;width:190px}
+.nodeRow{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(143,179,90,.08);font-size:9px}
+.nodeRow:last-child{border-bottom:none}
+.nodeRow .id{color:var(--sage);font-weight:700}
+.nodeRow .v{color:var(--lime);font-variant-numeric:tabular-nums}
+.nodeRow .v.rose{color:var(--rose)}.nodeRow .v.amber{color:var(--amber)}
+.fsmbtn{background:rgba(255,255,255,.02);border:1px solid rgba(200,255,0,.3);color:var(--sage);padding:3px 7px;font-family:var(--mono);font-size:8px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .2s}
+.fsmbtn:hover{border-color:var(--lime);color:var(--lime);background:rgba(200,255,0,.06)}
+.fsmbtn[disabled]{opacity:.35;cursor:not-allowed}
+#leakBanner{position:absolute;top:50px;left:50%;z-index:12;background:rgba(229,72,77,.14);backdrop-filter:blur(20px);border:1px solid var(--rose);color:var(--rose);padding:6px 16px;font-size:10px;letter-spacing:.1em;font-weight:600;text-transform:uppercase;border-radius:6px;opacity:0;pointer-events:none;transform:translateX(-50%) translateY(-8px) scale(.94);transition:all .3s}
+#leakBanner.on{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+#toast{position:fixed;bottom:12px;left:50%;z-index:20;transform:translateX(-50%) translateY(10px);background:var(--panel);border:1px solid rgba(200,255,0,.35);color:var(--lime);padding:6px 14px;border-radius:6px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;opacity:0;pointer-events:none;transition:all .25s}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.maplibregl-map{font-family:var(--mono)!important}
+.maplibregl-ctrl-group{background:rgba(5,5,5,.82)!important;border:1px solid rgba(200,255,0,.3)!important}
+.maplibregl-ctrl-group button span{filter:invert(1) sepia(1) hue-rotate(50deg) saturate(3)}
+.maplibregl-ctrl-attrib{background:rgba(5,5,5,.82)!important;color:#5a6a50!important}
+.maplibregl-ctrl-attrib a{color:#8fb35a!important}
+.maplibregl-popup-content{background:var(--panel)!important;color:var(--ink)!important;border:1px solid rgba(200,255,0,.3);border-radius:6px;font-family:var(--mono);font-size:10px;padding:8px 10px;backdrop-filter:blur(20px)}
+.maplibregl-popup-content .pk{color:var(--dim)}
+.maplibregl-popup-content .pv{color:var(--lime);font-variant-numeric:tabular-nums}
+.maplibregl-popup-tip{border-top-color:var(--panel)!important;border-bottom-color:var(--panel)!important;border-left-color:var(--panel)!important;border-right-color:var(--panel)!important}
+</style>
+</head>
+<body>
+<div id="map3d"></div>
+
+<div class="hud" id="sys02">
+  <div class="panel-box">
+    <div class="title">SYS.02 · GIS SPATIAL TRUTH</div>
+    <div class="row"><span class="lbl">MAP_SYNC</span><span class="val">TRUE</span></div>
+    <div class="row"><span class="lbl">DATA</span><span class="val">OPENFREEMAP</span></div>
+    <div class="row"><span class="lbl">GPS</span><span class="val" id="userCoords" style="font-size:8px">LOCATING...</span></div>
+    <div class="row"><span class="lbl">ZOOM</span><span class="val" id="mapZoom">15.5</span></div>
+    <div class="row"><span class="lbl">PITCH</span><span class="val" id="mapPitch">60</span></div>
+    <div class="row"><span class="lbl">BEARING</span><span class="val" id="mapBearing">-20</span></div>
+    <div class="row"><span class="lbl">BUILDINGS</span><span class="val" id="bldSrc">TILES</span></div>
+    <div class="row"><span class="lbl">FOOTPRINTS</span><span class="val" id="bldCount">—</span></div>
+    <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px">
+      <button class="fsmbtn" id="btnExport">EXPORT GEOJSON</button>
+      <button class="fsmbtn" id="btnLoad">LOAD</button>
+      <input type="file" id="geojsonFile" accept=".geojson,.json,application/geo+json" style="display:none">
+    </div>
+  </div>
+</div>
+
+<div class="hud" id="nodes">
+  <div class="panel-box">
+    <div class="title">NODE ARRAY · N01–N06</div>
+    <div id="nodeList"></div>
+  </div>
+</div>
+
+<div class="hud" id="fsm">
+  <div class="panel-box">
+    <div class="title">FSM CONSOLE</div>
+    <div class="row"><span class="lbl">STATE</span><span class="val" id="fsmState">STEADY_LOCKED</span></div>
+    <div class="row"><span class="lbl">SINCE</span><span class="val" id="fsmSince">0:00</span></div>
+    <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px">
+      <button class="fsmbtn" data-cmd="CLICK">CLICK</button>
+      <button class="fsmbtn" data-cmd="CLEAR">CLEAR</button>
+      <button class="fsmbtn" data-cmd="WARN">WARN</button>
+      <button class="fsmbtn" data-cmd="RESET">RESET</button>
+    </div>
+  </div>
+</div>
+
+<div id="leakBanner">⚠ LEAK · N04 · DN300 · INTENSITY 0.67</div>
+<div id="toast"></div>
+
+<script>
+let userLng = 27.8500, userLat = -25.7500, map;
+
+/* ------------------------------------------------------------------ *
+ *  BUILDING SOURCE RESOLUTION
+ *  OpenFreeMap Liberty is an OpenMapTiles-schema vector source.
+ *  The building layer carries `render_height` / `render_min_height`
+ *  (metres) which is exactly what we need for real extrusions.
+ * ------------------------------------------------------------------ */
+const BUILDING_LAYER_NAME = 'building';
+const REAL_SRC = 'real-buildings';
+const REAL_LAYER = 'real-buildings-3d';
+const TILE_LAYER = 'buildings-3d';
+const TILE_LAYER_ID = 'buildings-3d';
+
+function resolveBuildingSource(){
+  const style = map.getStyle();
+  const sources = style.sources || {};
+  const layers = style.layers || [];
+  const ref = layers.find(l => l['source-layer'] === BUILDING_LAYER_NAME && sources[l.source]);
+  if (ref) return ref.source;
+  return Object.keys(sources).find(id => sources[id].type === 'vector') || null;
+}
+
+function num(v){
+  if (v == null) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const m = String(v).match(/-?\d+(?:\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+
+/* Height resolution order: render_height → height → levels × 3.2 */
+function resolveHeight(p){
+  return num(p.render_height)
+      ?? num(p.height)
+      ?? (num(p['building:levels']) != null ? num(p['building:levels']) * 3.2 : null);
+}
+function resolveMinHeight(p){
+  return num(p.render_min_height)
+      ?? num(p.min_height)
+      ?? (num(p['building:min_level']) != null ? num(p['building:min_level']) * 3.2 : 0);
+}
+
+/* ------------------------------------------------------------------ *
+ *  MAP
+ * ------------------------------------------------------------------ */
+function initMap(){
+  map = new maplibregl.Map({
+    container: 'map3d',
+    style: 'https://tiles.openfreemap.org/styles/liberty',
+    center: [userLng, userLat],
+    zoom: 15.5, pitch: 60, bearing: -20, antialias: true
+  });
+
+  map.on('load', () => {
+    parent.postMessage({type:'worm', event:'MAP_LOADED', details:'OpenFreeMap online'}, '*');
+    addTileBuildings();
+    tryAutoLoad();          // pick up a previously exported buildings.geojson
+    attachBuildingPopup();
+
+    const el = document.createElement('div');
+    el.innerHTML = '<div style="width:10px;height:10px;background:#c8ff00;border-radius:50%;box-shadow:0 0 16px #c8ff00;border:2px solid #000;"></div>';
+    new maplibregl.Marker(el).setLngLat([userLng, userLat]).addTo(map);
+
+    updateHud();
+  });
+
+  map.on('move', updateHud);
+  map.on('error', e => {
+    const msg = e?.error?.message || 'style/resource error';
+    console.warn('[SYS.02]', msg);
+    parent.postMessage({type:'worm', event:'MAP_ERROR', details:msg}, '*');
+  });
+}
+
+function updateHud(){
+  const c = map.getCenter();
+  document.getElementById('userCoords').textContent = `${c.lat.toFixed(4)}°, ${c.lng.toFixed(4)}°`;
+  document.getElementById('mapZoom').textContent = map.getZoom().toFixed(1);
+  document.getElementById('mapPitch').textContent = map.getPitch().toFixed(0);
+  document.getElementById('mapBearing').textContent = map.getBearing().toFixed(0);
+}
+
+/* Baseline extrusion straight from the vector tiles (pre-export view). */
+function addTileBuildings(){
+  if (map.getLayer(TILE_LAYER_ID)) return;
+  const sourceId = resolveBuildingSource();
+  if (!sourceId){ console.warn('[SYS.02] no vector source for buildings'); return; }
+  try {
+    map.addLayer({
+      id: TILE_LAYER_ID, type: 'fill-extrusion',
+      source: sourceId, 'source-layer': BUILDING_LAYER_NAME,
+      minzoom: 14,
+      paint: {
+        'fill-extrusion-color': '#0a0e09',
+        'fill-extrusion-height': ['coalesce', ['get','render_height'], ['get','height'], 10],
+        'fill-extrusion-base': ['coalesce', ['get','render_min_height'], 0],
+        'fill-extrusion-opacity': 0.85
+      }
+    });
+  } catch (err) {
+    console.warn('[SYS.02] buildings-3d failed:', err.message);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ *  EXPORT → GeoJSON
+ *  Pulls every building feature currently loaded in the vector source
+ *  and writes a clean, standards-shaped FeatureCollection:
+ *      { building: "yes", height: <m>, min_height: <m>, ... }
+ *  That is the same shape OSM/JOSM expects (building=yes + height),
+ *  and the same shape our extrusion layer reads back.
+ * ------------------------------------------------------------------ */
+function featureKey(f){
+  if (f.id != null) return 'id:' + f.id;
+  const p = f.properties || {};
+  if (p.osm_id != null) return 'osm:' + p.osm_id;
+  const g = f.geometry;
+  let c = null;
+  if (g?.type === 'Polygon') c = g.coordinates[0]?.[0];
+  else if (g?.type === 'MultiPolygon') c = g.coordinates[0]?.[0]?.[0];
+  return c ? `xy:${c[0].toFixed(7)},${c[1].toFixed(7)}` : Math.random().toString(36);
+}
+
+function collectBuildings(){
+  const sourceId = resolveBuildingSource();
+  if (!sourceId) return { fc: {type:'FeatureCollection', features:[]}, sourceId: null };
+
+  const raw = map.querySourceFeatures(sourceId, { sourceLayer: BUILDING_LAYER_NAME });
+  const seen = new Set();
+  const features = [];
+
+  for (const f of raw){
+    if (!f.geometry || !/Polygon/.test(f.geometry.type)) continue;
+    const key = featureKey(f);
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const p = f.properties || {};
+    const h = resolveHeight(p);
+    const mh = resolveMinHeight(p);
+
+    features.push({
+      type: 'Feature',
+      properties: {
+        building: 'yes',
+        height: +(h ?? 10).toFixed(1),
+        min_height: +(mh ?? 0).toFixed(1),
+        source_layer: BUILDING_LAYER_NAME,
+        ...(p.osm_id != null ? { osm_id: p.osm_id } : {}),
+        ...(p['building:levels'] != null ? { 'building:levels': p['building:levels'] } : {})
+      },
+      geometry: f.geometry
+    });
+  }
+
+  features.sort((a,b) => a.properties.height - b.properties.height);
+  return { fc: { type:'FeatureCollection', features }, sourceId };
+}
+
+function exportBuildings(){
+  const { fc, sourceId } = collectBuildings();
+  const n = fc.features.length;
+
+  if (!n){
+    toast('NO BUILDINGS LOADED · ZOOM IN');
+    parent.postMessage({type:'worm', event:'BUILDINGS_EXPORT_EMPTY', details:'zoom in to load building tiles'}, '*');
+    return;
+  }
+
+  const blob = new Blob([JSON.stringify(fc, null, 1)], { type:'application/geo+json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'buildings.geojson';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+  // Apply immediately so the 3D view is now driven by the exported data.
+  applyBuildingsGeoJSON(fc, 'EXPORT');
+
+  toast(`${n} FOOTPRINTS EXPORTED`);
+  parent.postMessage({type:'worm', event:'BUILDINGS_EXPORTED', details:`${n} footprints from ${sourceId}`}, '*');
+}
+
+/* ------------------------------------------------------------------ *
+ *  APPLY GeoJSON → 3D layer
+ *  Replaces the tile-driven extrusion so what you see is exactly the
+ *  geometry + height you exported (no z-fighting, clickable, editable).
+ * ------------------------------------------------------------------ */
+function applyBuildingsGeoJSON(fc, label){
+  const data = { type:'FeatureCollection', features: fc.features || [] };
+
+  if (!map.getSource(REAL_SRC)){
+    map.addSource(REAL_SRC, { type:'geojson', data, generateId: true });
+    map.addLayer({
+      id: REAL_LAYER, type: 'fill-extrusion', source: REAL_SRC,
+      paint: {
+        'fill-extrusion-color': [
+          'interpolate', ['linear'],
+          ['coalesce', ['to-number', ['get','height']], 3],
+          0,  '#0a0e09',
+          12, '#233016',
+          25, '#3f5a24',
+          45, '#8fb35a',
+          80, '#c8ff00'
+        ],
+        'fill-extrusion-height': ['coalesce', ['to-number', ['get','height']], 3],
+        'fill-extrusion-base':   ['coalesce', ['to-number', ['get','min_height']], 0],
+        'fill-extrusion-opacity': 0.92
+      }
+    });
+  } else {
+    map.getSource(REAL_SRC).setData(data);
+  }
+
+  // Hide the tile extrusion to avoid coincident-surface z-fighting.
+  if (map.getLayer(TILE_LAYER_ID)) {
+    map.setLayoutProperty(TILE_LAYER_ID, 'visibility', 'none');
+  }
+
+  document.getElementById('bldSrc').textContent = label || 'GEOJSON';
+  document.getElementById('bldCount').textContent = data.features.length.toLocaleString();
+}
+
+function attachBuildingPopup(){
+  map.on('click', REAL_LAYER, e => {
+    const f = e.features?.[0];
+    if (!f) return;
+    const p = f.properties || {};
+    const h = num(p.height);
+    const mh = num(p.min_height) || 0;
+    const html = `
+      <div style="margin-bottom:2px;color:#c8ff00;font-weight:700;letter-spacing:.08em">BUILDING</div>
+      <div><span class="pk">HEIGHT </span><span class="pv">${h != null ? h.toFixed(1) : '—'} m</span></div>
+      <div><span class="pk">BASE   </span><span class="pv">${mh.toFixed(1)} m</span></div>
+      ${p.osm_id != null ? `<div><span class="pk">OSM_ID </span><span class="pv">${p.osm_id}</span></div>` : ''}
+    `;
+    new maplibregl.Popup({ closeButton:false, offset:10, maxWidth:'200px' })
+      .setLngLat(e.lngLat).setHTML(html).addTo(map);
+  });
+  map.on('mouseenter', REAL_LAYER, () => map.getCanvas().style.cursor = 'pointer');
+  map.on('mouseleave', REAL_LAYER, () => map.getCanvas().style.cursor = '');
+}
+
+/* Auto-pick-up a buildings.geojson sitting next to the page (served over http). */
+async function tryAutoLoad(){
+  try {
+    const res = await fetch('buildings.geojson', { cache:'no-store' });
+    if (!res.ok) return;
+    const fc = await res.json();
+    if (fc?.type === 'FeatureCollection' && fc.features?.length){
+      applyBuildingsGeoJSON(fc, 'GEOJSON');
+      parent.postMessage({type:'worm', event:'BUILDINGS_AUTOLOAD', details: fc.features.length + ' footprints'}, '*');
+    }
+  } catch (e) { /* file:// or missing — silently ignore */ }
+}
+
+/* Manual load of an exported / edited file. */
+function loadGeoJSONFile(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const fc = JSON.parse(String(reader.result));
+      if (fc?.type !== 'FeatureCollection' || !Array.isArray(fc.features)) throw new Error('not a FeatureCollection');
+      applyBuildingsGeoJSON(fc, file.name.replace(/\.(geo)?json$/i, '').toUpperCase().slice(0, 12));
+      toast(`${fc.features.length} FOOTPRINTS LOADED`);
+      parent.postMessage({type:'worm', event:'BUILDINGS_LOADED', details:`${fc.features.length} from ${file.name}`}, '*');
+    } catch (err) {
+      toast('INVALID GEOJSON');
+      parent.postMessage({type:'worm', event:'BUILDINGS_LOAD_ERROR', details:err.message}, '*');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ------------------------------------------------------------------ *
+ *  GEOLOCATION
+ * ------------------------------------------------------------------ */
+function requestLocation(){
+  if (!navigator.geolocation){
+    parent.postMessage({type:'worm', event:'GEO_ERROR', details:'No geolocation'}, '*');
+    initMap(); return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    p => { userLat = p.coords.latitude; userLng = p.coords.longitude;
+      parent.postMessage({type:'worm', event:'GPS_LOCK', details:`${userLat.toFixed(4)}°, ${userLng.toFixed(4)}°`}, '*');
+      initMap();
+    },
+    e => { parent.postMessage({type:'worm', event:'GEO_DENIED', details:e.message}, '*'); initMap(); },
+    {enableHighAccuracy:true, timeout:5000, maximumAge:0}
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ *  FSM
+ * ------------------------------------------------------------------ */
+let fsmState = 'STEADY_LOCKED';
+let fsmSince = Date.now();
+const transitions = {
+  STEADY_LOCKED: {CLICK:'LEAK_ACTIVE', WARN:'WARN'},
+  LEAK_ACTIVE: {CLEAR:'STEADY_LOCKED', WARN:'WARN', RESET:'STEADY_LOCKED'},
+  WARN: {CLICK:'LEAK_ACTIVE', CLEAR:'STEADY_LOCKED', CRIT:'CRITICAL'},
+  CRITICAL: {RESET:'STEADY_LOCKED'},
+  FAIL_CLOSED: {RESET:'STEADY_LOCKED'}
+};
+function sendFsm(cmd){
+  const to = transitions[fsmState]?.[cmd];
+  if (!to){ parent.postMessage({type:'worm', event:'FSM_ERROR', details:'ILLEGAL δ: ' + cmd}, '*'); return; }
+  fsmState = to; fsmSince = Date.now();
+  const el = document.getElementById('fsmState');
+  el.textContent = to;
+  el.className = 'val ' + (to.includes('LOCKED')?'':to.includes('LEAK')?'rose':to.includes('WARN')?'amber':'rose');
+  document.getElementById('leakBanner').classList.toggle('on', fsmState === 'LEAK_ACTIVE');
+  parent.postMessage({type:'worm', event:'FSM_'+cmd+'_'+to.slice(0,8), details:'δ '+cmd+' → '+to}, '*');
+  renderNodeList();
+}
+document.querySelectorAll('.fsmbtn[data-cmd]').forEach(b => b.addEventListener('click', e => {
+  e.stopPropagation(); sendFsm(b.dataset.cmd); showHUD();
+}));
+
+const NODE_BASE = {N01:42.5, N02:58.3, N03:68.1, N04:42.5, N05:47.2, N06:3.82};
+function getNodeDisplay(id){
+  const base = NODE_BASE[id] || 0;
+  if (fsmState === 'FAIL_CLOSED' || fsmState === 'CRITICAL') return {val:'--', cls:'rose'};
+  if (fsmState === 'LEAK_ACTIVE' && id === 'N04') return {val:(base*3.4).toFixed(1), cls:'rose'};
+  if (fsmState === 'WARN' && id === 'N04') return {val:(base*1.6).toFixed(1), cls:'amber'};
+  return {val:base.toFixed(1), cls:''};
+}
+function renderNodeList(){
+  document.getElementById('nodeList').innerHTML =
+    ['N01','N02','N03','N04','N05','N06'].map(id => {
+      const d = getNodeDisplay(id);
+      return `<div class="nodeRow"><span class="id">${id}</span><span class="v ${d.cls}">${d.val}</span></div>`;
+    }).join('');
+}
+renderNodeList();
+
+/* ------------------------------------------------------------------ *
+ *  HUD / TOAST
+ * ------------------------------------------------------------------ */
+const hudEls = document.querySelectorAll('.hud'); let hideTimer = null;
+function showHUD(){
+  hudEls.forEach(el => el.classList.add('visible'));
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => hudEls.forEach(el => el.classList.remove('visible')), 5000);
+}
+document.getElementById('map3d').addEventListener('pointerdown', e => { if(!e.target.closest('button')) showHUD(); });
+showHUD();
+
+let toastTimer = null;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('on'), 2200);
+}
+
+/* ------------------------------------------------------------------ *
+ *  WIRING
+ * ------------------------------------------------------------------ */
+document.getElementById('btnExport').addEventListener('click', e => { e.stopPropagation(); exportBuildings(); showHUD(); });
+document.getElementById('btnLoad').addEventListener('click', e => {
+  e.stopPropagation();
+  document.getElementById('geojsonFile').click();
+  showHUD();
+});
+document.getElementById('geojsonFile').addEventListener('change', e => {
+  const file = e.target.files?.[0];
+  if (file) loadGeoJSONFile(file);
+  e.target.value = '';
+});
+
+setInterval(() => {
+  const s = Math.floor((Date.now() - fsmSince)/1000);
+  document.getElementById('fsmSince').textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+}, 1000);
+
+requestLocation();
+parent.postMessage({type:'worm', event:'FSM_BOOT', details:'STEADY_LOCKED'}, '*');
+</script>
+</body>
+</html>
