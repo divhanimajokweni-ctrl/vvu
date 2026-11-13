@@ -1,0 +1,2727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="artifact-type" content="tool">
+  <meta name="design-style" content="aurora">
+  <title>Gqeberha &amp; South Africa 3D Building Extrusion Viewer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+  <script src="https://unpkg.com/lucide@1.43.0/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+
+      /* Aurora palette */
+      --background: #0c1214;
+      --surface-container-low: #111a1e;
+      --surface-container: #152024;
+      --surface-container-high: #1c2a30;
+
+      --on-surface: #edf3f5;
+      --on-surface-variant: #94a8b0;
+
+      --outline: #38515c;
+      --outline-variant: #213138;
+
+      --primary: #63c7d6;
+      --on-primary: #081214;
+      --primary-container: #163840;
+      --on-primary-container: #c7f0f7;
+      --secondary: #5d7882;
+      --tertiary: #87d69b;
+      --error: #f27474;
+      --on-error: #1a0606;
+
+      --data-1: #63c7d6;
+      --data-2: #87d69b;
+      --data-3: #e8b954;
+      --data-4: #f08c70;
+      --data-context: #415861;
+
+      --font-headline: 'Instrument Sans', sans-serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --font-label: 'Geist Mono', monospace;
+
+      --rounded: 0.5rem;
+      --rounded-lg: 0.75rem;
+      --rounded-full: 9999px;
+
+      --hairline: 1px solid var(--outline-variant);
+      --hairline-strong: 1px solid var(--outline);
+      --panel-gradient: linear-gradient(180deg, #162226 0%, #111a1e 100%);
+      --viewport-gradient: radial-gradient(circle at 50% 35%, #162328 0%, #0b1012 100%);
+      --heading-tracking: -0.025em;
+      --label-tracking: 0.06em;
+      --sage-tint: color-mix(in srgb, var(--tertiary) 13%, transparent);
+      --cyan-tint: color-mix(in srgb, var(--primary) 13%, transparent);
+      --amber-tint: color-mix(in srgb, var(--data-3) 14%, transparent);
+      --coral-tint: color-mix(in srgb, var(--data-4) 14%, transparent);
+      --error-tint: color-mix(in srgb, var(--error) 14%, transparent);
+      --scrim-bg: color-mix(in srgb, var(--background) 86%, transparent);
+
+      /* Shared foundation tokens */
+      --positive: #87d69b;
+      --warning: #e8b954;
+      --focus: #63c7d6;
+
+      --display-size: clamp(1.65rem, 1.35rem + 1vw, 2.15rem);
+      --headline-size: clamp(1.15rem, 1.05rem + 0.4vw, 1.375rem);
+      --subhead-size: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+      --body-size: 0.9375rem;
+      --label-size: 0.75rem;
+
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2.5rem;
+      --space-2xl: 4rem;
+      --space-3xl: 6rem;
+
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+      --dur-micro: 120ms;
+      --dur-short: 220ms;
+      --dur-long: 420ms;
+
+      /* 3D Scene Palette Tokens (read by Three.js) */
+      --scene-sky: #0b1114;
+      --scene-fog: #0d1417;
+      --scene-terrain-low: #122126;
+      --scene-terrain-mid: #1a3136;
+      --scene-terrain-high: #274445;
+      --scene-grid: #273d45;
+      --scene-edge: #7ad8e6;
+      --scene-selected: #87d69b;
+      --scene-hover: #e8b954;
+      --scene-geofence: #63c7d6;
+    }
+
+    /* Base reset */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      overflow-x: clip;
+      margin: 0;
+      padding: 0;
+      background: var(--background);
+      color: var(--on-surface);
+      font-family: var(--font-body);
+      font-size: var(--body-size);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    header { position: static !important; }
+    button, input, select, textarea { font-family: inherit; }
+
+    :focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .app-shell {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: var(--space-md) var(--space-lg) var(--space-xl);
+      display: grid;
+      gap: var(--space-md);
+    }
+
+    /* Header */
+    .top-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: var(--space-md);
+      padding-bottom: var(--space-md);
+      border-bottom: var(--hairline);
+    }
+    .header-copy {
+      display: grid;
+      gap: var(--space-xs);
+      max-width: 72ch;
+    }
+    .title {
+      margin: 0;
+      font-family: var(--font-headline);
+      font-size: var(--display-size);
+      font-weight: 600;
+      letter-spacing: var(--heading-tracking);
+      line-height: 1.1;
+      color: var(--on-surface);
+    }
+    .subtitle {
+      margin: 0;
+      font-size: var(--body-size);
+      color: var(--on-surface-variant);
+      max-width: 65ch;
+    }
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      align-items: center;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xs);
+      min-height: 44px;
+      padding: 0 var(--space-md);
+      border-radius: var(--rounded);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      font-weight: 500;
+      letter-spacing: var(--label-tracking);
+      text-transform: uppercase;
+      cursor: pointer;
+      border: var(--hairline-strong);
+      background: var(--surface-container);
+      color: var(--on-surface);
+      transition: background-color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out), transform var(--dur-micro) var(--ease-out);
+      white-space: nowrap;
+    }
+    .btn:hover {
+      background: var(--surface-container-high);
+      border-color: var(--primary);
+    }
+    .btn:active {
+      transform: translateY(1px);
+    }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: var(--on-primary);
+      border-color: var(--primary);
+      font-weight: 600;
+    }
+    .btn-primary:hover {
+      background: var(--on-primary-container);
+      border-color: var(--on-primary-container);
+    }
+    .btn-compact {
+      min-height: 44px;
+      padding: 0 var(--space-sm);
+      font-size: var(--label-size);
+    }
+    .btn.is-active {
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+      border-color: var(--primary);
+    }
+
+    /* Main Workspace Layout */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 350px minmax(0, 1fr);
+      gap: var(--space-md);
+      align-items: start;
+    }
+    .workspace-grid > * { min-width: 0; }
+
+    /* Control Rail */
+    .control-rail {
+      display: grid;
+      gap: var(--space-md);
+      container-type: inline-size;
+    }
+
+    .panel {
+      background: var(--panel-gradient);
+      border: var(--hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-md);
+      display: grid;
+      gap: var(--space-md);
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-sm);
+      padding-bottom: var(--space-xs);
+      border-bottom: var(--hairline);
+    }
+    .data-label {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      font-weight: 500;
+      letter-spacing: var(--label-tracking);
+      text-transform: uppercase;
+      color: var(--on-surface-variant);
+      margin: 0;
+    }
+    .panel-badge {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* City Preset List */
+    .city-list {
+      display: grid;
+      gap: var(--space-xs);
+    }
+    .city-btn {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--space-xs);
+      align-items: center;
+      text-align: left;
+      min-height: 48px;
+      padding: var(--space-sm) var(--space-md);
+      border-radius: var(--rounded);
+      border: var(--hairline);
+      background: var(--background);
+      color: var(--on-surface);
+      cursor: pointer;
+      transition: background-color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out);
+    }
+    .city-btn:hover {
+      background: var(--surface-container-high);
+      border-color: var(--outline);
+    }
+    .city-btn.is-active {
+      background: var(--primary-container);
+      border-color: var(--primary);
+    }
+    .city-name {
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: var(--body-size);
+      color: var(--on-surface);
+      display: block;
+    }
+    .city-meta {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface-variant);
+      font-variant-numeric: tabular-nums;
+    }
+    .city-count {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--tertiary);
+      background: var(--sage-tint);
+      border: 1px solid color-mix(in srgb, var(--tertiary) 35%, transparent);
+      border-radius: var(--rounded);
+      padding: 2px var(--space-sm);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Locator Mini Map */
+    .locator-box {
+      background: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-sm);
+      display: grid;
+      gap: var(--space-xs);
+    }
+    #sa-locator-svg {
+      width: 100%;
+      height: 156px;
+      min-height: 156px;
+      display: block;
+    }
+    .locator-caption {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface-variant);
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-sm);
+    }
+
+    /* Controls & Sliders */
+    .control-group {
+      display: grid;
+      gap: var(--space-xs);
+    }
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: var(--space-sm);
+    }
+    .control-label {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface-variant);
+      text-transform: uppercase;
+      letter-spacing: var(--label-tracking);
+    }
+    .control-val {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--primary);
+      font-variant-numeric: tabular-nums;
+    }
+    .well {
+      background: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-sm) var(--space-md);
+      display: grid;
+      gap: var(--space-sm);
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: var(--rounded-full);
+      background: var(--surface-container-high);
+      cursor: pointer;
+      margin: var(--space-xs) 0;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: var(--rounded-full);
+      background: var(--primary);
+      border: 2px solid var(--on-primary);
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: var(--rounded-full);
+      background: var(--primary);
+      border: 2px solid var(--on-primary);
+      cursor: pointer;
+    }
+
+    .preset-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-xs);
+    }
+    .seg-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-xs);
+    }
+
+    /* Layer Toggles */
+    .toggle-list {
+      display: grid;
+      gap: var(--space-xs);
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      min-height: 44px;
+      padding: var(--space-xs) var(--space-sm);
+      border-radius: var(--rounded);
+      background: var(--background);
+      border: var(--hairline);
+      cursor: pointer;
+      transition: border-color var(--dur-micro) var(--ease-out);
+    }
+    .toggle-row:hover {
+      border-color: var(--outline);
+    }
+    .toggle-text {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-size: var(--body-size);
+      color: var(--on-surface);
+    }
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .swatch-cyan { background: var(--data-1); }
+    .swatch-sage { background: var(--data-2); }
+    .swatch-amber { background: var(--data-3); }
+    .swatch-coral { background: var(--data-4); }
+    .swatch-slate { background: var(--secondary); }
+    .toggle-input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* Right Viewport Column */
+    .viewport-column {
+      display: grid;
+      gap: var(--space-md);
+      min-width: 0;
+    }
+
+    /* KPI Telemetry Strip */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+      gap: var(--space-sm);
+    }
+    .kpi-tile {
+      background: var(--panel-gradient);
+      border: var(--hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-md);
+      display: grid;
+      gap: var(--space-xs);
+    }
+    .metric-value {
+      font-family: var(--font-headline);
+      font-size: var(--headline-size);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: var(--heading-tracking);
+      color: var(--on-surface);
+      line-height: 1.15;
+    }
+    .metric-delta {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--tertiary);
+      font-variant-numeric: tabular-nums;
+    }
+    .metric-sub {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface-variant);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 3D Viewport Stage */
+    .viewer-panel {
+      background: var(--panel-gradient);
+      border: var(--hairline);
+      border-radius: var(--rounded-lg);
+      overflow: hidden;
+      display: grid;
+    }
+    .viewer-stage {
+      position: relative;
+      width: 100%;
+      min-height: 540px;
+      height: clamp(540px, 66vh, 740px);
+      background: var(--viewport-gradient);
+      overflow: hidden;
+      touch-action: none;
+    }
+    #gl-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+    #gl-canvas:active {
+      cursor: grabbing;
+    }
+
+    /* Viewport HUD Overlays */
+    .hud-top-left {
+      position: absolute;
+      top: var(--space-md);
+      left: var(--space-md);
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-xs);
+      pointer-events: none;
+      max-width: calc(100% - 100px);
+    }
+    .hud-chip {
+      background: var(--scrim-bg);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-xs) var(--space-sm);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface);
+      backdrop-filter: blur(6px);
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      pointer-events: auto;
+    }
+    .hud-chip-sage {
+      background: var(--scrim-bg);
+      border-color: color-mix(in srgb, var(--tertiary) 40%, transparent);
+      color: var(--tertiary);
+    }
+
+    .compass-btn {
+      position: absolute;
+      top: var(--space-md);
+      right: var(--space-md);
+      width: 52px;
+      height: 52px;
+      border-radius: var(--rounded-full);
+      background: var(--scrim-bg);
+      border: var(--hairline-strong);
+      color: var(--on-surface);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: border-color var(--dur-micro) var(--ease-out);
+    }
+    .compass-btn:hover {
+      border-color: var(--primary);
+    }
+    .compass-dial {
+      width: 34px;
+      height: 34px;
+      transition: transform 80ms linear;
+    }
+
+    .hud-bottom-left {
+      position: absolute;
+      bottom: var(--space-md);
+      left: var(--space-md);
+      background: var(--scrim-bg);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-sm) var(--space-md);
+      backdrop-filter: blur(6px);
+      display: grid;
+      gap: var(--space-xs);
+      pointer-events: none;
+      max-width: 280px;
+    }
+    .ramp-bar {
+      height: 8px;
+      border-radius: var(--rounded-full);
+      background: linear-gradient(90deg, var(--secondary) 0%, var(--data-1) 35%, var(--data-2) 65%, var(--data-3) 85%, var(--data-4) 100%);
+    }
+    .ramp-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface-variant);
+      font-variant-numeric: tabular-nums;
+      gap: var(--space-sm);
+    }
+
+    .hud-bottom-right {
+      position: absolute;
+      bottom: var(--space-md);
+      right: var(--space-md);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+    }
+    .nav-icon-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--rounded);
+      background: var(--scrim-bg);
+      border: var(--hairline-strong);
+      color: var(--on-surface);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      font-family: var(--font-label);
+      font-size: var(--subhead-size);
+      font-weight: 600;
+    }
+    .nav-icon-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Landmark Pin Labels overlay */
+    .pin-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .pin-tag {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      background: var(--scrim-bg);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: 2px var(--space-sm);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface);
+      white-space: nowrap;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+    .pin-tag.is-selected {
+      border-color: var(--tertiary);
+      color: var(--tertiary);
+    }
+
+    /* Hover Tooltip */
+    .hover-tooltip {
+      position: absolute;
+      z-index: 20;
+      pointer-events: none;
+      background: var(--surface-container-high);
+      border: 1px solid var(--primary);
+      border-radius: var(--rounded);
+      padding: var(--space-sm) var(--space-md);
+      min-width: 210px;
+      max-width: 270px;
+      display: none;
+      gap: 2px;
+      box-shadow: 0 8px 24px color-mix(in srgb, var(--background) 75%, transparent);
+    }
+    .hover-tooltip.is-visible {
+      display: grid;
+    }
+    .tt-title {
+      font-family: var(--font-headline);
+      font-weight: 600;
+      font-size: var(--body-size);
+      color: var(--on-surface);
+    }
+    .tt-row {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-md);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface-variant);
+      font-variant-numeric: tabular-nums;
+    }
+    .tt-val {
+      color: var(--primary);
+    }
+
+    /* Controls hint bar */
+    .stage-footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-md);
+      background: var(--surface-container-low);
+      border-top: var(--hairline);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface-variant);
+    }
+    .status-msg {
+      color: var(--tertiary);
+    }
+    .status-msg.is-error {
+      color: var(--error);
+    }
+
+    /* Feature Inspector & GeoJSON Panel */
+    .inspector-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-md);
+    }
+    .inspector-grid > * { min-width: 0; }
+    .attr-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .attr-table th,
+    .attr-table td {
+      padding: var(--space-xs) 0;
+      border-bottom: var(--hairline);
+      text-align: left;
+      font-size: var(--body-size);
+    }
+    .attr-table th {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      text-transform: uppercase;
+      letter-spacing: var(--label-tracking);
+      color: var(--on-surface-variant);
+      font-weight: 500;
+      width: 44%;
+    }
+    .attr-table td {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .code-well {
+      background: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      padding: var(--space-md);
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-primary-container);
+      overflow-x: auto;
+      margin: 0;
+      max-height: 250px;
+      line-height: 1.5;
+      white-space: pre;
+    }
+    .empty-inspector {
+      padding: var(--space-md);
+      background: var(--background);
+      border: var(--hairline);
+      border-radius: var(--rounded);
+      color: var(--on-surface-variant);
+      display: grid;
+      gap: var(--space-xs);
+    }
+
+    .source-note {
+      font-family: var(--font-label);
+      font-size: var(--label-size);
+      color: var(--on-surface-variant);
+      border-top: var(--hairline);
+      padding-top: var(--space-md);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: var(--space-sm);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @container (max-width: 310px) {
+      .seg-row { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 980px) {
+      .workspace-grid {
+        grid-template-columns: 1fr;
+      }
+      .inspector-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app-shell {
+        padding: var(--space-sm);
+      }
+      .viewer-stage {
+        min-height: 440px;
+        height: 58vh;
+      }
+      .hud-bottom-left {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="top-header">
+      <div class="header-copy">
+        <h1 class="title">Gqeberha &amp; South Africa 3D Building Extrusion Viewer</h1>
+        <p class="subtitle">
+          Interactive WebGL GeoJSON extrusion and Digital Terrain Model (DTM) viewer centered on the Bird Street Campus in Central, Port Elizabeth (Gqeberha) and major South African urban precincts.
+        </p>
+      </div>
+      <div class="header-actions">
+        <input type="file" id="geojson-upload" class="sr-only" accept=".geojson,.json">
+        <button type="button" class="btn" id="btn-upload-geojson">
+          <i data-lucide="upload" aria-hidden="true" width="15" height="15"></i>
+          Load GeoJSON
+        </button>
+        <button type="button" class="btn" id="btn-export-geojson">
+          <i data-lucide="download" aria-hidden="true" width="15" height="15"></i>
+          Export GeoJSON
+        </button>
+        <button type="button" class="btn btn-primary" id="btn-reset-view">
+          <i data-lucide="rotate-ccw" aria-hidden="true" width="15" height="15"></i>
+          Reset Camera
+        </button>
+      </div>
+    </header>
+
+    <div class="workspace-grid">
+      <!-- Left Control Rail -->
+      <aside class="control-rail" aria-label="3D Viewer Controls">
+        <!-- Location Presets -->
+        <section class="panel" aria-labelledby="heading-locations">
+          <div class="panel-head">
+            <h2 class="data-label" id="heading-locations">South African Urban Precincts</h2>
+            <span class="panel-badge" id="badge-city-count">5 Cities</span>
+          </div>
+          <div class="city-list" id="city-list"></div>
+          <div class="locator-box">
+            <svg id="sa-locator-svg" viewBox="0 0 300 160" role="img" aria-label="South Africa regional locator map"></svg>
+            <div class="locator-caption">
+              <span>Natural Earth 50m</span>
+              <span id="locator-coords">25.6192° E, 33.9581° S</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3D Camera Tilt & Bearing -->
+        <section class="panel" aria-labelledby="heading-camera">
+          <div class="panel-head">
+            <h2 class="data-label" id="heading-camera">3D Camera Tilt &amp; Bearing</h2>
+            <span class="panel-badge" id="badge-camera-mode">Orbit Ready</span>
+          </div>
+          <div class="well">
+            <div class="control-group">
+              <div class="control-header">
+                <label class="control-label" for="slider-pitch">Camera Tilt (Pitch)</label>
+                <span class="control-val" id="val-pitch">52°</span>
+              </div>
+              <input type="range" id="slider-pitch" min="0" max="75" step="1" value="52">
+            </div>
+
+            <div class="control-group">
+              <div class="control-header">
+                <label class="control-label" for="slider-bearing">Compass Bearing</label>
+                <span class="control-val" id="val-bearing">328°</span>
+              </div>
+              <input type="range" id="slider-bearing" min="0" max="359" step="1" value="328">
+            </div>
+
+            <div class="control-group">
+              <div class="control-header">
+                <label class="control-label" for="slider-zoom">Zoom Level</label>
+                <span class="control-val" id="val-zoom">15.8</span>
+              </div>
+              <input type="range" id="slider-zoom" min="13.8" max="17.6" step="0.1" value="15.8">
+            </div>
+          </div>
+          <div class="preset-row">
+            <button type="button" class="btn btn-compact" id="btn-cam-top">Top-Down 0°</button>
+            <button type="button" class="btn btn-compact" id="btn-cam-iso">Isometric 48°</button>
+            <button type="button" class="btn btn-compact" id="btn-cam-canyon">Canyon 70°</button>
+            <button type="button" class="btn btn-compact" id="btn-cam-orbit">Auto-Orbit</button>
+          </div>
+        </section>
+
+        <!-- Building Extrusion & Terrain -->
+        <section class="panel" aria-labelledby="heading-extrusion">
+          <div class="panel-head">
+            <h2 class="data-label" id="heading-extrusion">Extrusion &amp; Terrain</h2>
+            <span class="panel-badge" id="badge-visible-bldgs">0 / 0</span>
+          </div>
+          <div class="well">
+            <div class="control-group">
+              <div class="control-header">
+                <label class="control-label" for="slider-extrude">Height Extrusion Scale</label>
+                <span class="control-val" id="val-extrude">1.0×</span>
+              </div>
+              <input type="range" id="slider-extrude" min="0.2" max="3.0" step="0.1" value="1.0">
+            </div>
+
+            <div class="control-group">
+              <div class="control-header">
+                <label class="control-label" for="slider-min-height">Min Height Filter</label>
+                <span class="control-val" id="val-min-height">0 m</span>
+              </div>
+              <input type="range" id="slider-min-height" min="0" max="120" step="2" value="0">
+            </div>
+
+            <div class="control-group">
+              <div class="control-header">
+                <label class="control-label" for="slider-terrain">Terrain Exaggeration (DTM)</label>
+                <span class="control-val" id="val-terrain">1.2×</span>
+              </div>
+              <input type="range" id="slider-terrain" min="0" max="3.0" step="0.1" value="1.2">
+            </div>
+          </div>
+
+          <div class="control-group">
+            <span class="control-label">Extrusion Color Mapping</span>
+            <div class="seg-row" role="group" aria-label="Color Mode">
+              <button type="button" class="btn btn-compact is-active" data-colormode="height">Height</button>
+              <button type="button" class="btn btn-compact" data-colormode="landuse">Land Use</button>
+              <button type="button" class="btn btn-compact" data-colormode="epistemic">Source</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Layer Toggles -->
+        <section class="panel" aria-labelledby="heading-layers">
+          <div class="panel-head">
+            <h2 class="data-label" id="heading-layers">Spatial Layer Toggles</h2>
+            <span class="panel-badge">6 Layers</span>
+          </div>
+          <div class="toggle-list">
+            <label class="toggle-row">
+              <span class="toggle-text"><span class="swatch swatch-cyan"></span>3D Building Extrusions</span>
+              <input type="checkbox" class="toggle-input" id="toggle-buildings" checked>
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-text"><span class="swatch swatch-slate"></span>Crisp Vector Outlines</span>
+              <input type="checkbox" class="toggle-input" id="toggle-edges" checked>
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-text"><span class="swatch swatch-sage"></span>DTM Terrain Surface</span>
+              <input type="checkbox" class="toggle-input" id="toggle-terrain" checked>
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-text"><span class="swatch swatch-amber"></span>Coordinate &amp; Elevation Grid</span>
+              <input type="checkbox" class="toggle-input" id="toggle-grid" checked>
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-text"><span class="swatch swatch-coral"></span>Campus &amp; Landmark Pins</span>
+              <input type="checkbox" class="toggle-input" id="toggle-pins" checked>
+            </label>
+            <label class="toggle-row">
+              <span class="toggle-text"><span class="swatch swatch-cyan"></span>Precinct Geofence Bounds</span>
+              <input type="checkbox" class="toggle-input" id="toggle-geofence" checked>
+            </label>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Main Viewport & Feature Inspector -->
+      <main class="viewport-column">
+        <!-- KPI Readouts -->
+        <section class="kpi-grid" aria-label="Active Precinct Telemetry">
+          <div class="kpi-tile">
+            <span class="data-label">Active Precinct</span>
+            <div class="metric-value" id="kpi-city">Bird Street Campus</div>
+            <div class="metric-sub" id="kpi-coords">25.6192° E, 33.9581° S</div>
+          </div>
+          <div class="kpi-tile">
+            <span class="data-label">Rendered Footprints</span>
+            <div class="metric-value" id="kpi-buildings">28 / 28</div>
+            <div class="metric-delta" id="kpi-max-height">Max extruded: 44.0 m</div>
+          </div>
+          <div class="kpi-tile">
+            <span class="data-label">Camera Orientation</span>
+            <div class="metric-value" id="kpi-camera">52° · 328°</div>
+            <div class="metric-sub" id="kpi-zoom">Zoom 15.8 · ENU Local</div>
+          </div>
+          <div class="kpi-tile">
+            <span class="data-label">DTM Terrain Datum</span>
+            <div class="metric-value" id="kpi-terrain">6–78 m ASL</div>
+            <div class="metric-delta" id="kpi-terrain-scale">Exaggeration: 1.2×</div>
+          </div>
+        </section>
+
+        <!-- Interactive 3D Canvas Stage -->
+        <section class="viewer-panel" aria-label="3D Map Viewport">
+          <div class="viewer-stage" id="viewer-stage">
+            <canvas id="gl-canvas"></canvas>
+
+            <div class="hud-top-left">
+              <span class="hud-chip hud-chip-sage" id="chip-data-source">
+                PARAMETRIC GEOJSON FIXTURE · WGS84
+              </span>
+              <span class="hud-chip" id="chip-precinct-tag">
+                Gqeberha Central · Escarpment DTM
+              </span>
+            </div>
+
+            <button type="button" class="compass-btn" id="btn-compass-north" title="Reset bearing to North (0°)" aria-label="Reset compass bearing to North">
+              <svg class="compass-dial" id="compass-dial" viewBox="0 0 36 36" aria-hidden="true">
+                <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" stroke-width="1" opacity="0.4"></circle>
+                <polygon points="18,4 22,18 18,15 14,18" fill="var(--primary)"></polygon>
+                <polygon points="18,32 22,18 18,21 14,18" fill="var(--secondary)"></polygon>
+                <text x="18" y="13" text-anchor="middle" font-size="6" font-family="Geist Mono, monospace" fill="var(--on-primary)">N</text>
+              </svg>
+            </button>
+
+            <div class="pin-layer" id="pin-layer" aria-hidden="true"></div>
+
+            <div class="hud-bottom-left" id="legend-box">
+              <span class="data-label" id="legend-title">Extrusion Height Ramp (m)</span>
+              <div class="ramp-bar" id="legend-ramp"></div>
+              <div class="ramp-labels" id="legend-labels">
+                <span>0 m</span>
+                <span>25 m</span>
+                <span>60 m</span>
+                <span>120 m+</span>
+              </div>
+            </div>
+
+            <div class="hud-bottom-right">
+              <button type="button" class="nav-icon-btn" id="btn-zoom-in" aria-label="Zoom in">+</button>
+              <button type="button" class="nav-icon-btn" id="btn-zoom-out" aria-label="Zoom out">−</button>
+              <button type="button" class="nav-icon-btn" id="btn-tilt-up" aria-label="Increase camera tilt" title="Tilt up (+10°)">⏶</button>
+              <button type="button" class="nav-icon-btn" id="btn-tilt-down" aria-label="Decrease camera tilt" title="Tilt down (-10°)">⏷</button>
+            </div>
+
+            <!-- Hover Inspection Tooltip -->
+            <div class="hover-tooltip" id="hover-tooltip" role="status">
+              <div class="tt-title" id="tt-title">Building</div>
+              <div class="tt-row"><span>Height (Extruded)</span><span class="tt-val" id="tt-height">0 m</span></div>
+              <div class="tt-row"><span>Levels / Base</span><span class="tt-val" id="tt-levels">1 lvl · 0 m</span></div>
+              <div class="tt-row"><span>Terrain DTM</span><span class="tt-val" id="tt-dtm">0 m ASL</span></div>
+              <div class="tt-row"><span>OSM / Feature ID</span><span class="tt-val" id="tt-id">—</span></div>
+            </div>
+          </div>
+
+          <div class="stage-footer">
+            <span>Drag: Orbit Tilt &amp; Bearing · Shift+Drag / Right-Drag: Pan · Scroll: Zoom · Click Building: Inspect</span>
+            <span class="status-msg" id="status-msg">Ready · 28 extruded footprints active</span>
+          </div>
+        </section>
+
+        <!-- Feature Inspector & GeoJSON Schema -->
+        <section class="inspector-grid" aria-label="Feature Inspection and GeoJSON Schema">
+          <div class="panel">
+            <div class="panel-head">
+              <h2 class="data-label">Selected Feature Inspector</h2>
+              <span class="panel-badge" id="inspector-badge">None Selected</span>
+            </div>
+            <div id="inspector-body">
+              <div class="empty-inspector">
+                <strong>No building selected</strong>
+                <span>Click any 3D extruded building in the viewport or select a landmark pin to inspect its Lidar DTM/DSM elevation, storey levels, and WGS84 footprint metadata.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2 class="data-label">MapLibre / Lidar GeoJSON Feature</h2>
+              <span class="panel-badge" id="geojson-badge">WGS84 · EPSG:4326</span>
+            </div>
+            <pre class="code-well" id="geojson-preview"></pre>
+          </div>
+        </section>
+
+        <footer class="source-note">
+          <span>
+            Sources: Bird Street Campus &amp; Gqeberha Geofence coordinates from VVU Free City Digital Twin config; GeoJSON extrusion schema (`height`, `min_height`, `building:levels`, `osm_id`) and DTM/DSM Lidar elevation workflow from OpenFreeMap / QGIS Zonal Statistics specifications; regional coastline from Natural Earth 50m TopoJSON.
+          </span>
+          <span>WebGL ENU Projection · Zero external tile servers</span>
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <api-shim></api-shim>
+  <script>
+    // =========================================================================
+    // 1. SOUTH AFRICAN URBAN PRECINCTS & PARAMETRIC GEOJSON DATASETS
+    // =========================================================================
+    // Helper: create rectangular or L-shaped WGS84 polygon around (lon, lat)
+    function rectPoly(cLon, cLat, wMeters, dMeters, angleDeg) {
+      const cosLat = Math.cos(cLat * Math.PI / 180);
+      const mPerDegLon = 111412.84 * cosLat;
+      const mPerDegLat = 111132.92;
+      const hw = wMeters / 2;
+      const hd = dMeters / 2;
+      const rad = (angleDeg || 0) * Math.PI / 180;
+      const cosA = Math.cos(rad);
+      const sinA = Math.sin(rad);
+      const corners = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd], [-hw, -hd]];
+      return [corners.map(function (pt) {
+        const rx = pt[0] * cosA - pt[1] * sinA;
+        const ry = pt[0] * sinA + pt[1] * cosA;
+        return [
+          +(cLon + rx / mPerDegLon).toFixed(6),
+          +(cLat + ry / mPerDegLat).toFixed(6)
+        ];
+      })];
+    }
+
+    function lShapePoly(cLon, cLat, w1, d1, cutW, cutD, angleDeg) {
+      const cosLat = Math.cos(cLat * Math.PI / 180);
+      const mPerDegLon = 111412.84 * cosLat;
+      const mPerDegLat = 111132.92;
+      const hw = w1 / 2;
+      const hd = d1 / 2;
+      const rad = (angleDeg || 0) * Math.PI / 180;
+      const cosA = Math.cos(rad);
+      const sinA = Math.sin(rad);
+      const pts = [
+        [-hw, -hd],
+        [hw, -hd],
+        [hw, hd - cutD],
+        [hw - cutW, hd - cutD],
+        [hw - cutW, hd],
+        [-hw, hd],
+        [-hw, -hd]
+      ];
+      return [pts.map(function (pt) {
+        const rx = pt[0] * cosA - pt[1] * sinA;
+        const ry = pt[0] * sinA + pt[1] * cosA;
+        return [
+          +(cLon + rx / mPerDegLon).toFixed(6),
+          +(cLat + ry / mPerDegLat).toFixed(6)
+        ];
+      })];
+    }
+
+    function makeFeature(id, name, category, cLon, cLat, polyCoords, height, minHeight, levels, landmark) {
+      return {
+        type: 'Feature',
+        properties: {
+          osm_id: id,
+          name: name,
+          building: 'yes',
+          category: category,
+          height: +height.toFixed(1),
+          min_height: +(minHeight || 0).toFixed(1),
+          'building:levels': levels,
+          height_mean: +(height * 0.92).toFixed(2),
+          height_max: +(height * 1.04).toFixed(2),
+          source_type: 'PARAMETRIC_FIXTURE',
+          landmark: Boolean(landmark)
+        },
+        geometry: {
+          type: 'Polygon',
+          coordinates: polyCoords
+        }
+      };
+    }
+
+    // Terrain DTM functions (in meters above sea level) mapped to local meters (x=East, northM=North)
+    const URBAN_PRESETS = {
+      gqeberha: {
+        id: 'gqeberha',
+        city: 'Gqeberha (Port Elizabeth)',
+        precinct: 'Bird Street Campus & Central',
+        center: [25.6192, -33.9581],
+        geofence: { minLon: 25.60, maxLon: 25.64, minLat: -33.97, maxLat: -33.94 },
+        terrainLabel: '6–78 m ASL',
+        terrainSubtitle: 'Coastal Escarpment & Baakens Rim',
+        defaultZoom: 15.8,
+        defaultPitch: 52,
+        defaultBearing: 328,
+        terrainHeight: function (x, northM) {
+          // Coastal shelf in East (+x > 350) rising steeply onto Bird St / Central ridge (x ~ -150..200),
+          // dipping into Baakens Valley to the South (northM < -380)
+          const escarpment = 54 / (1 + Math.exp((x - 240) / 110));
+          const ridge = 14 * Math.exp(-((x + 120) * (x + 120) + (northM - 40) * (northM - 40)) / 180000);
+          const baakensDip = -22 * Math.exp(-((northM + 480) * (northM + 480)) / 24000);
+          const undulation = 3.2 * Math.sin(x / 160) * Math.cos(northM / 180);
+          return Math.max(3, 12 + escarpment + ridge + baakensDip + undulation);
+        },
+        features: [
+          // Bird Street Campus core buildings (around 25.6185, -33.9612 & 25.6192, -33.9581)
+          makeFeature(266879684, `Bird Street Main Academic Wing`, `Academic`, 25.6184, -33.9606, lShapePoly(25.6184, -33.9606, 68, 52, 34, 26, -24), 16.3, 0, 4, true),
+          makeFeature(266879685, `20 Bird Street Art Gallery`, `Cultural`, 25.6194, -33.9601, rectPoly(25.6194, -33.9601, 36, 22, -24), 11.4, 0, 2, true),
+          makeFeature(266879686, `Bird Street Business & Law Annex`, `Academic`, 25.6177, -33.9598, rectPoly(25.6177, -33.9598, 44, 28, -24), 19.2, 0, 5, false),
+          makeFeature(266879687, `Campus Recital & Auditorium Hall`, `Cultural`, 25.6189, -33.9613, rectPoly(25.6189, -33.9613, 38, 26, -24), 14.0, 0, 3, false),
+          makeFeature(266879688, `Central Postgraduate Studio`, `Academic`, 25.6172, -33.9608, rectPoly(25.6172, -33.9608, 30, 22, -24), 12.8, 0, 3, false),
+          makeFeature(266879689, `Athenaeum Cultural Centre`, `Heritage`, 25.6202, -33.9607, rectPoly(25.6202, -33.9607, 42, 26, -22), 15.6, 0, 3, true),
+          // Donkin Reserve & Eastern Escarpment
+          makeFeature(266879701, `Donkin Lighthouse & Pyramid`, `Civic`, 25.6227, -33.9614, rectPoly(25.6227, -33.9614, 16, 16, -20), 22.5, 0, 4, true),
+          makeFeature(266879702, `Port Elizabeth Opera House`, `Cultural`, 25.6222, -33.9602, rectPoly(25.6222, -33.9602, 50, 32, -18), 19.8, 0, 4, true),
+          makeFeature(266879703, `St Augustine's Cathedral`, `Heritage`, 25.6213, -33.9595, lShapePoly(25.6213, -33.9595, 48, 30, 24, 14, -20), 29.4, 0, 5, true),
+          makeFeature(266879704, `City Hall & Feather Market`, `Civic`, 25.6238, -33.9592, lShapePoly(25.6238, -33.9592, 66, 46, 26, 20, -18), 24.6, 0, 4, true),
+          makeFeature(266879705, `Central Public Library`, `Civic`, 25.6231, -33.9584, rectPoly(25.6231, -33.9584, 38, 28, -18), 17.2, 0, 3, false),
+          // Central Commercial & Govan Mbeki Spine
+          makeFeature(266879710, `Govan Mbeki Tower North`, `Commercial`, 25.6218, -33.9565, rectPoly(25.6218, -33.9565, 38, 34, -18), 44.0, 0, 13, true),
+          makeFeature(266879711, `Algoa Mutual Chambers`, `Commercial`, 25.6208, -33.9574, rectPoly(25.6208, -33.9574, 34, 28, -18), 36.5, 0, 11, false),
+          makeFeature(266879712, `Central Civic Exchange`, `Commercial`, 25.6197, -33.9569, rectPoly(25.6197, -33.9569, 46, 30, -20), 31.2, 0, 9, false),
+          makeFeature(266879713, `Rink Street Terrace Block`, `Mixed-Use`, 25.6156, -33.9586, rectPoly(25.6156, -33.9586, 52, 26, -24), 18.6, 0, 5, false),
+          makeFeature(266879714, `Havelock Square Residences`, `Residential`, 25.6164, -33.9575, lShapePoly(25.6164, -33.9575, 48, 38, 22, 18, -24), 22.0, 0, 6, false),
+          makeFeature(266879715, `Cape Road Gateway Offices`, `Commercial`, 25.6144, -33.9564, rectPoly(25.6144, -33.9564, 54, 30, -24), 28.4, 0, 8, false),
+          makeFeature(266879716, `St George's Park Pavilion`, `Cultural`, 25.6126, -33.9612, rectPoly(25.6126, -33.9612, 46, 24, -15), 11.8, 0, 2, true),
+          makeFeature(266879717, `Park Drive Residential Flats`, `Residential`, 25.6138, -33.9624, rectPoly(25.6138, -33.9624, 42, 22, -15), 25.6, 0, 8, false),
+          makeFeature(266879718, `Cuyler Street Heritage Row`, `Residential`, 25.6186, -33.9623, rectPoly(25.6186, -33.9623, 56, 18, -24), 9.6, 0, 2, false),
+          makeFeature(266879719, `Parliament Street Arcade`, `Mixed-Use`, 25.6176, -33.9582, rectPoly(25.6176, -33.9582, 42, 24, -22), 16.0, 0, 4, false),
+          makeFeature(266879720, `Pearson Street Terraces`, `Residential`, 25.6194, -33.9587, rectPoly(25.6194, -33.9587, 36, 22, -22), 14.2, 0, 4, false),
+          makeFeature(266879721, `Westbourne Academic Courts`, `Academic`, 25.6161, -33.9598, rectPoly(25.6161, -33.9598, 38, 26, -24), 13.5, 0, 3, false),
+          makeFeature(266879722, `Strand Street Coastal Lofts`, `Commercial`, 25.6249, -33.9574, rectPoly(25.6249, -33.9574, 44, 28, -18), 27.2, 0, 8, false),
+          makeFeature(266879723, `Victoria Quay Terminal`, `Commercial`, 25.6258, -33.9598, rectPoly(25.6258, -33.9598, 62, 30, -16), 13.8, 0, 3, false),
+          makeFeature(266879724, `Baakens Valley Tech Hub`, `Commercial`, 25.6226, -33.9629, rectPoly(25.6226, -33.9629, 48, 26, -12), 15.0, 0, 4, false),
+          makeFeature(266879725, `Russell Road North Block`, `Mixed-Use`, 25.6182, -33.9554, rectPoly(25.6182, -33.9554, 48, 28, -20), 21.4, 0, 6, false),
+          makeFeature(266879726, `Albany Road Innovation Yard`, `Mixed-Use`, 25.6157, -33.9549, rectPoly(25.6157, -33.9549, 44, 30, -22), 17.8, 0, 5, false)
+        ]
+      },
+      pretoria: {
+        id: 'pretoria',
+        city: 'Pretoria (Tshwane)',
+        precinct: 'Church Square & Union Precinct',
+        center: [28.1879, -25.7461],
+        geofence: { minLon: 28.175, maxLon: 28.215, minLat: -25.758, maxLat: -25.734 },
+        terrainLabel: '1,330–1,415 m ASL',
+        terrainSubtitle: 'Apies Basin to Meintjieskop Ridge',
+        defaultZoom: 15.3,
+        defaultPitch: 54,
+        defaultBearing: 28,
+        terrainHeight: function (x, northM) {
+          const hill = 62 * Math.exp(-((x - 420) * (x - 420) + (northM - 380) * (northM - 380)) / 180000);
+          const ridge = 18 * Math.sin((x + 200) / 300) + 10 * Math.cos(northM / 280);
+          return Math.max(15, 34 + hill + ridge);
+        },
+        features: [
+          makeFeature(301001, `SA Reserve Bank Tower`, `Civic`, 28.1932, -25.7462, rectPoly(28.1932, -25.7462, 48, 42, 2), 148.0, 0, 38, true),
+          makeFeature(301002, `Poyntons Complex`, `Civic`, 28.1843, -25.7478, lShapePoly(28.1843, -25.7478, 76, 62, 34, 28, 0), 110.0, 0, 30, true),
+          makeFeature(301003, `Telkom / TPA Towers`, `Commercial`, 28.1862, -25.7445, rectPoly(28.1862, -25.7445, 58, 38, 0), 88.5, 0, 24, false),
+          makeFeature(301004, `ABSA Vermeulen Tower`, `Commercial`, 28.1912, -25.7453, rectPoly(28.1912, -25.7453, 44, 38, 0), 96.0, 0, 26, false),
+          makeFeature(301005, `Palace of Justice`, `Heritage`, 28.1879, -25.7451, lShapePoly(28.1879, -25.7451, 68, 44, 28, 18, 0), 28.0, 0, 4, true),
+          makeFeature(301006, `Ou Raadsaal (Church Square)`, `Heritage`, 28.1879, -25.7471, rectPoly(28.1879, -25.7471, 64, 36, 0), 26.5, 0, 4, true),
+          makeFeature(301007, `South African State Theatre`, `Cultural`, 28.1941, -25.7476, lShapePoly(28.1941, -25.7476, 82, 58, 32, 24, 0), 34.0, 0, 6, true),
+          makeFeature(301008, `Tudor Chambers`, `Heritage`, 28.1869, -25.7460, rectPoly(28.1869, -25.7460, 32, 28, 0), 24.0, 0, 5, false),
+          makeFeature(301009, `Sammy Marks Square`, `Commercial`, 28.1952, -25.7464, rectPoly(28.1952, -25.7464, 62, 48, 0), 38.0, 0, 9, false),
+          makeFeature(301010, `Pretoria High Court`, `Civic`, 28.1895, -25.7442, rectPoly(28.1895, -25.7442, 54, 40, 0), 42.0, 0, 10, false),
+          makeFeature(301011, `Union Buildings West Wing`, `Civic`, 28.1974, -25.7406, rectPoly(28.1974, -25.7406, 82, 32, -12), 29.0, 0, 4, true),
+          makeFeature(301012, `Central Post Office`, `Civic`, 28.1891, -25.7461, rectPoly(28.1891, -25.7461, 46, 36, 0), 31.0, 0, 7, false),
+          makeFeature(301013, `Gautrain Bosman Precinct`, `Mixed-Use`, 28.1856, -25.7501, rectPoly(28.1856, -25.7501, 56, 36, 0), 35.0, 0, 9, false),
+          makeFeature(301014, `Pretorius Street Plaza`, `Commercial`, 28.1918, -25.7484, rectPoly(28.1918, -25.7484, 52, 34, 0), 54.0, 0, 15, false)
+        ]
+      },
+      capetown: {
+        id: 'capetown',
+        city: 'Cape Town',
+        precinct: 'City Bowl & Foreshore',
+        center: [18.4241, -33.9249],
+        geofence: { minLon: 18.410, maxLon: 18.442, minLat: -33.936, maxLat: -33.912 },
+        terrainLabel: '3–195 m ASL',
+        terrainSubtitle: 'Foreshore Shelf to Table Mountain Slopes',
+        defaultZoom: 15.2,
+        defaultPitch: 56,
+        defaultBearing: 215,
+        terrainHeight: function (x, northM) {
+          // Harbour shelf at NE (+northM > 200), dramatic slope rising toward SW (-x, -northM)
+          const bowlSlope = Math.max(0, (-x * 0.42 - northM * 0.65 - 120) * 0.24);
+          const signalRidge = 34 * Math.exp(-((x + 520) * (x + 520) + (northM - 80) * (northM - 80)) / 220000);
+          return Math.max(3, 6 + bowlSlope + signalRidge);
+        },
+        features: [
+          makeFeature(401001, `Portside Tower`, `Commercial`, 18.4228, -33.9182, rectPoly(18.4228, -33.9182, 44, 38, 32), 139.0, 0, 32, true),
+          makeFeature(401002, `1 Thibault Square`, `Commercial`, 18.4246, -33.9195, rectPoly(18.4246, -33.9195, 42, 42, 32), 127.0, 0, 31, true),
+          makeFeature(401003, `Cape Town Civic Centre`, `Civic`, 18.4292, -33.9212, rectPoly(18.4292, -33.9212, 92, 26, 32), 98.0, 12.0, 22, true),
+          makeFeature(401004, `The Foreshore Place`, `Mixed-Use`, 18.4234, -33.9209, rectPoly(18.4234, -33.9209, 38, 34, 32), 114.0, 0, 34, false),
+          makeFeature(401005, `CTICC Convention Hall`, `Cultural`, 18.4265, -33.9163, lShapePoly(18.4265, -33.9163, 110, 74, 42, 28, 32), 28.0, 0, 4, true),
+          makeFeature(401006, `Castle of Good Hope`, `Heritage`, 18.4278, -33.9258, lShapePoly(18.4278, -33.9258, 96, 92, 24, 24, 14), 14.0, 0, 2, true),
+          makeFeature(401007, `Cape Town City Hall`, `Heritage`, 18.4239, -33.9254, rectPoly(18.4239, -33.9254, 68, 44, 32), 34.0, 0, 4, true),
+          makeFeature(401008, `Greenmarket Square Block`, `Commercial`, 18.4202, -33.9228, rectPoly(18.4202, -33.9228, 52, 44, 32), 46.0, 0, 12, false),
+          makeFeature(401009, `Long Street Heritage Strip`, `Mixed-Use`, 18.4184, -33.9242, rectPoly(18.4184, -33.9242, 46, 26, 32), 24.5, 0, 6, false),
+          makeFeature(401010, `Iziko Slave Lodge & Parliament`, `Civic`, 18.4196, -33.9259, lShapePoly(18.4196, -33.9259, 72, 48, 30, 20, 32), 26.0, 0, 4, true),
+          makeFeature(401011, `Bree Street Towers`, `Mixed-Use`, 18.4208, -33.9194, rectPoly(18.4208, -33.9194, 42, 36, 32), 88.0, 0, 24, false),
+          makeFeature(401012, `Kloof Street Edge Apartments`, `Residential`, 18.4148, -33.9284, rectPoly(18.4148, -33.9284, 54, 32, 28), 32.0, 0, 9, false)
+        ]
+      },
+      johannesburg: {
+        id: 'johannesburg',
+        city: 'Johannesburg',
+        precinct: 'Sandton Central CBD',
+        center: [28.0543, -26.1076],
+        geofence: { minLon: 28.042, maxLon: 28.068, minLat: -26.118, maxLat: -26.096 },
+        terrainLabel: '1,610–1,648 m ASL',
+        terrainSubtitle: 'Highveld Ridge & Maude Street Spine',
+        defaultZoom: 15.2,
+        defaultPitch: 55,
+        defaultBearing: 315,
+        terrainHeight: function (x, northM) {
+          const highveld = 24 + 14 * Math.exp(-((x) * (x) + (northM) * (northM)) / 360000);
+          const slope = 8 * Math.sin(x / 240) + 6 * Math.cos(northM / 220);
+          return Math.max(8, highveld + slope);
+        },
+        features: [
+          makeFeature(501001, `The Leonardo`, `Mixed-Use`, 28.0559, -26.1059, rectPoly(28.0559, -26.1059, 44, 38, -18), 227.0, 0, 55, true),
+          makeFeature(501002, `Sandton City Office Tower`, `Commercial`, 28.0528, -26.1083, rectPoly(28.0528, -26.1083, 46, 40, -18), 141.0, 0, 32, true),
+          makeFeature(501003, `Michelangelo Towers`, `Residential`, 28.0539, -26.1069, rectPoly(28.0539, -26.1069, 42, 42, -18), 143.0, 0, 34, true),
+          makeFeature(501004, `90 Rivonia Road`, `Commercial`, 28.0554, -26.1092, rectPoly(28.0554, -26.1092, 56, 36, -18), 86.0, 0, 20, false),
+          makeFeature(501005, `Discovery Place`, `Commercial`, 28.0523, -26.1045, lShapePoly(28.0523, -26.1045, 96, 64, 38, 28, -18), 92.0, 0, 18, true),
+          makeFeature(501006, `Sandton Convention Centre`, `Cultural`, 28.0548, -26.1062, rectPoly(28.0548, -26.1062, 74, 52, -18), 38.0, 0, 6, false),
+          makeFeature(501007, `Alice Lane Towers`, `Commercial`, 28.0512, -26.1072, rectPoly(28.0512, -26.1072, 52, 34, -18), 78.0, 0, 18, false),
+          makeFeature(501008, `Gautrain Sandton Station`, `Civic`, 28.0570, -26.1084, rectPoly(28.0570, -26.1084, 68, 34, -18), 22.0, 0, 3, true),
+          makeFeature(501009, `Nelson Mandela Square`, `Mixed-Use`, 28.0543, -26.1077, lShapePoly(28.0543, -26.1077, 72, 58, 32, 26, -18), 28.0, 0, 5, true),
+          makeFeature(501010, `115 West Street`, `Commercial`, 28.0566, -26.1071, rectPoly(28.0566, -26.1071, 48, 34, -18), 72.0, 0, 16, false),
+          makeFeature(501011, `SASOL Place (Katherine St)`, `Commercial`, 28.0582, -26.1049, rectPoly(28.0582, -26.1049, 64, 42, -18), 64.0, 0, 14, false)
+        ]
+      },
+      durban: {
+        id: 'durban',
+        city: 'Durban',
+        precinct: 'Golden Mile & Civic CBD',
+        center: [31.0268, -29.8576],
+        geofence: { minLon: 31.012, maxLon: 31.042, minLat: -29.869, maxLat: -29.845 },
+        terrainLabel: '3–92 m ASL',
+        terrainSubtitle: 'Berea Ridge to Indian Ocean Foreshore',
+        defaultZoom: 15.2,
+        defaultPitch: 52,
+        defaultBearing: 295,
+        terrainHeight: function (x, northM) {
+          // Flat coastal shelf on East (+x > 100), rising toward Berea ridge in West (-x < -200)
+          const berea = 68 / (1 + Math.exp((x + 180) / 140));
+          return Math.max(3, 5 + berea + 4 * Math.sin(northM / 200));
+        },
+        features: [
+          makeFeature(601001, `88 on Field (Pixley KaSeme)`, `Commercial`, 31.0218, -29.8589, rectPoly(31.0218, -29.8589, 42, 36, 8), 146.0, 0, 35, true),
+          makeFeature(601002, `Embassy Building`, `Commercial`, 31.0238, -29.8594, rectPoly(31.0238, -29.8594, 44, 32, 8), 120.0, 0, 28, true),
+          makeFeature(601003, `Durban City Hall`, `Heritage`, 31.0258, -29.8583, lShapePoly(31.0258, -29.8583, 74, 56, 28, 22, 8), 44.0, 0, 4, true),
+          makeFeature(601004, `The Playhouse Complex`, `Cultural`, 31.0249, -29.8599, rectPoly(31.0249, -29.8599, 58, 38, 8), 26.0, 0, 4, false),
+          makeFeature(601005, `Durban ICC Arena`, `Cultural`, 31.0308, -29.8528, lShapePoly(31.0308, -29.8528, 108, 76, 40, 30, 10), 32.0, 0, 4, true),
+          makeFeature(601006, `Golden Mile Beachfront Tower`, `Residential`, 31.0352, -29.8535, rectPoly(31.0352, -29.8535, 38, 28, 14), 108.0, 0, 30, true),
+          makeFeature(601007, `North Beach Marine Suites`, `Residential`, 31.0344, -29.8511, rectPoly(31.0344, -29.8511, 44, 26, 14), 86.0, 0, 24, false),
+          makeFeature(601008, `South Beach Promenade Hotel`, `Mixed-Use`, 31.0359, -29.8565, rectPoly(31.0359, -29.8565, 48, 28, 14), 94.0, 0, 26, false),
+          makeFeature(601009, `Dr Yusuf Dadoo Commercial Block`, `Commercial`, 31.0196, -29.8576, rectPoly(31.0196, -29.8576, 54, 36, 8), 68.0, 0, 17, false),
+          makeFeature(601010, `Workshop Precinct`, `Mixed-Use`, 31.0279, -29.8562, rectPoly(31.0279, -29.8562, 68, 44, 8), 28.0, 0, 5, false)
+        ]
+      }
+    };
+
+    // =========================================================================
+    // 2. APPLICATION STATE & PERSISTENCE
+    // =========================================================================
+    const appState = {
+      activeCityId: 'gqeberha',
+      pitch: 52,
+      bearing: 328,
+      cameraZoom: 15.8,
+      extrudeScale: 1.0,
+      minHeightFilter: 0,
+      terrainExaggeration: 1.2,
+      colorMode: 'height',
+      autoOrbit: false,
+      layers: {
+        buildings: true,
+        edges: true,
+        terrain: true,
+        grid: true,
+        pins: true,
+        geofence: true
+      },
+      customGeoJSON: null,
+      customFileName: null,
+      selectedFeatureId: null,
+      panOffset: [0, 0]
+    };
+
+    let saveTimer = null;
+    function scheduleSaveState() {
+      if (!window.notebookAppApi) return;
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(function () {
+        const persistPayload = {
+          activeCityId: appState.activeCityId,
+          pitch: appState.pitch,
+          bearing: appState.bearing,
+          cameraZoom: appState.cameraZoom,
+          extrudeScale: appState.extrudeScale,
+          minHeightFilter: appState.minHeightFilter,
+          terrainExaggeration: appState.terrainExaggeration,
+          colorMode: appState.colorMode,
+          layers: appState.layers,
+          selectedFeatureId: appState.selectedFeatureId
+        };
+        window.notebookAppApi.setAppState(persistPayload).catch(function () {});
+      }, 250);
+    }
+
+    // =========================================================================
+    // 3. THREE.JS SCENE & PROJECTION ENGINE
+    // =========================================================================
+    let renderer, scene, camera;
+    let terrainGroup, buildingsGroup, edgesGroup, gridGroup, geofenceGroup;
+    let buildingMeshes = [];
+    let raycaster, pointerNDC;
+    let hoveredMesh = null;
+    let selectedMesh = null;
+    let animFrameId = null;
+
+    // Smooth camera animation state
+    let targetPan = new THREE.Vector3(0, 0, 0);
+    let currentPan = new THREE.Vector3(0, 0, 0);
+
+    // Read theme colors from :root CSS custom properties
+    function cssToken(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    const PALETTE = {};
+    function loadPaletteFromCSS() {
+      PALETTE.sky = cssToken('--scene-sky') || '#0b1114';
+      PALETTE.fog = cssToken('--scene-fog') || '#0d1417';
+      PALETTE.terrainLow = cssToken('--scene-terrain-low') || '#122126';
+      PALETTE.terrainMid = cssToken('--scene-terrain-mid') || '#1a3136';
+      PALETTE.terrainHigh = cssToken('--scene-terrain-high') || '#274445';
+      PALETTE.grid = cssToken('--scene-grid') || '#273d45';
+      PALETTE.edge = cssToken('--scene-edge') || '#7ad8e6';
+      PALETTE.selected = cssToken('--scene-selected') || '#87d69b';
+      PALETTE.hover = cssToken('--scene-hover') || '#e8b954';
+      PALETTE.geofence = cssToken('--scene-geofence') || '#63c7d6';
+      PALETTE.data1 = cssToken('--data-1') || '#63c7d6';
+      PALETTE.data2 = cssToken('--data-2') || '#87d69b';
+      PALETTE.data3 = cssToken('--data-3') || '#e8b954';
+      PALETTE.data4 = cssToken('--data-4') || '#f08c70';
+      PALETTE.secondary = cssToken('--secondary') || '#5d7882';
+    }
+
+    function getActiveDataset() {
+      if (appState.customGeoJSON) {
+        return appState.customGeoJSON;
+      }
+      return URBAN_PRESETS[appState.activeCityId] || URBAN_PRESETS.gqeberha;
+    }
+
+    // WGS84 -> Local ENU meters relative to active center
+    function projectLonLat(lon, lat, center) {
+      const mPerDegLat = 111132.92;
+      const mPerDegLon = 111412.84 * Math.cos(center[1] * Math.PI / 180);
+      const eastM = (lon - center[0]) * mPerDegLon;
+      const northM = (lat - center[1]) * mPerDegLat;
+      return [eastM, northM];
+    }
+
+    function getColorForFeature(props) {
+      const h = Number(props.height) || 10;
+      if (appState.colorMode === 'landuse') {
+        const cat = String(props.category || '').toLowerCase();
+        if (cat.includes('academic') || cat.includes('civic')) return PALETTE.data1;
+        if (cat.includes('heritage') || cat.includes('cultural')) return PALETTE.data3;
+        if (cat.includes('residential')) return PALETTE.data2;
+        if (cat.includes('commercial') || cat.includes('mixed')) return PALETTE.data4;
+        return PALETTE.secondary;
+      }
+      if (appState.colorMode === 'epistemic') {
+        return props.source_type === 'CUSTOM_GEOJSON' ? PALETTE.data2 : PALETTE.data1;
+      }
+      // Height ramp
+      if (h >= 100) return PALETTE.data4;
+      if (h >= 45) return PALETTE.data3;
+      if (h >= 20) return PALETTE.data2;
+      if (h >= 12) return PALETTE.data1;
+      return PALETTE.secondary;
+    }
+
+    function computeCentroid(ring) {
+      if (!ring || ring.length === 0) return [0, 0];
+      let sumLon = 0;
+      let sumLat = 0;
+      const count = ring.length > 1 ? ring.length - 1 : ring.length;
+      for (let i = 0; i < count; i++) {
+        sumLon += ring[i][0];
+        sumLat += ring[i][1];
+      }
+      return [sumLon / count, sumLat / count];
+    }
+
+    function initThreeScene() {
+      loadPaletteFromCSS();
+      const canvas = document.getElementById('gl-canvas');
+      const stage = document.getElementById('viewer-stage');
+      if (!canvas || !stage) return;
+
+      renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(stage.clientWidth, stage.clientHeight, false);
+      renderer.setClearColor(new THREE.Color(PALETTE.sky), 1);
+
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(PALETTE.fog, 0.00028);
+
+      camera = new THREE.PerspectiveCamera(45, stage.clientWidth / stage.clientHeight, 2, 12000);
+
+      // Lighting: calm northern sky hemisphere + directional solar azimuth + subtle rim
+      const hemi = new THREE.HemisphereLight(0xdaf0f5, 0x162429, 1.05);
+      scene.add(hemi);
+
+      const dirLight = new THREE.DirectionalLight(0xf6fbfd, 1.35);
+      dirLight.position.set(600, 950, 480);
+      scene.add(dirLight);
+
+      const fillLight = new THREE.DirectionalLight(0x63c7d6, 0.45);
+      fillLight.position.set(-550, 380, -600);
+      scene.add(fillLight);
+
+      terrainGroup = new THREE.Group();
+      buildingsGroup = new THREE.Group();
+      edgesGroup = new THREE.Group();
+      gridGroup = new THREE.Group();
+      geofenceGroup = new THREE.Group();
+
+      scene.add(terrainGroup);
+      scene.add(buildingsGroup);
+      scene.add(edgesGroup);
+      scene.add(gridGroup);
+      scene.add(geofenceGroup);
+
+      raycaster = new THREE.Raycaster();
+      pointerNDC = new THREE.Vector2();
+
+      bindCanvasEvents(canvas, stage);
+      window.addEventListener('resize', handleResize);
+    }
+
+    function handleResize() {
+      const stage = document.getElementById('viewer-stage');
+      if (!stage || !renderer || !camera) return;
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h, false);
+    }
+
+    function clearGroup(grp) {
+      while (grp.children.length > 0) {
+        const child = grp.children[0];
+        grp.remove(child);
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(function (m) { m.dispose(); });
+          } else {
+            child.material.dispose();
+          }
+        }
+      }
+    }
+
+    // Build Terrain DTM mesh + Coordinate Grid + Geofence
+    function buildTerrainAndGrid() {
+      const dataset = getActiveDataset();
+      clearGroup(terrainGroup);
+      clearGroup(gridGroup);
+      clearGroup(geofenceGroup);
+
+      const span = 2200;
+      const segs = 72;
+      const geom = new THREE.PlaneGeometry(span, span, segs, segs);
+      geom.rotateX(-Math.PI / 2);
+
+      const pos = geom.attributes.position;
+      const colors = [];
+      const lowC = new THREE.Color(PALETTE.terrainLow);
+      const midC = new THREE.Color(PALETTE.terrainMid);
+      const highC = new THREE.Color(PALETTE.terrainHigh);
+
+      let minY = Infinity;
+      let maxY = -Infinity;
+      const rawHeights = new Float32Array(pos.count);
+
+      for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i);
+        const vz = pos.getZ(i);
+        const northM = -vz;
+        const h = dataset.terrainHeight(vx, northM) * appState.terrainExaggeration;
+        rawHeights[i] = h;
+        if (h < minY) minY = h;
+        if (h > maxY) maxY = h;
+      }
+
+      const range = Math.max(1, maxY - minY);
+      for (let i = 0; i < pos.count; i++) {
+        const h = rawHeights[i];
+        pos.setY(i, h);
+        const t = (h - minY) / range;
+        const c = t < 0.5
+          ? lowC.clone().lerp(midC, t * 2)
+          : midC.clone().lerp(highC, (t - 0.5) * 2);
+        colors.push(c.r, c.g, c.b);
+      }
+
+      geom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      geom.computeVertexNormals();
+
+      const mat = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.92,
+        metalness: 0.06,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+      });
+      const terrainMesh = new THREE.Mesh(geom, mat);
+      terrainGroup.add(terrainMesh);
+
+      // Subtle wireframe contour overlay on terrain
+      const wireGeom = new THREE.WireframeGeometry(geom);
+      const wireMat = new THREE.LineBasicMaterial({
+        color: new THREE.Color(PALETTE.grid),
+        transparent: true,
+        opacity: 0.35
+      });
+      gridGroup.add(new THREE.LineSegments(wireGeom, wireMat));
+
+      // Flat reference datum grid at y = 0.5
+      const gridHelper = new THREE.GridHelper(span, 22, new THREE.Color(PALETTE.grid), new THREE.Color(PALETTE.grid));
+      gridHelper.position.y = 0.5;
+      if (gridHelper.material) {
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.25;
+      }
+      gridGroup.add(gridHelper);
+
+      // Geofence / Precinct Bounding Ring
+      const gf = dataset.geofence;
+      if (gf) {
+        const sw = projectLonLat(gf.minLon, gf.minLat, dataset.center);
+        const se = projectLonLat(gf.maxLon, gf.minLat, dataset.center);
+        const ne = projectLonLat(gf.maxLon, gf.maxLat, dataset.center);
+        const nw = projectLonLat(gf.minLon, gf.maxLat, dataset.center);
+        const pts = [sw, se, ne, nw, sw].map(function (p) {
+          const y = dataset.terrainHeight(p[0], p[1]) * appState.terrainExaggeration + 3;
+          return new THREE.Vector3(p[0], y, -p[1]);
+        });
+        const gfGeom = new THREE.BufferGeometry().setFromPoints(pts);
+        const gfMat = new THREE.LineBasicMaterial({
+          color: new THREE.Color(PALETTE.geofence),
+          transparent: true,
+          opacity: 0.8
+        });
+        geofenceGroup.add(new THREE.Line(gfGeom, gfMat));
+      }
+
+      applyLayerVisibility();
+    }
+
+    // Build 3D Building Extrusions from GeoJSON Polygon Features
+    function buildExtrusions() {
+      const dataset = getActiveDataset();
+      clearGroup(buildingsGroup);
+      clearGroup(edgesGroup);
+      buildingMeshes = [];
+      hoveredMesh = null;
+      selectedMesh = null;
+
+      let visibleCount = 0;
+      let maxExtruded = 0;
+
+      dataset.features.forEach(function (feat, idx) {
+        if (!feat.geometry || feat.geometry.type !== 'Polygon') return;
+        const ring = feat.geometry.coordinates[0];
+        if (!ring || ring.length < 3) return;
+
+        const props = feat.properties || {};
+        const rawH = Number(props.height) || (props['building:levels'] ? Number(props['building:levels']) * 3.2 : 10);
+        const rawMinH = Number(props.min_height) || 0;
+        if (rawH < appState.minHeightFilter) return;
+
+        visibleCount++;
+        const extrudedH = Math.max(1.2, (rawH - rawMinH) * appState.extrudeScale);
+        if (rawH * appState.extrudeScale > maxExtruded) {
+          maxExtruded = rawH * appState.extrudeScale;
+        }
+
+        const shape = new THREE.Shape();
+        const projected = [];
+        for (let i = 0; i < ring.length; i++) {
+          const p = projectLonLat(ring[i][0], ring[i][1], dataset.center);
+          projected.push(p);
+          if (i === 0) shape.moveTo(p[0], p[1]);
+          else shape.lineTo(p[0], p[1]);
+        }
+
+        const centroidLonLat = computeCentroid(ring);
+        const centroidMeters = projectLonLat(centroidLonLat[0], centroidLonLat[1], dataset.center);
+        const baseDTM = dataset.terrainHeight(centroidMeters[0], centroidMeters[1]) * appState.terrainExaggeration;
+
+        const geom = new THREE.ExtrudeGeometry(shape, {
+          depth: extrudedH,
+          bevelEnabled: false,
+          steps: 1
+        });
+        geom.rotateX(-Math.PI / 2);
+
+        const baseHex = getColorForFeature(props);
+        const mat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(baseHex),
+          roughness: 0.48,
+          metalness: 0.14,
+          transparent: true,
+          opacity: 0.94
+        });
+
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.position.y = baseDTM + rawMinH * appState.extrudeScale;
+        mesh.userData = {
+          featureIndex: idx,
+          feature: feat,
+          baseColor: baseHex,
+          centroidLonLat: centroidLonLat,
+          centroidMeters: centroidMeters,
+          baseDTM: baseDTM,
+          extrudedH: extrudedH,
+          rawH: rawH
+        };
+
+        buildingsGroup.add(mesh);
+        buildingMeshes.push(mesh);
+
+        // Crisp edges
+        const edgeGeom = new THREE.EdgesGeometry(geom, 24);
+        const edgeMat = new THREE.LineBasicMaterial({
+          color: new THREE.Color(PALETTE.edge),
+          transparent: true,
+          opacity: 0.36
+        });
+        const line = new THREE.LineSegments(edgeGeom, edgeMat);
+        line.position.y = mesh.position.y;
+        edgesGroup.add(line);
+
+        // Restore selected visual state
+        if (appState.selectedFeatureId && String(props.osm_id) === String(appState.selectedFeatureId)) {
+          selectedMesh = mesh;
+          mesh.material.emissive.set(PALETTE.selected);
+          mesh.material.emissiveIntensity = 0.45;
+        }
+      });
+
+      const badgeVisible = document.getElementById('badge-visible-bldgs');
+      if (badgeVisible) {
+        badgeVisible.textContent = visibleCount + ' / ' + dataset.features.length;
+      }
+      const kpiBldgs = document.getElementById('kpi-buildings');
+      if (kpiBldgs) {
+        kpiBldgs.textContent = visibleCount + ' / ' + dataset.features.length;
+      }
+      const kpiMax = document.getElementById('kpi-max-height');
+      if (kpiMax) {
+        kpiMax.textContent = 'Max extruded: ' + maxExtruded.toFixed(1) + ' m';
+      }
+      const statusMsg = document.getElementById('status-msg');
+      if (statusMsg) {
+        statusMsg.classList.remove('is-error');
+        statusMsg.textContent = 'Ready · ' + visibleCount + ' extruded footprints rendered';
+      }
+
+      applyLayerVisibility();
+    }
+
+    function applyLayerVisibility() {
+      if (buildingsGroup) buildingsGroup.visible = appState.layers.buildings;
+      if (edgesGroup) edgesGroup.visible = appState.layers.edges;
+      if (terrainGroup) terrainGroup.visible = appState.layers.terrain;
+      if (gridGroup) gridGroup.visible = appState.layers.grid;
+      if (geofenceGroup) geofenceGroup.visible = appState.layers.geofence;
+      const pinLayer = document.getElementById('pin-layer');
+      if (pinLayer) pinLayer.style.display = appState.layers.pins ? 'block' : 'none';
+    }
+
+    function updateCameraTransform() {
+      if (!camera) return;
+      currentPan.lerp(targetPan, 0.25);
+
+      const zoom = appState.cameraZoom;
+      const dist = 2600 / Math.pow(2, zoom - 14.0);
+      const pitchRad = Math.max(0.02, appState.pitch) * Math.PI / 180;
+      const bearingRad = appState.bearing * Math.PI / 180;
+
+      const horiz = dist * Math.sin(pitchRad);
+      const vert = dist * Math.cos(pitchRad);
+
+      const dataset = getActiveDataset();
+      const groundY = dataset.terrainHeight(currentPan.x, -currentPan.z) * appState.terrainExaggeration;
+
+      const cx = currentPan.x - horiz * Math.sin(bearingRad);
+      const cz = currentPan.z + horiz * Math.cos(bearingRad);
+      const cy = groundY + vert;
+
+      camera.position.set(cx, cy, cz);
+      camera.lookAt(currentPan.x, groundY + 12, currentPan.z);
+    }
+
+    function projectLandmarkPins() {
+      const pinLayer = document.getElementById('pin-layer');
+      const stage = document.getElementById('viewer-stage');
+      if (!pinLayer || !stage || !camera) return;
+      if (!appState.layers.pins) {
+        pinLayer.innerHTML = '';
+        return;
+      }
+
+      const w = stage.clientWidth;
+      const h = stage.clientHeight;
+      const landmarks = buildingMeshes.filter(function (m) {
+        return m.userData.feature.properties.landmark;
+      });
+
+      // Ensure matching DOM pin elements
+      while (pinLayer.children.length > landmarks.length) {
+        pinLayer.removeChild(pinLayer.lastChild);
+      }
+      while (pinLayer.children.length < landmarks.length) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pin-tag';
+        btn.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          const fId = btn.dataset.osmId;
+          const match = buildingMeshes.find(function (m) {
+            return String(m.userData.feature.properties.osm_id) === String(fId);
+          });
+          if (match) selectBuildingMesh(match);
+        });
+        pinLayer.appendChild(btn);
+      }
+
+      const v = new THREE.Vector3();
+      for (let i = 0; i < landmarks.length; i++) {
+        const m = landmarks[i];
+        const ud = m.userData;
+        const pinEl = pinLayer.children[i];
+        v.set(ud.centroidMeters[0], m.position.y + ud.extrudedH + 10, -ud.centroidMeters[1]);
+        v.project(camera);
+
+        if (v.z > 1 || v.x < -0.95 || v.x > 0.95 || v.y < -0.95 || v.y > 0.95) {
+          pinEl.style.display = 'none';
+          continue;
+        }
+        const sx = (v.x * 0.5 + 0.5) * w;
+        const sy = (-v.y * 0.5 + 0.5) * h;
+        pinEl.style.display = 'block';
+        pinEl.style.left = sx.toFixed(1) + 'px';
+        pinEl.style.top = sy.toFixed(1) + 'px';
+        pinEl.textContent = ud.feature.properties.name;
+        pinEl.dataset.osmId = String(ud.feature.properties.osm_id);
+        pinEl.classList.toggle('is-selected', String(ud.feature.properties.osm_id) === String(appState.selectedFeatureId));
+      }
+    }
+
+    function animate() {
+      animFrameId = requestAnimationFrame(animate);
+      if (appState.autoOrbit) {
+        appState.bearing = (appState.bearing + 0.25) % 360;
+        syncCameraUI();
+      }
+      updateCameraTransform();
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+        projectLandmarkPins();
+      }
+    }
+
+    // =========================================================================
+    // 4. INTERACTIVE POINTER / TOUCH ORBIT, PAN, ZOOM & RAYCAST INSPECTION
+    // =========================================================================
+    function bindCanvasEvents(canvas, stage) {
+      let dragging = false;
+      let dragMode = 'orbit';
+      let startX = 0;
+      let startY = 0;
+      let movedDist = 0;
+      let pinchStartDist = 0;
+      let pinchStartZoom = appState.cameraZoom;
+
+      canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+      canvas.addEventListener('pointerdown', function (e) {
+        dragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        movedDist = 0;
+        dragMode = (e.button === 2 || e.shiftKey) ? 'pan' : 'orbit';
+        canvas.setPointerCapture(e.pointerId);
+      });
+
+      canvas.addEventListener('pointermove', function (e) {
+        const rect = canvas.getBoundingClientRect();
+        const relX = e.clientX - rect.left;
+        const relY = e.clientY - rect.top;
+
+        if (dragging) {
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          movedDist += Math.hypot(dx, dy);
+          startX = e.clientX;
+          startY = e.clientY;
+
+          if (dragMode === 'orbit') {
+            appState.bearing = (appState.bearing - dx * 0.35 + 360) % 360;
+            appState.pitch = Math.max(0, Math.min(75, appState.pitch + dy * 0.28));
+            syncCameraUI();
+          } else {
+            const bRad = appState.bearing * Math.PI / 180;
+            const scale = (2600 / Math.pow(2, appState.cameraZoom - 14.0)) * 0.0014;
+            const rightX = Math.cos(bRad);
+            const rightZ = Math.sin(bRad);
+            const fwdX = Math.sin(bRad);
+            const fwdZ = -Math.cos(bRad);
+            targetPan.x -= (dx * rightX + dy * fwdX) * scale;
+            targetPan.z -= (dx * rightZ + dy * fwdZ) * scale;
+            targetPan.x = Math.max(-950, Math.min(950, targetPan.x));
+            targetPan.z = Math.max(-950, Math.min(950, targetPan.z));
+          }
+          hideTooltip();
+          return;
+        }
+
+        // Hover raycast
+        performHoverRaycast(relX, relY, rect.width, rect.height);
+      });
+
+      canvas.addEventListener('pointerup', function (e) {
+        if (!dragging) return;
+        dragging = false;
+        try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+
+        if (movedDist < 6 && e.button === 0) {
+          const rect = canvas.getBoundingClientRect();
+          performClickRaycast(e.clientX - rect.left, e.clientY - rect.top, rect.width, rect.height);
+        } else {
+          scheduleSaveState();
+        }
+      });
+
+      canvas.addEventListener('pointerleave', function () {
+        hideTooltip();
+        if (hoveredMesh && hoveredMesh !== selectedMesh) {
+          hoveredMesh.material.emissiveIntensity = 0;
+        }
+        hoveredMesh = null;
+      });
+
+      canvas.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        const delta = -Math.sign(e.deltaY) * 0.18;
+        appState.cameraZoom = Math.max(13.8, Math.min(17.6, +(appState.cameraZoom + delta).toFixed(2)));
+        syncCameraUI();
+        scheduleSaveState();
+      }, { passive: false });
+
+      // Two-finger pinch zoom on touch devices
+      stage.addEventListener('touchstart', function (e) {
+        if (e.touches.length === 2) {
+          pinchStartDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          pinchStartZoom = appState.cameraZoom;
+        }
+      }, { passive: true });
+
+      stage.addEventListener('touchmove', function (e) {
+        if (e.touches.length === 2 && pinchStartDist > 0) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const ratio = dist / pinchStartDist;
+          appState.cameraZoom = Math.max(13.8, Math.min(17.6, +(pinchStartZoom + Math.log2(ratio) * 1.4).toFixed(2)));
+          syncCameraUI();
+        }
+      }, { passive: true });
+    }
+
+    function performHoverRaycast(px, py, w, h) {
+      if (!raycaster || !camera || !appState.layers.buildings) {
+        hideTooltip();
+        return;
+      }
+      pointerNDC.x = (px / w) * 2 - 1;
+      pointerNDC.y = -(py / h) * 2 + 1;
+      raycaster.setFromCamera(pointerNDC, camera);
+      const hits = raycaster.intersectObjects(buildingMeshes, false);
+
+      if (hoveredMesh && hoveredMesh !== selectedMesh) {
+        hoveredMesh.material.emissiveIntensity = 0;
+      }
+
+      if (hits.length > 0) {
+        const hit = hits[0].object;
+        hoveredMesh = hit;
+        if (hit !== selectedMesh) {
+          hit.material.emissive.set(PALETTE.hover);
+          hit.material.emissiveIntensity = 0.32;
+        }
+        showTooltip(hit.userData, px, py, w, h);
+      } else {
+        hoveredMesh = null;
+        hideTooltip();
+      }
+    }
+
+    function performClickRaycast(px, py, w, h) {
+      if (!raycaster || !camera || !appState.layers.buildings) return;
+      pointerNDC.x = (px / w) * 2 - 1;
+      pointerNDC.y = -(py / h) * 2 + 1;
+      raycaster.setFromCamera(pointerNDC, camera);
+      const hits = raycaster.intersectObjects(buildingMeshes, false);
+      if (hits.length > 0) {
+        selectBuildingMesh(hits[0].object);
+      }
+    }
+
+    function showTooltip(ud, px, py, w, h) {
+      const tt = document.getElementById('hover-tooltip');
+      if (!tt) return;
+      const p = ud.feature.properties;
+      document.getElementById('tt-title').textContent = p.name || ('Building #' + (p.osm_id || ud.featureIndex));
+      document.getElementById('tt-height').textContent = ud.extrudedH.toFixed(1) + ' m (' + ud.rawH.toFixed(1) + ' m raw)';
+      document.getElementById('tt-levels').textContent = (p['building:levels'] || '—') + ' lvl · ' + (p.min_height || 0) + ' m';
+      document.getElementById('tt-dtm').textContent = ud.baseDTM.toFixed(1) + ' m ASL';
+      document.getElementById('tt-id').textContent = p.osm_id != null ? String(p.osm_id) : 'fid:' + ud.featureIndex;
+
+      tt.classList.add('is-visible');
+      const left = Math.min(w - 260, Math.max(12, px + 16));
+      const top = Math.min(h - 140, Math.max(12, py - 12));
+      tt.style.left = left + 'px';
+      tt.style.top = top + 'px';
+    }
+
+    function hideTooltip() {
+      const tt = document.getElementById('hover-tooltip');
+      if (tt) tt.classList.remove('is-visible');
+    }
+
+    function selectBuildingMesh(mesh) {
+      if (selectedMesh && selectedMesh !== mesh) {
+        selectedMesh.material.emissiveIntensity = 0;
+      }
+      selectedMesh = mesh;
+      mesh.material.emissive.set(PALETTE.selected);
+      mesh.material.emissiveIntensity = 0.45;
+
+      const ud = mesh.userData;
+      const p = ud.feature.properties;
+      appState.selectedFeatureId = p.osm_id != null ? String(p.osm_id) : String(ud.featureIndex);
+
+      // Update Inspector UI
+      const badge = document.getElementById('inspector-badge');
+      if (badge) badge.textContent = p.category || 'Building';
+
+      const body = document.getElementById('inspector-body');
+      if (body) {
+        body.innerHTML = `
+          <table class="attr-table">
+            <tbody>
+              <tr><th>Feature Name</th><td>${escapeHtml(p.name || 'Unnamed Structure')}</td></tr>
+              <tr><th>Classification</th><td>building=${escapeHtml(String(p.building || 'yes'))} · ${escapeHtml(String(p.category || 'Urban'))}</td></tr>
+              <tr><th>OSM / Feature ID</th><td>${escapeHtml(String(p.osm_id != null ? p.osm_id : ud.featureIndex))}</td></tr>
+              <tr><th>Height (Raw / Scaled)</th><td>${ud.rawH.toFixed(1)} m / ${ud.extrudedH.toFixed(1)} m</td></tr>
+              <tr><th>Storey Levels</th><td>${escapeHtml(String(p['building:levels'] || '—'))} levels (min_h: ${Number(p.min_height || 0).toFixed(1)} m)</td></tr>
+              <tr><th>DTM Ground / DSM Roof</th><td>${ud.baseDTM.toFixed(1)} m / ${(ud.baseDTM + ud.extrudedH).toFixed(1)} m ASL</td></tr>
+              <tr><th>Lidar Mean / Max</th><td>${p.height_mean != null ? p.height_mean + ' m' : '—'} / ${p.height_max != null ? p.height_max + ' m' : '—'}</td></tr>
+              <tr><th>WGS84 Centroid</th><td>${ud.centroidLonLat[0].toFixed(5)}°, ${ud.centroidLonLat[1].toFixed(5)}°</td></tr>
+            </tbody>
+          </table>
+        `;
+      }
+
+      const pre = document.getElementById('geojson-preview');
+      if (pre) {
+        pre.textContent = JSON.stringify(ud.feature, null, 2);
+      }
+
+      scheduleSaveState();
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // =========================================================================
+    // 5. SOUTH AFRICA LOCATOR MAP (Natural Earth 50m TopoJSON)
+    // =========================================================================
+    function renderSouthAfricaLocator() {
+      const svgEl = document.getElementById('sa-locator-svg');
+      if (!svgEl || typeof d3 === 'undefined') return;
+
+      const svg = d3.select(svgEl);
+      svg.selectAll('*').remove();
+
+      const width = 300;
+      const height = 160;
+      const projection = d3.geoMercator()
+        .center([24.8, -28.8])
+        .scale(620)
+        .translate([width / 2, height / 2]);
+      const pathGen = d3.geoPath(projection);
+
+      // Draw graticule grid
+      const grat = d3.geoGraticule().step([5, 5]);
+      svg.append('path')
+        .datum(grat())
+        .attr('d', pathGen)
+        .attr('fill', 'none')
+        .attr('stroke', 'var(--outline-variant)')
+        .attr('stroke-width', 0.6);
+
+      function drawCityMarkers() {
+        const cities = Object.values(URBAN_PRESETS);
+        const group = svg.append('g');
+        cities.forEach(function (c) {
+          const pt = projection(c.center);
+          if (!pt) return;
+          const isActive = !appState.customGeoJSON && appState.activeCityId === c.id;
+          const marker = group.append('g')
+            .style('cursor', 'pointer')
+            .on('click', function () { switchCityPreset(c.id); });
+
+          if (isActive) {
+            marker.append('circle')
+              .attr('cx', pt[0])
+              .attr('cy', pt[1])
+              .attr('r', 8)
+              .attr('fill', 'var(--cyan-tint)')
+              .attr('stroke', 'var(--primary)')
+              .attr('stroke-width', 1.2);
+          }
+
+          marker.append('circle')
+            .attr('cx', pt[0])
+            .attr('cy', pt[1])
+            .attr('r', isActive ? 4 : 3)
+            .attr('fill', isActive ? 'var(--primary)' : 'var(--tertiary)');
+
+          marker.append('text')
+            .attr('x', pt[0] + 6)
+            .attr('y', pt[1] + 3)
+            .attr('font-family', 'Geist Mono, monospace')
+            .attr('font-size', '9px')
+            .attr('fill', isActive ? 'var(--on-surface)' : 'var(--on-surface-variant)')
+            .text(c.id === 'gqeberha' ? 'Gqeberha' : c.city.split(' ')[0]);
+        });
+      }
+
+      fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json')
+        .then(function (r) { return r.json(); })
+        .then(function (topo) {
+          if (typeof topojson === 'undefined') {
+            drawCityMarkers();
+            return;
+          }
+          const countries = topojson.feature(topo, topo.objects.countries);
+          const sa = countries.features.filter(function (f) {
+            return f.properties && (f.properties.name === 'South Africa' || f.properties.name === 'Lesotho' || f.properties.name === 'eSwatini' || f.properties.name === 'Namibia' || f.properties.name === 'Botswana');
+          });
+          svg.append('g')
+            .selectAll('path')
+            .data(sa)
+            .join('path')
+            .attr('d', pathGen)
+            .attr('fill', function (d) {
+              return d.properties.name === 'South Africa' ? 'var(--surface-container-high)' : 'var(--surface-container-low)';
+            })
+            .attr('stroke', function (d) {
+              return d.properties.name === 'South Africa' ? 'var(--outline)' : 'var(--outline-variant)';
+            })
+            .attr('stroke-width', function (d) {
+              return d.properties.name === 'South Africa' ? 1.1 : 0.6;
+            });
+          drawCityMarkers();
+        })
+        .catch(function () {
+          // Graceful fallback if offline
+          drawCityMarkers();
+        });
+    }
+
+    // =========================================================================
+    // 6. UI SYNCHRONIZATION, PRESETS, CUSTOM GEOJSON LOAD & EXPORT
+    // =========================================================================
+    function renderCityList() {
+      const list = document.getElementById('city-list');
+      if (!list) return;
+      list.innerHTML = '';
+
+      Object.values(URBAN_PRESETS).forEach(function (preset) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'city-btn' + (!appState.customGeoJSON && appState.activeCityId === preset.id ? ' is-active' : '');
+        btn.innerHTML = `
+          <div>
+            <span class="city-name">${escapeHtml(preset.city)}</span>
+            <span class="city-meta">${escapeHtml(preset.precinct)}</span>
+          </div>
+          <span class="city-count">${preset.features.length}</span>
+        `;
+        btn.addEventListener('click', function () {
+          switchCityPreset(preset.id);
+        });
+        list.appendChild(btn);
+      });
+    }
+
+    function switchCityPreset(cityId) {
+      const preset = URBAN_PRESETS[cityId];
+      if (!preset) return;
+      appState.customGeoJSON = null;
+      appState.customFileName = null;
+      appState.activeCityId = cityId;
+      appState.pitch = preset.defaultPitch;
+      appState.bearing = preset.defaultBearing;
+      appState.cameraZoom = preset.defaultZoom;
+      appState.selectedFeatureId = null;
+      targetPan.set(0, 0, 0);
+      currentPan.set(0, 0, 0);
+
+      rebuildAll();
+      scheduleSaveState();
+    }
+
+    function rebuildAll() {
+      const dataset = getActiveDataset();
+      renderCityList();
+      renderSouthAfricaLocator();
+      syncCameraUI();
+      syncExtrusionUI();
+      syncLayerUI();
+      buildTerrainAndGrid();
+      buildExtrusions();
+
+      // Update KPI & header chips
+      const kpiCity = document.getElementById('kpi-city');
+      const kpiCoords = document.getElementById('kpi-coords');
+      const kpiTerrain = document.getElementById('kpi-terrain');
+      const locCoords = document.getElementById('locator-coords');
+      const chipSrc = document.getElementById('chip-data-source');
+      const chipTag = document.getElementById('chip-precinct-tag');
+
+      const latStr = Math.abs(dataset.center[1]).toFixed(4) + '° ' + (dataset.center[1] < 0 ? 'S' : 'N');
+      const lonStr = Math.abs(dataset.center[0]).toFixed(4) + '° ' + (dataset.center[0] >= 0 ? 'E' : 'W');
+
+      if (kpiCity) kpiCity.textContent = dataset.precinct;
+      if (kpiCoords) kpiCoords.textContent = lonStr + ', ' + latStr;
+      if (locCoords) locCoords.textContent = lonStr + ', ' + latStr;
+      if (kpiTerrain) kpiTerrain.textContent = dataset.terrainLabel;
+      if (chipSrc) {
+        chipSrc.textContent = appState.customGeoJSON
+          ? 'CUSTOM GEOJSON LOADED · ' + appState.customFileName
+          : 'PARAMETRIC GEOJSON FIXTURE · WGS84';
+      }
+      if (chipTag) {
+        chipTag.textContent = dataset.city + ' · ' + dataset.terrainSubtitle;
+      }
+
+      // Default GeoJSON preview to first feature when nothing selected
+      const pre = document.getElementById('geojson-preview');
+      if (pre && dataset.features.length > 0 && !appState.selectedFeatureId) {
+        pre.textContent = JSON.stringify(dataset.features[0], null, 2);
+      }
+      if (!appState.selectedFeatureId) {
+        const badge = document.getElementById('inspector-badge');
+        if (badge) badge.textContent = 'None Selected';
+        const body = document.getElementById('inspector-body');
+        if (body) {
+          body.innerHTML = `
+            <div class="empty-inspector">
+              <strong>No building selected</strong>
+              <span>Click any 3D extruded building in the viewport or select a landmark pin to inspect its Lidar DTM/DSM elevation, storey levels, and WGS84 footprint metadata.</span>
+            </div>
+          `;
+        }
+      }
+    }
+
+    function syncCameraUI() {
+      const pitchSlider = document.getElementById('slider-pitch');
+      const bearingSlider = document.getElementById('slider-bearing');
+      const zoomSlider = document.getElementById('slider-zoom');
+      const valPitch = document.getElementById('val-pitch');
+      const valBearing = document.getElementById('val-bearing');
+      const valZoom = document.getElementById('val-zoom');
+      const kpiCam = document.getElementById('kpi-camera');
+      const kpiZoom = document.getElementById('kpi-zoom');
+      const dial = document.getElementById('compass-dial');
+      const orbitBtn = document.getElementById('btn-cam-orbit');
+      const camBadge = document.getElementById('badge-camera-mode');
+
+      const p = Math.round(appState.pitch);
+      const b = Math.round((appState.bearing + 360) % 360);
+      const z = appState.cameraZoom.toFixed(1);
+
+      if (pitchSlider) pitchSlider.value = String(p);
+      if (bearingSlider) bearingSlider.value = String(b);
+      if (zoomSlider) zoomSlider.value = String(z);
+      if (valPitch) valPitch.textContent = p + '°';
+      if (valBearing) valBearing.textContent = b + '°';
+      if (valZoom) valZoom.textContent = z;
+      if (kpiCam) kpiCam.textContent = p + '° · ' + b + '°';
+      if (kpiZoom) kpiZoom.textContent = 'Zoom ' + z + ' · ENU Local';
+      if (dial) dial.style.transform = 'rotate(' + (-b) + 'deg)';
+      if (orbitBtn) orbitBtn.classList.toggle('is-active', appState.autoOrbit);
+      if (camBadge) camBadge.textContent = appState.autoOrbit ? 'Auto-Orbit' : 'Manual Orbit';
+    }
+
+    function syncExtrusionUI() {
+      const exSlider = document.getElementById('slider-extrude');
+      const minSlider = document.getElementById('slider-min-height');
+      const terSlider = document.getElementById('slider-terrain');
+      const valEx = document.getElementById('val-extrude');
+      const valMin = document.getElementById('val-min-height');
+      const valTer = document.getElementById('val-terrain');
+      const kpiTerScale = document.getElementById('kpi-terrain-scale');
+
+      if (exSlider) exSlider.value = String(appState.extrudeScale);
+      if (minSlider) minSlider.value = String(appState.minHeightFilter);
+      if (terSlider) terSlider.value = String(appState.terrainExaggeration);
+      if (valEx) valEx.textContent = appState.extrudeScale.toFixed(1) + '×';
+      if (valMin) valMin.textContent = appState.minHeightFilter + ' m';
+      if (valTer) valTer.textContent = appState.terrainExaggeration.toFixed(1) + '×';
+      if (kpiTerScale) kpiTerScale.textContent = 'Exaggeration: ' + appState.terrainExaggeration.toFixed(1) + '×';
+
+      document.querySelectorAll('[data-colormode]').forEach(function (btn) {
+        btn.classList.toggle('is-active', btn.dataset.colormode === appState.colorMode);
+      });
+
+      // Update legend text
+      const legendTitle = document.getElementById('legend-title');
+      const legendLabels = document.getElementById('legend-labels');
+      if (legendTitle && legendLabels) {
+        if (appState.colorMode === 'landuse') {
+          legendTitle.textContent = 'Land Use Classification';
+          legendLabels.innerHTML = '<span>Academic/Civic</span><span>Residential</span><span>Heritage</span><span>Commercial</span>';
+        } else if (appState.colorMode === 'epistemic') {
+          legendTitle.textContent = 'Feature Provenance';
+          legendLabels.innerHTML = '<span>Parametric Fixture</span><span>Custom GeoJSON</span>';
+        } else {
+          legendTitle.textContent = 'Extrusion Height Ramp (m)';
+          legendLabels.innerHTML = '<span>0 m</span><span>25 m</span><span>60 m</span><span>120 m+</span>';
+        }
+      }
+    }
+
+    function syncLayerUI() {
+      const ids = ['buildings', 'edges', 'terrain', 'grid', 'pins', 'geofence'];
+      ids.forEach(function (k) {
+        const el = document.getElementById('toggle-' + k);
+        if (el) el.checked = Boolean(appState.layers[k]);
+      });
+    }
+
+    // Parse uploaded GeoJSON (supports extract-buildings.mjs & QGIS Zonal Statistics output)
+    function handleGeoJSONUpload(file) {
+      if (!file) return;
+      const statusMsg = document.getElementById('status-msg');
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        try {
+          const parsed = JSON.parse(String(ev.target.result));
+          if (!parsed || parsed.type !== 'FeatureCollection' || !Array.isArray(parsed.features)) {
+            throw new Error('Expected a valid GeoJSON FeatureCollection.');
+          }
+          const validPolys = parsed.features.filter(function (f) {
+            return f && f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon');
+          });
+          if (validPolys.length === 0) {
+            throw new Error('No Polygon building footprints found in FeatureCollection.');
+          }
+
+          // Compute bounding box center
+          let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+          const normalized = [];
+          validPolys.forEach(function (f, i) {
+            const rings = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+            rings.forEach(function (polyCoords) {
+              const outer = polyCoords[0];
+              if (!outer || outer.length < 3) return;
+              outer.forEach(function (pt) {
+                if (pt[0] < minLon) minLon = pt[0];
+                if (pt[0] > maxLon) maxLon = pt[0];
+                if (pt[1] < minLat) minLat = pt[1];
+                if (pt[1] > maxLat) maxLat = pt[1];
+              });
+              const p = f.properties || {};
+              const h = Number(p.height || p.render_height || p.height_max || p.height_mean || (p['building:levels'] ? Number(p['building:levels']) * 3.2 : 12));
+              const mh = Number(p.min_height || p.render_min_height || 0);
+              normalized.push({
+                type: 'Feature',
+                properties: Object.assign({}, p, {
+                  osm_id: p.osm_id != null ? p.osm_id : (p.fid != null ? p.fid : i + 1),
+                  name: p.name || ('Extracted Footprint #' + (p.osm_id || p.fid || i + 1)),
+                  building: p.building || 'yes',
+                  category: p.category || 'Extracted',
+                  height: +Math.max(1, h).toFixed(1),
+                  min_height: +Math.max(0, mh).toFixed(1),
+                  'building:levels': p['building:levels'] || Math.max(1, Math.round(h / 3.2)),
+                  source_type: 'CUSTOM_GEOJSON',
+                  landmark: i < 5
+                }),
+                geometry: { type: 'Polygon', coordinates: polyCoords }
+              });
+            });
+          });
+
+          const cLon = (minLon + maxLon) / 2;
+          const cLat = (minLat + maxLat) / 2;
+          appState.customGeoJSON = {
+            id: 'custom',
+            city: 'Custom GeoJSON',
+            precinct: file.name.replace(/\.(geo)?json$/i, ''),
+            center: [cLon, cLat],
+            geofence: { minLon: minLon, maxLon: maxLon, minLat: minLat, maxLat: maxLat },
+            terrainLabel: '0–18 m Rel',
+            terrainSubtitle: 'Uploaded Polygon Footprints',
+            defaultZoom: 15.6,
+            defaultPitch: 52,
+            defaultBearing: 0,
+            terrainHeight: function () { return 4; },
+            features: normalized.slice(0, 800)
+          };
+          appState.customFileName = file.name;
+          appState.selectedFeatureId = null;
+          appState.pitch = 52;
+          appState.bearing = 0;
+          appState.cameraZoom = 15.6;
+          targetPan.set(0, 0, 0);
+          currentPan.set(0, 0, 0);
+          rebuildAll();
+        } catch (err) {
+          if (statusMsg) {
+            statusMsg.classList.add('is-error');
+            statusMsg.textContent = 'GeoJSON error: ' + err.message;
+          }
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function exportCurrentGeoJSON() {
+      const dataset = getActiveDataset();
+      const fc = {
+        type: 'FeatureCollection',
+        features: dataset.features.map(function (f) {
+          return {
+            type: 'Feature',
+            properties: f.properties,
+            geometry: f.geometry
+          };
+        })
+      };
+      const jsonStr = JSON.stringify(fc, null, 2);
+      const fname = (appState.customGeoJSON ? 'custom_buildings' : appState.activeCityId + '_buildings') + '.geojson';
+
+      if (window.notebookAppApi && typeof window.notebookAppApi.triggerFileDownload === 'function') {
+        window.notebookAppApi.triggerFileDownload({
+          content: jsonStr,
+          contentType: 'text/plain',
+          encoding: 'UTF-8',
+          filename: fname
+        });
+      } else {
+        const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      const statusMsg = document.getElementById('status-msg');
+      if (statusMsg) {
+        statusMsg.classList.remove('is-error');
+        statusMsg.textContent = 'Exported ' + dataset.features.length + ' GeoJSON features (' + fname + ')';
+      }
+    }
+
+    function bindUIEvents() {
+      // Camera sliders
+      const pitchSlider = document.getElementById('slider-pitch');
+      if (pitchSlider) {
+        pitchSlider.addEventListener('input', function (e) {
+          appState.pitch = Number(e.target.value);
+          appState.autoOrbit = false;
+          syncCameraUI();
+          scheduleSaveState();
+        });
+      }
+      const bearingSlider = document.getElementById('slider-bearing');
+      if (bearingSlider) {
+        bearingSlider.addEventListener('input', function (e) {
+          appState.bearing = Number(e.target.value);
+          appState.autoOrbit = false;
+          syncCameraUI();
+          scheduleSaveState();
+        });
+      }
+      const zoomSlider = document.getElementById('slider-zoom');
+      if (zoomSlider) {
+        zoomSlider.addEventListener('input', function (e) {
+          appState.cameraZoom = Number(e.target.value);
+          syncCameraUI();
+          scheduleSaveState();
+        });
+      }
+
+      // Camera preset buttons
+      const camTop = document.getElementById('btn-cam-top');
+      if (camTop) camTop.addEventListener('click', function () {
+        appState.pitch = 0; appState.autoOrbit = false; syncCameraUI(); scheduleSaveState();
+      });
+      const camIso = document.getElementById('btn-cam-iso');
+      if (camIso) camIso.addEventListener('click', function () {
+        appState.pitch = 48; appState.bearing = 328; appState.autoOrbit = false; syncCameraUI(); scheduleSaveState();
+      });
+      const camCanyon = document.getElementById('btn-cam-canyon');
+      if (camCanyon) camCanyon.addEventListener('click', function () {
+        appState.pitch = 70; appState.cameraZoom = 16.5; appState.autoOrbit = false; syncCameraUI(); scheduleSaveState();
+      });
+      const camOrbit = document.getElementById('btn-cam-orbit');
+      if (camOrbit) camOrbit.addEventListener('click', function () {
+        appState.autoOrbit = !appState.autoOrbit; syncCameraUI();
+      });
+
+      // Compass & quick nav
+      const compassBtn = document.getElementById('btn-compass-north');
+      if (compassBtn) compassBtn.addEventListener('click', function () {
+        appState.bearing = 0; appState.autoOrbit = false; syncCameraUI(); scheduleSaveState();
+      });
+      const zIn = document.getElementById('btn-zoom-in');
+      if (zIn) zIn.addEventListener('click', function () {
+        appState.cameraZoom = Math.min(17.6, +(appState.cameraZoom + 0.3).toFixed(1)); syncCameraUI(); scheduleSaveState();
+      });
+      const zOut = document.getElementById('btn-zoom-out');
+      if (zOut) zOut.addEventListener('click', function () {
+        appState.cameraZoom = Math.max(13.8, +(appState.cameraZoom - 0.3).toFixed(1)); syncCameraUI(); scheduleSaveState();
+      });
+      const tUp = document.getElementById('btn-tilt-up');
+      if (tUp) tUp.addEventListener('click', function () {
+        appState.pitch = Math.min(75, appState.pitch + 10); syncCameraUI(); scheduleSaveState();
+      });
+      const tDown = document.getElementById('btn-tilt-down');
+      if (tDown) tDown.addEventListener('click', function () {
+        appState.pitch = Math.max(0, appState.pitch - 10); syncCameraUI(); scheduleSaveState();
+      });
+
+      const resetBtn = document.getElementById('btn-reset-view');
+      if (resetBtn) resetBtn.addEventListener('click', function () {
+        const d = getActiveDataset();
+        appState.pitch = d.defaultPitch;
+        appState.bearing = d.defaultBearing;
+        appState.cameraZoom = d.defaultZoom;
+        appState.autoOrbit = false;
+        targetPan.set(0, 0, 0);
+        syncCameraUI();
+        scheduleSaveState();
+      });
+
+      // Extrusion & terrain sliders
+      const exSlider = document.getElementById('slider-extrude');
+      if (exSlider) exSlider.addEventListener('input', function (e) {
+        appState.extrudeScale = Number(e.target.value);
+        syncExtrusionUI();
+        buildExtrusions();
+        scheduleSaveState();
+      });
+      const minSlider = document.getElementById('slider-min-height');
+      if (minSlider) minSlider.addEventListener('input', function (e) {
+        appState.minHeightFilter = Number(e.target.value);
+        syncExtrusionUI();
+        buildExtrusions();
+        scheduleSaveState();
+      });
+      const terSlider = document.getElementById('slider-terrain');
+      if (terSlider) terSlider.addEventListener('input', function (e) {
+        appState.terrainExaggeration = Number(e.target.value);
+        syncExtrusionUI();
+        buildTerrainAndGrid();
+        buildExtrusions();
+        scheduleSaveState();
+      });
+
+      // Color mode buttons
+      document.querySelectorAll('[data-colormode]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          appState.colorMode = btn.dataset.colormode;
+          syncExtrusionUI();
+          buildExtrusions();
+          scheduleSaveState();
+        });
+      });
+
+      // Layer toggles
+      ['buildings', 'edges', 'terrain', 'grid', 'pins', 'geofence'].forEach(function (key) {
+        const el = document.getElementById('toggle-' + key);
+        if (el) {
+          el.addEventListener('change', function (e) {
+            appState.layers[key] = Boolean(e.target.checked);
+            applyLayerVisibility();
+            scheduleSaveState();
+          });
+        }
+      });
+
+      // Upload & Export GeoJSON
+      const uploadBtn = document.getElementById('btn-upload-geojson');
+      const uploadInput = document.getElementById('geojson-upload');
+      if (uploadBtn && uploadInput) {
+        uploadBtn.addEventListener('click', function () { uploadInput.click(); });
+        uploadInput.addEventListener('change', function (e) {
+          if (e.target.files && e.target.files[0]) {
+            handleGeoJSONUpload(e.target.files[0]);
+          }
+        });
+      }
+      const exportBtn = document.getElementById('btn-export-geojson');
+      if (exportBtn) {
+        exportBtn.addEventListener('click', exportCurrentGeoJSON);
+      }
+    }
+
+    // =========================================================================
+    // 7. BOOTSTRAP & STATE RESTORATION
+    // =========================================================================
+    async function bootViewer() {
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+      }
+
+      if (window.notebookAppApi && typeof window.notebookAppApi.getAppState === 'function') {
+        try {
+          const saved = await window.notebookAppApi.getAppState();
+          if (saved && typeof saved === 'object') {
+            if (saved.activeCityId && URBAN_PRESETS[saved.activeCityId]) appState.activeCityId = saved.activeCityId;
+            if (typeof saved.pitch === 'number') appState.pitch = Math.max(0, Math.min(75, saved.pitch));
+            if (typeof saved.bearing === 'number') appState.bearing = (saved.bearing + 360) % 360;
+            if (typeof saved.cameraZoom === 'number') appState.cameraZoom = Math.max(13.8, Math.min(17.6, saved.cameraZoom));
+            if (typeof saved.extrudeScale === 'number') appState.extrudeScale = saved.extrudeScale;
+            if (typeof saved.minHeightFilter === 'number') appState.minHeightFilter = saved.minHeightFilter;
+            if (typeof saved.terrainExaggeration === 'number') appState.terrainExaggeration = saved.terrainExaggeration;
+            if (saved.colorMode) appState.colorMode = saved.colorMode;
+            if (saved.layers && typeof saved.layers === 'object') {
+              Object.assign(appState.layers, saved.layers);
+            }
+            if (saved.selectedFeatureId) appState.selectedFeatureId = saved.selectedFeatureId;
+          }
+        } catch (_) {}
+      }
+
+      initThreeScene();
+      bindUIEvents();
+      rebuildAll();
+
+      if (appState.selectedFeatureId) {
+        const match = buildingMeshes.find(function (m) {
+          return String(m.userData.feature.properties.osm_id) === String(appState.selectedFeatureId);
+        });
+        if (match) selectBuildingMesh(match);
+      }
+
+      cancelAnimationFrame(animFrameId);
+      animate();
+
+      if (window.notebookAppApi && typeof window.notebookAppApi.notifyAppReady === 'function') {
+        window.notebookAppApi.notifyAppReady();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', bootViewer);
+  </script>
+</body>
+</html>
